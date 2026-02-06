@@ -1,320 +1,176 @@
 import streamlit as st
-
 import pandas as pd
-
 import plotly.express as px
-
 from pathlib import Path
 
-
-
-# 1. UI & SEAMLESS EMBEDDING
-
+# 1. UI & BRANDING CONFIG
 st.set_page_config(page_title="SPAM LEAGUE CENTRAL", page_icon="🏀", layout="wide")
 
-
-
 st.markdown("""
-
     <style>
-
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
-
     div[data-testid="stToolbar"] {visibility: hidden;} [data-testid="stStatusWidget"] {display: none;}
-
     .block-container { padding: 0rem !important; }
-
-    .stApp { background: radial-gradient(circle, #1a1a1a 0%, #050505 100%); color: #d4af37; bottom: 0; }
-
+    .stApp { background: radial-gradient(circle, #1a1a1a 0%, #050505 100%); color: #d4af37; }
+    
+    /* VERTICAL & HORIZONTAL CENTERING FOR SPLASH SCREEN */
+    .splash-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        width: 100%;
+        text-align: center;
+    }
+    
     [data-testid="stMetric"] { background: rgba(255, 255, 255, 0.03) !important; border-left: 6px solid #d4af37 !important; border-radius: 12px !important; padding: 22px !important; }
-
     .header-banner { padding: 20px; text-align: center; background: #d4af37; border-bottom: 5px solid #000; color: #000; font-family: 'Arial Black'; font-size: 28px; }
-
+    
+    /* TICKER */
     @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-
     .ticker-wrap { width: 100%; overflow: hidden; background: #000; color: #d4af37; padding: 12px 0; font-family: 'Arial Black'; border-bottom: 2px solid #d4af37; }
-
     .ticker-content { display: inline-block; white-space: nowrap; animation: ticker 65s linear infinite; }
-
     .ticker-item { display: inline-block; margin-right: 80px; font-size: 18px; }
-
     </style>
-
     """, unsafe_allow_html=True)
 
-
-
-# 2. DATA ENGINE (FIXED KEYERRORS)
+# 2. LOGO & DATA ENGINE
+current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
+logo_path = current_dir / "logo.jpg"
 
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
-
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
-
-
 @st.cache_data(ttl=60)
-
 def load_data():
-
     try:
-
         df = pd.read_csv(URL)
-
         df.columns = df.columns.str.strip()
-
         
-
-        # Ensure 'Win' and 'Game_ID' exist for sorting
-
+        # Ensure all columns shown in your spreadsheet images exist
         for c in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FGA', 'Game_ID', 'Win']:
-
             if c in df.columns:
-
                 df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
-
             else:
-
-                df[c] = 0 # Create the column if missing to prevent KeyError
-
+                df[c] = 0
         
-
+        # Calculate PIE
         df['PIE'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df.get('FGA', 0) * 0.5)
-
         
-
-        # Separate Players and Teams (TOTAL rows)
-
+        # Separate Players and Teams using your 'Type' column
         df_p = df[df['Type'].str.lower() == 'player'].copy()
-
         df_t = df[df['Type'].str.lower() == 'team'].copy()
-
-
-
-        # Calculate Player Averages
-
-        gp = df_p.groupby('Player/Team')['Game_ID'].nunique().reset_index(name='GP')
-
-        p_avg = pd.merge(df_p.groupby(['Player/Team', 'Team Name']).sum(numeric_only=True).reset_index(), gp, on='Player/Team')
-
-        for s in ['PTS', 'REB', 'AST', 'STL', 'BLK']:
-
-            p_avg[f'{s}/G'] = (p_avg[s] / p_avg['GP']).round(1)
-
-
-
-        # Team Standings (Uses the 'TOTAL' rows from your sheet)
-
-        t_stats = df_t.groupby('Team Name').agg({
-
-            'Win': 'sum', 'Game_ID': 'count', 'PTS': 'sum', 'REB': 'sum', 'AST': 'sum'
-
-        }).reset_index()
-
-        t_stats['Loss'] = (t_stats['Game_ID'] - t_stats['Win']).astype(int)
-
-        t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + t_stats['Loss'].astype(str)
-
         
-
+        # Player Stats Averages
+        gp = df_p.groupby('Player/Team')['Game_ID'].nunique().reset_index(name='GP')
+        p_avg = pd.merge(df_p.groupby(['Player/Team', 'Team Name']).sum(numeric_only=True).reset_index(), gp, on='Player/Team')
+        for s in ['PTS', 'REB', 'AST', 'STL', 'BLK']:
+            p_avg[f'{s}/G'] = (p_avg[s] / p_avg['GP']).round(1)
+        
+        # Team Standings calculation using the 'TOTAL' rows
+        t_stats = df_t.groupby('Team Name').agg({
+            'Win': 'sum', 
+            'Game_ID': 'count', 
+            'PTS': 'sum', 
+            'REB': 'sum', 
+            'AST': 'sum', 
+            'STL': 'sum', 
+            'BLK': 'sum'
+        }).reset_index()
+        t_stats['Loss'] = (t_stats['Game_ID'] - t_stats['Win']).astype(int)
+        t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + t_stats['Loss'].astype(str)
+        
+        # Team Averages for Versus
+        for s in ['PTS', 'REB', 'AST', 'STL', 'BLK']:
+            t_stats[f'{s}_Avg'] = (t_stats[s] / t_stats['Game_ID']).round(1)
+            
         return p_avg, df_p, t_stats
-
-    except Exception as e:
-
-        st.error(f"Sync Error: {e}"); return None, None, None
-
-
+    except Exception:
+        return None, None, None
 
 p_avg, df_raw, t_stats = load_data()
 
+# 3. PERFECTLY CENTERED HUB OPENING
+if 'hub_entered' not in st.session_state:
+    st.session_state.hub_entered = False
 
+if not st.session_state.hub_entered:
+    st.markdown('<div class="splash-wrapper">', unsafe_allow_html=True)
+    if logo_path.exists():
+        st.image(str(logo_path), width=350)
+    st.markdown("<h1 style='font-size: 70px; color: #d4af37; margin-bottom: 10px;'>SPAM LEAGUE</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: white; letter-spacing: 5px; margin-bottom: 30px;'>COMMISSIONER DATA TERMINAL</h3>", unsafe_allow_html=True)
+    if st.button("PRESS TO ENTER HUB", use_container_width=True):
+        st.session_state.hub_entered = True
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.stop()
 
-# 3. BROADCAST INTERFACE
-
+# 4. MAIN INTERFACE
 if p_avg is not None:
-
-    # TICKER LOGIC
-
+    # TICKER
     ticker_items = []
-
-    for cat in ['PTS', 'AST', 'REB', 'STL', 'BLK']:
-
-        lead = p_avg.nlargest(1, f'{cat}/G').iloc[0]
-
-        ticker_items.append(f"🔥 {cat} LEADER: {lead['Player/Team']} ({lead[cat+'/G']})")
-
-    
-
-    last_3 = sorted(df_raw['Game_ID'].unique())[-3:]
-
-    for gid in last_3:
-
-        mvp = df_raw[df_raw['Game_ID'] == gid].nlargest(1, 'PIE').iloc[0]
-
-        ticker_items.append(f"🎮 G{int(gid)} MVP: {mvp['Player/Team']} ({int(mvp['PTS'])} PTS)")
-
-
-
+    for cat in ['PTS', 'AST', 'REB']:
+        if not p_avg.empty:
+            lead = p_avg.nlargest(1, f'{cat}/G').iloc[0]
+            ticker_items.append(f"🔥 {cat} LEADER: {lead['Player/Team']} ({lead[cat+'/G']})")
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{"  •  ".join(ticker_items)}</span></div></div>', unsafe_allow_html=True)
-
     st.markdown('<div class="header-banner">🏀 SPAM LEAGUE CENTRAL</div>', unsafe_allow_html=True)
 
+    tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERBOARDS", "⚔️ VERSUS", "📖 RECORDS"])
 
-
-    tabs = st.tabs(["👤 PLAYERS", "🏘️ TEAM STANDINGS", "🔝 LEADERBOARDS", "⚔️ VERSUS", "📖 RECORDS"])
-
-
-
-    # --- TAB 1: INTERACTIVE PLAYER HUB ---
-
-    with tabs[0]:
-
-        st.subheader("Click a player row below to view full Scouting Report")
-
-        
-
+    with tabs[0]: # PLAYER HUB WITH CLICKABLE SCOUTING
         main_table = p_avg[['Player/Team', 'Team Name', 'GP', 'PTS/G', 'REB/G', 'AST/G', 'PIE']].sort_values('PIE', ascending=False)
-
-        
-
-        # The Selection Logic
-
-        selection = st.dataframe(
-
-            main_table,
-
-            use_container_width=True,
-
-            hide_index=True,
-
-            on_select="rerun",
-
-            selection_mode="single-row"
-
-        )
-
-        
-
+        selection = st.dataframe(main_table, use_container_width=True, hide_index=True, on_select="rerun", selection_mode="single-row")
         if len(selection.selection.rows) > 0:
-
             p_idx = selection.selection.rows[0]
-
             p_name = main_table.iloc[p_idx]['Player/Team']
-
             p_history = df_raw[df_raw['Player/Team'] == p_name].sort_values('Game_ID', ascending=False)
-
-            
-
-            st.divider()
-
             st.header(f"🔍 {p_name} Scouting Report")
-
             c1, c2 = st.columns([1, 2])
-
             with c1:
-
-                st.metric("SEASON PTS HIGH", int(p_history['PTS'].max()))
-
-                st.metric("SEASON REB HIGH", int(p_history['REB'].max()))
-
-                st.metric("SEASON AST HIGH", int(p_history['AST'].max()))
-
+                st.metric("PTS HIGH", int(p_history['PTS'].max())); st.metric("REB HIGH", int(p_history['REB'].max())); st.metric("AST HIGH", int(p_history['AST'].max()))
             with c2:
-
-                last_g = p_history.iloc[0]
-
-                st.markdown(f"#### LAST GAME (Game {int(last_g['Game_ID'])})")
-
-                lc1, lc2, lc3 = st.columns(3)
-
-                lc1.metric("PTS", int(last_g['PTS']))
-
-                lc2.metric("REB", int(last_g['REB']))
-
-                lc3.metric("AST", int(last_g['AST']))
-
-                st.line_chart(p_history.set_index('Game_ID')['PTS'], height=150)
-
+                st.line_chart(p_history.set_index('Game_ID')['PTS'], height=200)
             st.table(p_history[['Game_ID', 'PTS', 'REB', 'AST', 'PIE']].head(5))
 
-        else:
+    with tabs[1]: # STANDINGS
+        st.dataframe(t_stats[['Team Name', 'Record', 'PTS', 'REB', 'AST']].sort_values('Win', ascending=False), use_container_width=True, hide_index=True)
 
-            st.info("👆 Click a player row above to load their game highs and last game stats.")
+    with tabs[2]: # LEADERBOARDS (LIST + GRAPH)
+        cat_sel = st.selectbox("Choose Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "PIE"])
+        top_10 = p_avg[['Player/Team', 'Team Name', cat_sel]].nlargest(10, cat_sel).reset_index(drop=True)
+        top_10.index += 1
+        st.table(top_10) 
+        st.plotly_chart(px.bar(top_10, x=cat_sel, y='Player/Team', orientation='h', template="plotly_dark", color_continuous_scale="Purp"), use_container_width=True)
 
-
-
-    # --- TAB 2: STANDINGS (FIXED ERROR) ---
-
-    with tabs[1]:
-
-        st.subheader("🏘️ Team Standings & Records")
-
-        # Safety sort to prevent KeyError
-
-        if 'Win' in t_stats.columns:
-
-            standings_display = t_stats.sort_values('Win', ascending=False)
-
-        else:
-
-            standings_display = t_stats
-
-            
-
-        st.dataframe(
-
-            standings_display[['Team Name', 'Record', 'PTS', 'REB', 'AST']], 
-
-            use_container_width=True, 
-
-            hide_index=True
-
-        )
-
-
-
-    # --- TAB 3: LEADERBOARDS (FIXED ERROR) ---
-
-    with tabs[2]:
-
-        st.subheader("🔝 Top 10 Leaders")
-
-        cat_sel = st.selectbox("Choose Category", ["PTS/G", "REB/G", "AST/G", "PIE"])
-
-        fig = px.bar(p_avg.nlargest(10, cat_sel), x=cat_sel, y='Player/Team', color=cat_sel, orientation='h', template="plotly_dark")
-
-        st.plotly_chart(fig, use_container_width=True)
-
-
-
-    # --- TAB 4: VERSUS ---
-
-    with tabs[3]:
-
+    with tabs[3]: # VERSUS (TEAM VS TEAM AVERAGES)
+        v_mode = st.radio("Matchup Type", ["Player vs Player", "Team vs Team"], horizontal=True)
         v1, v2 = st.columns(2)
+        if v_mode == "Player vs Player":
+            p1 = v1.selectbox("P1", p_avg['Player/Team'].unique(), index=0)
+            p2 = v2.selectbox("P2", p_avg['Player/Team'].unique(), index=1)
+            d1, d2 = p_avg[p_avg['Player/Team']==p1].iloc[0], p_avg[p_avg['Player/Team']==p2].iloc[0]
+            for s in ['PTS/G', 'REB/G', 'AST/G', 'PIE']:
+                sc1, sc2 = st.columns(2)
+                sc1.metric(f"{p1} {s}", d1[s], delta=round(d1[s]-d2[s], 1)); sc2.metric(f"{p2} {s}", d2[s], delta=round(d2[s]-d1[s], 1))
+        else:
+            t1 = v1.selectbox("Team 1", t_stats['Team Name'].unique(), index=0)
+            t2 = v2.selectbox("Team 2", t_stats['Team Name'].unique(), index=1)
+            td1, td2 = t_stats[t_stats['Team Name']==t1].iloc[0], t_stats[t_stats['Team Name']==t2].iloc[0]
+            for s in ['PTS_Avg', 'REB_Avg', 'AST_Avg', 'STL_Avg', 'BLK_Avg']:
+                sc1, sc2 = st.columns(2)
+                sc1.metric(f"{t1} {s.split('_')[0]}", td1[s], delta=round(td1[s]-td2[s], 1)); sc2.metric(f"{t2} {s.split('_')[0]}", td2[s], delta=round(td2[s]-td1[s], 1))
 
-        p1 = v1.selectbox("P1", p_avg['Player/Team'].unique(), index=0)
-
-        p2 = v2.selectbox("P2", p_avg['Player/Team'].unique(), index=1)
-
-        d1, d2 = p_avg[p_avg['Player/Team']==p1].iloc[0], p_avg[p_avg['Player/Team']==p2].iloc[0]
-
-        for s in ['PTS/G', 'REB/G', 'AST/G', 'PIE']:
-
-            sc1, sc2 = st.columns(2)
-
-            sc1.metric(f"{p1} {s}", d1[s], delta=round(d1[s]-d2[s], 1))
-
-            sc2.metric(f"{p2} {s}", d2[s], delta=round(d2[s]-d1[s], 1))
-
-
-
-    # --- TAB 5: RECORDS ---
-
-    with tabs[4]:
-
-        st.metric("League Scoring High", int(df_raw['PTS'].max()), df_raw.loc[df_raw['PTS'].idxmax(), 'Player/Team'])
-
-
+    with tabs[4]: # RECORDS (EXPANDED)
+        c1, c2 = st.columns(2)
+        r_pts = df_raw.loc[df_raw['PTS'].idxmax()]; r_reb = df_raw.loc[df_raw['REB'].idxmax()]
+        r_stl = df_raw.loc[df_raw['STL'].idxmax()]; r_blk = df_raw.loc[df_raw['BLK'].idxmax()]
+        c1.metric("Points Record", int(r_pts['PTS']), r_pts['Player/Team'])
+        c1.metric("Steals Record", int(r_stl['STL']), r_stl['Player/Team'])
+        c2.metric("Rebounds Record", int(r_reb['REB']), r_reb['Player/Team'])
+        c2.metric("Blocks Record", int(r_blk['BLK']), r_blk['Player/Team'])
 
     st.markdown('<div style="text-align: center; color: #444; padding: 20px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
 
