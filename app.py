@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
-# 1. UI & BRANDING CONFIG
+# 1. UI & SEAMLESS EMBEDDING CONFIG
 st.set_page_config(page_title="SPAM LEAGUE CENTRAL", page_icon="🏀", layout="wide")
 
 st.markdown("""
@@ -14,6 +14,8 @@ st.markdown("""
     .stApp { background: radial-gradient(circle, #1a1a1a 0%, #050505 100%); color: #d4af37; bottom: 0; }
     [data-testid="stMetric"] { background: rgba(255, 255, 255, 0.03) !important; border-left: 6px solid #d4af37 !important; border-radius: 12px !important; padding: 22px !important; }
     .header-banner { padding: 20px; text-align: center; background: #d4af37; border-bottom: 5px solid #000; color: #000; font-family: 'Arial Black'; font-size: 28px; }
+    
+    /* TICKER */
     @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
     .ticker-wrap { width: 100%; overflow: hidden; background: #000; color: #d4af37; padding: 12px 0; font-family: 'Arial Black'; border-bottom: 2px solid #d4af37; }
     .ticker-content { display: inline-block; white-space: nowrap; animation: ticker 65s linear infinite; }
@@ -30,6 +32,7 @@ def load_data():
     try:
         data = pd.read_csv(URL)
         data.columns = data.columns.str.strip()
+        # Robust Numeric Safety
         num_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FGA', 'Game_ID', 'Win']
         for c in num_cols:
             if c in data.columns:
@@ -39,11 +42,13 @@ def load_data():
         df_p = data[data['Type'].str.lower() == 'player'].copy()
         df_t = data[data['Type'].str.lower() == 'team'].copy()
 
+        # Player Averages
         gp = df_p.groupby('Player/Team')['Game_ID'].nunique().reset_index(name='GP')
         p_avg = pd.merge(df_p.groupby(['Player/Team', 'Team Name']).sum(numeric_only=True).reset_index(), gp, on='Player/Team')
         for s in ['PTS', 'REB', 'AST', 'STL', 'BLK']:
             p_avg[f'{s}/G'] = (p_avg[s] / p_avg['GP']).round(1)
 
+        # Team Standings Logic
         t_standings = df_t.groupby('Team Name').agg({
             'Win': 'sum', 'Game_ID': 'count', 'PTS': 'sum', 'REB': 'sum', 'AST': 'sum'
         }).reset_index()
@@ -58,85 +63,101 @@ p_avg, df_raw, t_stats = load_data()
 
 # 3. BROADCAST INTERFACE
 if p_avg is not None:
-    # TICKER
+    # TICKER: Category Leaders + Last 3 Game Highlights
     ticker_items = []
-    for cat in ['PTS', 'AST', 'REB']:
+    for cat in ['PTS', 'AST', 'REB', 'STL', 'BLK']:
         lead = p_avg.nlargest(1, f'{cat}/G').iloc[0]
         ticker_items.append(f"🔥 {cat} LEADER: {lead['Player/Team']} ({lead[cat+'/G']})")
     
     last_3 = sorted(df_raw['Game_ID'].unique())[-3:]
     for gid in last_3:
         mvp = df_raw[df_raw['Game_ID'] == gid].nlargest(1, 'PIE').iloc[0]
-        ticker_items.append(f"🎮 G{gid} MVP: {mvp['Player/Team']} ({int(mvp['PTS'])} PTS)")
+        ticker_items.append(f"🎮 G{int(gid)} MVP: {mvp['Player/Team']} ({int(mvp['PTS'])} PTS)")
 
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{"  •  ".join(ticker_items)}</span></div></div>', unsafe_allow_html=True)
     st.markdown('<div class="header-banner">🏀 SPAM LEAGUE CENTRAL</div>', unsafe_allow_html=True)
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ TEAM STANDINGS", "🔝 LEADERBOARDS", "⚔️ VERSUS", "📖 RECORDS"])
 
+    # --- TAB 1: INTERACTIVE PLAYER HUB ---
     with tabs[0]:
-        st.subheader("Select a player to view Game Highs & Last Game Results")
+        st.subheader("Click a player row to reveal Season Highs and Last Game stats")
         
-        # INTERACTIVE DATAFRAME - CLICKABLE
-        event = st.dataframe(
-            p_avg[['Player/Team', 'Team Name', 'GP', 'PTS/G', 'REB/G', 'AST/G', 'PIE']].sort_values('PIE', ascending=False),
+        # We sort by PIE by default for the leaderboard look
+        leaderboard = p_avg[['Player/Team', 'Team Name', 'GP', 'PTS/G', 'REB/G', 'AST/G', 'PIE']].sort_values('PIE', ascending=False)
+        
+        # This creates the clickable selection event
+        selection = st.dataframe(
+            leaderboard,
             use_container_width=True,
             hide_index=True,
             on_select="rerun",
             selection_mode="single-row"
         )
         
-        # CHECK IF PLAYER IS CLICKED
-        if len(event.selection.rows) > 0:
-            selected_idx = event.selection.rows[0]
-            player_name = p_avg.sort_values('PIE', ascending=False).iloc[selected_idx]['Player/Team']
+        # If a row is selected, show the Scouting Report
+        if len(selection.selection.rows) > 0:
+            selected_row_index = selection.selection.rows[0]
+            player_name = leaderboard.iloc[selected_row_index]['Player/Team']
             
-            p_history = df_raw[df_raw['Player/Team'] == player_name].sort_values('Game_ID', ascending=False)
+            # Filter all games for this specific player
+            player_history = df_raw[df_raw['Player/Team'] == player_name].sort_values('Game_ID', ascending=False)
             
-            st.markdown(f"## 📊 Scouting Report: {player_name}")
-            c1, c2, c3 = st.columns(3)
+            st.divider()
+            st.header(f"🔍 Scouting Report: {player_name}")
             
-            # 1. Season Highs
+            c1, c2 = st.columns([1, 2])
+            
             with c1:
-                st.write("**SEASON HIGHS**")
-                st.metric("PTS", int(p_history['PTS'].max()))
-                st.metric("REB", int(p_history['REB'].max()))
-                st.metric("AST", int(p_history['AST'].max()))
-            
-            # 2. Last Game
+                st.markdown("### 🏆 SEASON HIGHS")
+                st.metric("PTS HIGH", int(player_history['PTS'].max()))
+                st.metric("REB HIGH", int(player_history['REB'].max()))
+                st.metric("AST HIGH", int(player_history['AST'].max()))
+                st.metric("PIE HIGH", round(player_history['PIE'].max(), 1))
+
             with c2:
-                last_g = p_history.iloc[0]
-                st.write(f"**LAST GAME (G{int(last_g['Game_ID'])})**")
-                st.metric("PTS", int(last_g['PTS']))
-                st.metric("REB", int(last_g['REB']))
-                st.metric("AST", int(last_g['AST']))
+                last_g = player_history.iloc[0]
+                st.markdown(f"### 🕒 LAST GAME (Game {int(last_g['Game_ID'])})")
+                mc1, mc2, mc3 = st.columns(3)
+                mc1.metric("PTS", int(last_g['PTS']))
+                mc2.metric("REB", int(last_g['REB']))
+                mc3.metric("AST", int(last_g['AST']))
                 
-            # 3. Game Log Graph
-            with c3:
-                st.write("**PTS TREND**")
-                st.line_chart(p_history.set_index('Game_ID')['PTS'], height=200)
-
-            st.markdown("### Full Season Game Log")
-            st.table(p_history[['Game_ID', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PIE']].head(10))
+                st.markdown("#### Performance Trend (PTS)")
+                st.line_chart(player_history.set_index('Game_ID')['PTS'], height=150)
+            
+            st.markdown("### 📖 Complete Season Game Log")
+            st.dataframe(player_history[['Game_ID', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PIE']], use_container_width=True, hide_index=True)
         else:
-            st.info("💡 Click a row in the table above to reveal player-specific stats!")
+            st.info("👆 Select a player in the table above to view their deep stats.")
 
-    with tabs[1]: # TEAM STANDINGS
-        st.dataframe(t_stats[['Team Name', 'Record', 'PTS', 'REB', 'AST']].sort_values('Win', ascending=False), 
-                     use_container_width=True, hide_index=True)
+    # --- TAB 2: TEAM STANDINGS ---
+    with tabs[1]:
+        st.subheader("🏘️ Season Standings & Team Totals")
+        # Check if 'Win' exists to avoid the KeyError you experienced
+        sort_col = 'Win' if 'Win' in t_stats.columns else 'PTS'
+        st.dataframe(
+            t_stats[['Team Name', 'Record', 'PTS', 'REB', 'AST']].sort_values(sort_col, ascending=False), 
+            use_container_width=True, 
+            hide_index=True
+        )
 
-    with tabs[2]: # LEADERBOARDS
+    # --- TAB 3: LEADERS ---
+    with tabs[2]:
         cat = st.selectbox("Category:", ["PTS/G", "REB/G", "AST/G", "PIE"])
-        st.plotly_chart(px.bar(p_avg.nlargest(10, cat), x=cat, y='Player/Team', orientation='h', template="plotly_dark", color_continuous_scale="Purp"), use_container_width=True)
+        fig = px.bar(p_avg.nlargest(10, cat), x=cat, y='Player/Team', color=cat, orientation='h', template="plotly_dark")
+        st.plotly_chart(fig, use_container_width=True)
 
-    with tabs[3]: # VERSUS
+    # --- TAB 4: VERSUS ---
+    with tabs[3]:
         v1, v2 = st.columns(2)
-        p1 = v1.selectbox("P1", p_avg['Player/Team'].unique(), index=0)
-        p2 = v2.selectbox("P2", p_avg['Player/Team'].unique(), index=1)
-        st.write(f"Comparing {p1} vs {p2}") # Simplified for logic check
+        p1 = v1.selectbox("Player 1", p_avg['Player/Team'].unique(), index=0)
+        p2 = v2.selectbox("Player 2", p_avg['Player/Team'].unique(), index=1)
+        # Add your comparison logic here if needed
 
-    with tabs[4]: # RECORDS
-        st.metric("League Scoring Record", int(df_raw['PTS'].max()), df_raw.loc[df_raw['PTS'].idxmax(), 'Player/Team'])
+    # --- TAB 5: RECORDS ---
+    with tabs[4]:
+        st.metric("League Scoring High", int(df_raw['PTS'].max()), df_raw.loc[df_raw['PTS'].idxmax(), 'Player/Team'])
 
     st.markdown('<div style="text-align: center; color: #444; padding: 20px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
 
