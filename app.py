@@ -11,18 +11,20 @@ st.markdown("""
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     div[data-testid="stToolbar"] {visibility: hidden;} [data-testid="stStatusWidget"] {display: none;}
     .block-container { padding: 0rem !important; }
-    .stApp { background: radial-gradient(circle, #1a1a1a 0%, #050505 100%); color: #d4af37; bottom: 0; }
+    .stApp { background: radial-gradient(circle, #1a1a1a 0%, #050505 100%); color: #d4af37; }
+    
+    /* SUCCESSFUL CENTERED SPLASH */
+    .splash-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 90vh;
+        text-align: center;
+    }
+    
     [data-testid="stMetric"] { background: rgba(255, 255, 255, 0.03) !important; border-left: 6px solid #d4af37 !important; border-radius: 12px !important; padding: 22px !important; }
     .header-banner { padding: 20px; text-align: center; background: #d4af37; border-bottom: 5px solid #000; color: #000; font-family: 'Arial Black'; font-size: 28px; }
-    
-    /* CENTERED SPLASH SCREEN FIX */
-    .centered-splash { 
-        display: flex; flex-direction: column; align-items: center; 
-        justify-content: center; text-align: center; 
-        min-height: 100vh; width: 100vw; 
-        position: fixed; top: 0; left: 0; z-index: 9999;
-        background: radial-gradient(circle, #1a1a1a 0%, #050505 100%);
-    }
     
     /* TICKER */
     @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
@@ -58,7 +60,6 @@ def load_data():
         for s in ['PTS', 'REB', 'AST', 'STL', 'BLK']:
             p_avg[f'{s}/G'] = (p_avg[s] / p_avg['GP']).round(1)
         
-        # Team Stats & Averages
         t_stats = df_t.groupby('Team Name').agg({'Win': 'sum', 'Game_ID': 'count', 'PTS': 'sum', 'REB': 'sum', 'AST': 'sum', 'STL': 'sum', 'BLK': 'sum'}).reset_index()
         t_stats['Loss'] = (t_stats['Game_ID'] - t_stats['Win']).astype(int)
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + t_stats['Loss'].astype(str)
@@ -67,27 +68,31 @@ def load_data():
             
         return p_avg, df_p, t_stats
     except Exception as e:
-        st.error(f"Sync Error: {e}"); return None, None, None
+        return None, None, None
 
 p_avg, df_raw, t_stats = load_data()
 
-# 3. CENTERED HUB OPENING PAGE
+# 3. THE SPLASH SCREEN FIX
 if 'hub_entered' not in st.session_state:
     st.session_state.hub_entered = False
 
 if not st.session_state.hub_entered:
-    st.markdown('<div class="centered-splash">', unsafe_allow_html=True)
-    if logo_path.exists():
-        st.image(str(logo_path), width=350)
-    st.markdown("<h1 style='font-size: 70px; color: #d4af37; margin-bottom: 10px;'>SPAM LEAGUE</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='color: white; letter-spacing: 5px; margin-bottom: 30px;'>COMMISSIONER DATA TERMINAL</h3>", unsafe_allow_html=True)
-    if st.button("PRESS TO ENTER HUB", use_container_width=True):
-        st.session_state.hub_entered = True
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    # This empty container helps with centering
+    placeholder = st.empty()
+    with placeholder.container():
+        st.markdown('<div class="splash-container">', unsafe_allow_html=True)
+        if logo_path.exists():
+            st.image(str(logo_path), width=350)
+        st.markdown("<h1 style='font-size: 70px; color: #d4af37; margin-bottom: 10px;'>SPAM LEAGUE</h1>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: white; letter-spacing: 5px; margin-bottom: 30px;'>COMMISSIONER DATA TERMINAL</h3>", unsafe_allow_html=True)
+        if st.button("PRESS TO ENTER HUB", use_container_width=True):
+            st.session_state.hub_entered = True
+            placeholder.empty() # Clear the splash screen
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
-# 4. MAIN INTERFACE
+# 4. MAIN INTERFACE (Only runs if hub_entered is True)
 if p_avg is not None:
     # TICKER
     ticker_items = []
@@ -121,10 +126,10 @@ if p_avg is not None:
         cat_sel = st.selectbox("Choose Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "PIE"])
         top_10 = p_avg[['Player/Team', 'Team Name', cat_sel]].nlargest(10, cat_sel).reset_index(drop=True)
         top_10.index += 1
-        st.table(top_10) # Simple 1-10 List
+        st.table(top_10) 
         st.plotly_chart(px.bar(top_10, x=cat_sel, y='Player/Team', orientation='h', template="plotly_dark", color=cat_sel), use_container_width=True)
 
-    with tabs[3]: # VERSUS (TEAM VS TEAM ADDED)
+    with tabs[3]: # VERSUS
         v_mode = st.radio("Matchup Type", ["Player vs Player", "Team vs Team"], horizontal=True)
         v1, v2 = st.columns(2)
         if v_mode == "Player vs Player":
@@ -139,7 +144,6 @@ if p_avg is not None:
             t1 = v1.selectbox("Team 1", t_stats['Team Name'].unique(), index=0)
             t2 = v2.selectbox("Team 2", t_stats['Team Name'].unique(), index=1)
             td1, td2 = t_stats[t_stats['Team Name']==t1].iloc[0], t_stats[t_stats['Team Name']==t2].iloc[0]
-            st.markdown("### Team Average Comparison")
             for s in ['PTS_Avg', 'REB_Avg', 'AST_Avg', 'STL_Avg', 'BLK_Avg']:
                 sc1, sc2 = st.columns(2)
                 sc1.metric(f"{t1} {s.split('_')[0]}", td1[s], delta=round(td1[s]-td2[s], 1))
@@ -155,3 +159,4 @@ if p_avg is not None:
         c2.metric("Blocks Record", int(r_blk['BLK']), r_blk['Player/Team'])
 
     st.markdown('<div style="text-align: center; color: #444; padding: 20px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
+
