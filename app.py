@@ -3,45 +3,8 @@ import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
-# 1. UI & SLEEK CSS
+# 1. INITIAL CONFIG (Must be first)
 st.set_page_config(page_title="SPAM LEAGUE CENTRAL", page_icon="🏀", layout="wide")
-
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
-    div[data-testid="stToolbar"] {visibility: hidden;} [data-testid="stStatusWidget"] {display: none;}
-    .block-container { padding: 0rem !important; margin: 0rem !important; }
-    .stApp { background: radial-gradient(circle at top, #1f1f1f 0%, #050505 100%); color: #e0e0e0; }
-    
-    /* Centered Splash Screen */
-    .splash-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        width: 100%;
-        text-align: center;
-    }
-
-    div[data-testid="stMetric"] { 
-        background: rgba(255, 255, 255, 0.05) !important; 
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(212, 175, 55, 0.2) !important; 
-        border-radius: 20px !important; 
-        padding: 20px !important;
-    }
-    .header-banner { 
-        padding: 25px; text-align: center; 
-        background: linear-gradient(90deg, #d4af37 0%, #f7e08a 50%, #d4af37 100%);
-        color: #000; font-family: 'Arial Black'; font-size: 28px;
-    }
-    @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-    .ticker-wrap { width: 100%; overflow: hidden; background: #000; color: #d4af37; padding: 12px 0; border-bottom: 1px solid #333; }
-    .ticker-content { display: inline-block; white-space: nowrap; animation: ticker 45s linear infinite; }
-    .ticker-item { display: inline-block; margin-right: 100px; font-weight: bold; font-size: 16px; }
-    </style>
-    """, unsafe_allow_html=True)
 
 # 2. DATA ENGINE
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
@@ -93,30 +56,67 @@ def load_data():
     except:
         return None, None, None
 
-p_avg, df_raw, t_stats = load_data()
-
-# 3. SPLASH SCREEN (CENTERED)
-if 'entered' not in st.session_state: st.session_state.entered = False
+# 3. UI STYLE & SPLASH LOGIC
+if 'entered' not in st.session_state:
+    st.session_state.entered = False
 
 if not st.session_state.entered:
-    st.markdown('<div class="splash-container">', unsafe_allow_html=True)
-    # Check for logo
-    logo_path = Path(__file__).parent / "logo.jpg"
-    if logo_path.exists():
-        st.image(str(logo_path), width=300)
-    st.markdown("<h1 style='font-size: 70px; color: #d4af37; margin-bottom: 0;'>SPAM LEAGUE</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='letter-spacing: 10px; color: white; margin-bottom: 40px;'>COMMISSIONER DATA TERMINAL</p>", unsafe_allow_html=True)
-    if st.button("ENTER HUB", use_container_width=False):
-        st.session_state.entered = True
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    # SPLASH SCREEN CSS
+    st.markdown("""
+        <style>
+        .stApp { background: #050505; }
+        .splash-outer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 90vh;
+            width: 100%;
+        }
+        .splash-box {
+            text-align: center;
+            animation: fadeIn 1.5s ease-in;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        h1 { font-family: 'Arial Black'; color: #d4af37; font-size: 72px; margin-bottom: 0px; text-shadow: 2px 2px 10px rgba(212, 175, 55, 0.3); }
+        p { color: white; letter-spacing: 12px; margin-top: 5px; font-weight: 200; }
+        </style>
+        <div class="splash-outer">
+            <div class="splash-box">
+                <h1>SPAM LEAGUE</h1>
+                <p>COMMISSIONER TERMINAL</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Centering the button using columns
+    _, btn_col, _ = st.columns([2, 1, 2])
+    with btn_col:
+        if st.button("PRESS TO ENTER HUB", use_container_width=True):
+            st.session_state.entered = True
+            st.rerun()
     st.stop()
 
-# 4. MAIN INTERFACE
+# 4. MAIN INTERFACE CSS (ONLY LOADS AFTER ENTER)
+st.markdown("""
+    <style>
+    #MainMenu, footer, header {visibility: hidden;}
+    .stApp { background: radial-gradient(circle at top, #1f1f1f 0%, #050505 100%); }
+    div[data-testid="stMetric"] { background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(212, 175, 55, 0.2) !important; border-radius: 20px !important; }
+    .header-banner { padding: 25px; text-align: center; background: linear-gradient(90deg, #d4af37 0%, #f7e08a 50%, #d4af37 100%); color: #000; font-family: 'Arial Black'; font-size: 28px; }
+    @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    .ticker-wrap { width: 100%; overflow: hidden; background: #000; color: #d4af37; padding: 12px 0; border-bottom: 1px solid #333; }
+    .ticker-content { display: inline-block; white-space: nowrap; animation: ticker 45s linear infinite; }
+    .ticker-item { display: inline-block; margin-right: 100px; font-weight: bold; font-size: 16px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+p_avg, df_raw, t_stats = load_data()
+
 if p_avg is not None:
+    # TICKER
     leads = [f"🔥 {c}: {p_avg.nlargest(1, c+'/G').iloc[0]['Player/Team']} ({p_avg.nlargest(1, c+'/G').iloc[0][c+'/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']]
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
-    st.markdown('<div class="header-banner">🏀 SPAM LEAGUE CENTRAL</div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-banner">🏀 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "📖 RECORDS"])
 
@@ -127,11 +127,14 @@ if p_avg is not None:
         if len(sel.selection.rows) > 0:
             row = table.iloc[sel.selection.rows[0]]
             st.markdown(f"### 🔎 Scouting Report: {row['Player/Team']}")
-            c1, c2, c3, c4, c5 = st.columns(5)
-            c1.metric("PPG", row['PTS/G']); c2.metric("RPG", row['REB/G']); c3.metric("APG", row['AST/G'])
-            c4.metric("SPG", row['STL/G']); c5.metric("BPG", row['BLK/G'])
-            e1, e2, e3, e4, e5 = st.columns(5)
-            e1.metric("FG%", f"{row['FG%']}%"); e2.metric("TS%", f"{row['TS%']}%"); e3.metric("PIE", row['PIE']); e4.metric("DDs", int(row['DD_Count'])); e5.metric("TDs", int(row['TD_Count']))
+            m_cols = st.columns(5)
+            stats = [("PPG", 'PTS/G'), ("RPG", 'REB/G'), ("APG", 'AST/G'), ("SPG", 'STL/G'), ("BPG", 'BLK/G')]
+            for i, (label, col) in enumerate(stats): m_cols[i].metric(label, row[col])
+            
+            e_cols = st.columns(5)
+            e_stats = [("FG%", f"{row['FG%']}%"), ("TS%", f"{row['TS%']}%"), ("PIE", row['PIE']), ("DDs", int(row['DD_Count'])), ("TDs", int(row['TD_Count']))]
+            for i, (label, val) in enumerate(e_stats): e_cols[i].metric(label, val)
+            
             st.line_chart(df_raw[df_raw['Player/Team'] == row['Player/Team']].sort_values('Game_ID').set_index('Game_ID')['PTS'])
 
     with tabs[1]: # STANDINGS
@@ -170,9 +173,8 @@ if p_avg is not None:
         def get_rec(col):
             idx = df_raw[col].idxmax()
             return f"{int(df_raw.loc[idx][col])}", df_raw.loc[idx]['Player/Team']
-        
         r1.metric("Points High", *get_rec('PTS')); r1.metric("Steals High", *get_rec('STL')); r1.metric("DD King", int(p_avg['DD_Count'].max()), p_avg.loc[p_avg['DD_Count'].idxmax()]['Player/Team'])
         r2.metric("Rebounds High", *get_rec('REB')); r2.metric("Blocks High", *get_rec('BLK')); r2.metric("TD King", int(p_avg['TD_Count'].max()), p_avg.loc[p_avg['TD_Count'].idxmax()]['Player/Team'])
         r3.metric("Assists High", *get_rec('AST')); r3.metric("3PM High", *get_rec('3PM')); r3.metric("FGA High", *get_rec('FGA'))
 
-    st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; color: #444; padding: 30px;">— SPAM LEAGUE HUB 2026 —</div>', unsafe_allow_html=True)
