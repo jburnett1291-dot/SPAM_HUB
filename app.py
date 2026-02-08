@@ -20,13 +20,11 @@ st.markdown("""
         border-radius: 20px !important; 
         padding: 20px !important;
     }
-
     .header-banner { 
         padding: 25px; text-align: center; 
         background: linear-gradient(90deg, #d4af37 0%, #f7e08a 50%, #d4af37 100%);
         color: #000; font-family: 'Arial Black'; font-size: 28px;
     }
-
     @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
     .ticker-wrap { width: 100%; overflow: hidden; background: #000; color: #d4af37; padding: 12px 0; border-bottom: 1px solid #333; }
     .ticker-content { display: inline-block; white-space: nowrap; animation: ticker 45s linear infinite; }
@@ -34,7 +32,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. DATA ENGINE
+# 2. DATA ENGINE (FIXED FOR STABILITY)
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
@@ -43,39 +41,33 @@ def load_data():
     try:
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
-        # Add 3PM, FGM, FGA if missing
-        for c in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FGA', 'FGM', '3PM', 'FTA', 'Game_ID', 'Win']:
+        
+        # Comprehensive numeric cleaning
+        cols_to_fix = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FGA', 'FGM', '3PM', 'FTA', 'Game_ID', 'Win']
+        for c in cols_to_fix:
             df[c] = pd.to_numeric(df.get(c, 0), errors='coerce').fillna(0)
         
-        # Calculate DD and TD
-        def count_dd(row):
-            stats = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
-            return 1 if sum(1 for s in stats if s >= 10) >= 2 else 0
-        def count_td(row):
-            stats = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
-            return 1 if sum(1 for s in stats if s >= 10) >= 3 else 0
-
-        df['DD'] = df.apply(count_dd, axis=1)
-        df['TD'] = df.apply(count_td, axis=1)
+        # Stats logic
         df['PIE'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5)
         
         df_p = df[df['Type'].str.lower() == 'player'].copy()
         df_t = df[df['Type'].str.lower() == 'team'].copy()
 
-        # Player Averages
+        # Player Calcs
         gp = df_p.groupby('Player/Team')['Game_ID'].nunique().reset_index(name='GP')
         p_sums = df_p.groupby(['Player/Team', 'Team Name']).sum(numeric_only=True).reset_index()
         p_avg = pd.merge(p_sums, gp, on='Player/Team')
         
         for s in ['PTS', 'REB', 'AST', 'STL', 'BLK']:
             p_avg[f'{s}/G'] = (p_avg[s] / p_avg['GP']).round(1)
+        
         p_avg['FG%'] = (p_avg['FGM'] / p_avg['FGA'].replace(0,1) * 100).round(1)
         p_avg['TS%'] = (p_avg['PTS'] / (2 * (p_avg['FGA'] + 0.44 * p_avg.get('FTA', 0))).replace(0,1) * 100).round(1)
 
         # Team Standings
         t_stats = df_t.groupby('Team Name').agg({
             'Win': 'sum', 'Game_ID': 'count', 'PTS': 'sum', 'REB': 'sum', 
-            'AST': 'sum', 'STL': 'sum', 'BLK': 'sum', 'FGA': 'sum', 'FGM': 'sum', '3PM': 'sum'
+            'AST': 'sum', 'STL': 'sum', 'BLK': 'sum', 'FGA': 'sum', 'FGM': 'sum'
         }).reset_index()
         t_stats['Loss'] = (t_stats['Game_ID'] - t_stats['Win']).astype(int)
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + t_stats['Loss'].astype(str)
@@ -85,14 +77,14 @@ def load_data():
             t_stats[f'{s}_Avg'] = (t_stats[s] / t_stats['Game_ID']).round(1)
 
         return p_avg, df_p, t_stats
-    except:
+    except Exception as e:
+        st.error(f"Data Connection Lost: {e}")
         return None, None, None
 
 p_avg, df_raw, t_stats = load_data()
 
 # 3. INTERFACE
-if p_avg is not None:
-    # Ticker
+if p_avg is not None and not p_avg.empty:
     leads = [f"🔥 {c}: {p_avg.nlargest(1, c+'/G').iloc[0]['Player/Team']} ({p_avg.nlargest(1, c+'/G').iloc[0][c+'/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']]
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
     st.markdown('<div class="header-banner">🏀 SPAM LEAGUE CENTRAL</div>', unsafe_allow_html=True)
@@ -121,8 +113,10 @@ if p_avg is not None:
         cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "FG%", "TS%", "PIE"])
         t10 = p_avg.nlargest(10, cat)[['Player/Team', 'Team Name', cat]].reset_index(drop=True)
         t10.index += 1
-        st.table(t10) # 1-10 Chart
-        st.plotly_chart(px.bar(t10, x=cat, y='Player/Team', orientation='h', template="plotly_dark", color_discrete_sequence=['#d4af37']), use_container_width=True)
+        st.table(t10)
+        fig = px.bar(t10, x=cat, y='Player/Team', orientation='h', template="plotly_dark", color_discrete_sequence=['#d4af37'])
+        fig.add_vline(x=p_avg[cat].mean(), line_dash="dash", line_color="white", annotation_text="League Avg")
+        st.plotly_chart(fig, use_container_width=True)
 
     with tabs[3]: # VERSUS
         v_type = st.radio("Comparison Mode", ["Player vs Player", "Team vs Team"], horizontal=True)
@@ -147,17 +141,15 @@ if p_avg is not None:
     with tabs[4]: # RECORDS
         st.markdown("### 🏆 Single Game League Highs")
         r1, r2, r3 = st.columns(3)
-        
         def get_rec(col):
             idx = df_raw[col].idxmax()
             return f"{int(df_raw.loc[idx][col])}", df_raw.loc[idx]['Player/Team']
-
-        pts_val, pts_p = get_rec('PTS'); reb_val, reb_p = get_rec('REB'); ast_val, ast_p = get_rec('AST')
-        stl_val, stl_p = get_rec('STL'); blk_val, blk_p = get_rec('BLK'); fga_val, fga_p = get_rec('FGA')
-        fgm_val, fgm_p = get_rec('FGM'); tpm_val, tpm_p = get_rec('3PM')
         
-        r1.metric("Most Points", pts_val, pts_p); r1.metric("Most Steals", stl_val, stl_p); r1.metric("Most FGA", fga_val, fga_p)
-        r2.metric("Most Rebounds", reb_val, reb_p); r2.metric("Most Blocks", blk_val, blk_p); r2.metric("Most FGM", fgm_val, fgm_p)
-        r3.metric("Most Assists", ast_val, ast_p); r3.metric("Most 3PM", tpm_val, tpm_p); r3.metric("Double-Doubles", int(p_avg['DD'].max()), p_avg.loc[p_avg['DD'].idxmax()]['Player/Team'])
+        # Extended Records
+        r1.metric("Points", *get_rec('PTS')); r1.metric("Steals", *get_rec('STL')); r1.metric("FGA", *get_rec('FGA'))
+        r2.metric("Rebounds", *get_rec('REB')); r2.metric("Blocks", *get_rec('BLK')); r2.metric("FGM", *get_rec('FGM'))
+        r3.metric("Assists", *get_rec('AST')); r3.metric("3PM", *get_rec('3PM'))
 
     st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
+else:
+    st.warning("Awaiting Data Feed... Check Google Sheet CSV permissions.")
