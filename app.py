@@ -32,7 +32,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. DATA ENGINE (FIXED FOR STABILITY)
+# 2. ROBUST DATA ENGINE
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
@@ -42,16 +42,23 @@ def load_data():
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
         
-        # Comprehensive numeric cleaning
+        # FIXED: Robust Numeric Conversion to prevent 'int' object errors
         cols_to_fix = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FGA', 'FGM', '3PM', 'FTA', 'Game_ID', 'Win']
         for c in cols_to_fix:
-            df[c] = pd.to_numeric(df.get(c, 0), errors='coerce').fillna(0)
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+            else:
+                df[c] = 0.0
         
-        # Stats logic
+        # Stat logic
         df['PIE'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5)
         
+        # Separate Players and Teams
         df_p = df[df['Type'].str.lower() == 'player'].copy()
         df_t = df[df['Type'].str.lower() == 'team'].copy()
+
+        if df_p.empty or df_t.empty:
+            return None, None, None
 
         # Player Calcs
         gp = df_p.groupby('Player/Team')['Game_ID'].nunique().reset_index(name='GP')
@@ -59,7 +66,7 @@ def load_data():
         p_avg = pd.merge(p_sums, gp, on='Player/Team')
         
         for s in ['PTS', 'REB', 'AST', 'STL', 'BLK']:
-            p_avg[f'{s}/G'] = (p_avg[s] / p_avg['GP']).round(1)
+            p_avg[f'{s}/G'] = (p_avg[s] / p_avg['GP'].replace(0,1)).round(1)
         
         p_avg['FG%'] = (p_avg['FGM'] / p_avg['FGA'].replace(0,1) * 100).round(1)
         p_avg['TS%'] = (p_avg['PTS'] / (2 * (p_avg['FGA'] + 0.44 * p_avg.get('FTA', 0))).replace(0,1) * 100).round(1)
@@ -69,22 +76,27 @@ def load_data():
             'Win': 'sum', 'Game_ID': 'count', 'PTS': 'sum', 'REB': 'sum', 
             'AST': 'sum', 'STL': 'sum', 'BLK': 'sum', 'FGA': 'sum', 'FGM': 'sum'
         }).reset_index()
+        
+        t_stats['Win'] = t_stats['Win'].astype(int)
         t_stats['Loss'] = (t_stats['Game_ID'] - t_stats['Win']).astype(int)
-        t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + t_stats['Loss'].astype(str)
+        t_stats['Record'] = t_stats['Win'].astype(str) + "-" + t_stats['Loss'].astype(str)
         t_stats['FG%'] = (t_stats['FGM'] / t_stats['FGA'].replace(0,1) * 100).round(1)
         
         for s in ['PTS', 'REB', 'AST', 'STL', 'BLK']:
-            t_stats[f'{s}_Avg'] = (t_stats[s] / t_stats['Game_ID']).round(1)
+            t_stats[f'{s}_Avg'] = (t_stats[s] / t_stats['Game_ID'].replace(0,1)).round(1)
 
         return p_avg, df_p, t_stats
     except Exception as e:
-        st.error(f"Data Connection Lost: {e}")
-        return None, None, None
+        return str(e), None, None
 
 p_avg, df_raw, t_stats = load_data()
 
-# 3. INTERFACE
-if p_avg is not None and not p_avg.empty:
+# 3. INTERFACE LOGIC
+if isinstance(p_avg, str):
+    st.error(f"⚠️ DATA ERROR: {p_avg}")
+    st.info("Check if your CSV has 'Type' column with 'Player' and 'Team' values.")
+elif p_avg is not None:
+    # TICKER
     leads = [f"🔥 {c}: {p_avg.nlargest(1, c+'/G').iloc[0]['Player/Team']} ({p_avg.nlargest(1, c+'/G').iloc[0][c+'/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']]
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
     st.markdown('<div class="header-banner">🏀 SPAM LEAGUE CENTRAL</div>', unsafe_allow_html=True)
@@ -103,6 +115,9 @@ if p_avg is not None and not p_avg.empty:
             c4.metric("SPG", row['STL/G']); c5.metric("BPG", row['BLK/G'])
             e1, e2, e3 = st.columns(3)
             e1.metric("FG%", f"{row['FG%']}%"); e2.metric("TS%", f"{row['TS%']}%"); e3.metric("PIE Index", row['PIE'])
+            
+            hist = df_raw[df_raw['Player/Team'] == row['Player/Team']].sort_values('Game_ID')
+            st.line_chart(hist.set_index('Game_ID')['PTS'])
 
     with tabs[1]: # STANDINGS
         st.markdown("### Team Power Rankings")
@@ -145,11 +160,10 @@ if p_avg is not None and not p_avg.empty:
             idx = df_raw[col].idxmax()
             return f"{int(df_raw.loc[idx][col])}", df_raw.loc[idx]['Player/Team']
         
-        # Extended Records
         r1.metric("Points", *get_rec('PTS')); r1.metric("Steals", *get_rec('STL')); r1.metric("FGA", *get_rec('FGA'))
         r2.metric("Rebounds", *get_rec('REB')); r2.metric("Blocks", *get_rec('BLK')); r2.metric("FGM", *get_rec('FGM'))
         r3.metric("Assists", *get_rec('AST')); r3.metric("3PM", *get_rec('3PM'))
 
     st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
 else:
-    st.warning("Awaiting Data Feed... Check Google Sheet CSV permissions.")
+    st.warning("Awaiting Data Feed... Ensure your Google Sheet has at least one row for 'Player' and one row for 'Team' in the Type column.")
