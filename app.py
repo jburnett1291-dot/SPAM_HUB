@@ -3,24 +3,21 @@ import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
-# 1. UI & SLEEK CSS OVERHAUL
+# 1. UI & SLEEK CSS
 st.set_page_config(page_title="SPAM LEAGUE CENTRAL", page_icon="🏀", layout="wide")
 
 st.markdown("""
     <style>
-    /* Clean up Streamlit defaults */
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     div[data-testid="stToolbar"] {visibility: hidden;} [data-testid="stStatusWidget"] {display: none;}
     .block-container { padding: 0rem !important; margin: 0rem !important; }
     
-    /* Global Styles */
     .stApp { 
         background: radial-gradient(circle at top, #1f1f1f 0%, #050505 100%); 
         color: #e0e0e0; 
         font-family: 'Inter', sans-serif;
     }
 
-    /* Smooth Container (Glassmorphism) */
     div[data-testid="stMetric"] { 
         background: rgba(255, 255, 255, 0.05) !important; 
         backdrop-filter: blur(10px);
@@ -34,18 +31,10 @@ st.markdown("""
         border-color: #d4af37 !important;
     }
 
-    /* Tab Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-        background-color: transparent;
-    }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; background-color: transparent; }
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        background-color: rgba(255, 255, 255, 0.03);
-        border-radius: 12px 12px 0px 0px;
-        color: #888;
-        border: none;
-        transition: all 0.3s;
+        height: 50px; background-color: rgba(255, 255, 255, 0.03);
+        border-radius: 12px 12px 0px 0px; color: #888; border: none; transition: all 0.3s;
     }
     .stTabs [aria-selected="true"] {
         background-color: rgba(212, 175, 55, 0.1) !important;
@@ -53,33 +42,17 @@ st.markdown("""
         border-bottom: 3px solid #d4af37 !important;
     }
 
-    /* Header Banner */
     .header-banner { 
-        padding: 25px; 
-        text-align: center; 
+        padding: 25px; text-align: center; 
         background: linear-gradient(90deg, #d4af37 0%, #f7e08a 50%, #d4af37 100%);
-        color: #000; 
-        font-family: 'Arial Black'; 
-        font-size: 28px;
-        letter-spacing: 2px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        color: #000; font-family: 'Arial Black'; font-size: 28px;
+        letter-spacing: 2px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
 
-    /* Ticker */
     @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-    .ticker-wrap { width: 100%; overflow: hidden; background: #000; color: #d4af37; padding: 12px 0; font-family: 'Inter'; border-bottom: 1px solid #333; }
+    .ticker-wrap { width: 100%; overflow: hidden; background: #000; color: #d4af37; padding: 12px 0; border-bottom: 1px solid #333; }
     .ticker-content { display: inline-block; white-space: nowrap; animation: ticker 45s linear infinite; }
     .ticker-item { display: inline-block; margin-right: 100px; font-weight: bold; font-size: 16px; }
-
-    /* Splash Screen Enhancements */
-    .splash-container {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        height: 95vh; width: 100%; text-align: center;
-    }
-    .enter-btn {
-        background: #d4af37; color: black; font-weight: bold; border-radius: 30px;
-        padding: 15px 40px; border: none; cursor: pointer; transition: 0.3s;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -102,7 +75,8 @@ def load_data():
 
         # Player Calcs
         gp = df_p.groupby('Player/Team')['Game_ID'].nunique().reset_index(name='GP')
-        p_avg = pd.merge(df_p.groupby(['Player/Team', 'Team Name']).sum(numeric_only=True).reset_index(), gp, on='Player/Team')
+        p_sums = df_p.groupby(['Player/Team', 'Team Name']).sum(numeric_only=True).reset_index()
+        p_avg = pd.merge(p_sums, gp, on='Player/Team')
         
         for s in ['PTS', 'REB', 'AST', 'STL', 'BLK']:
             p_avg[f'{s}/G'] = (p_avg[s] / p_avg['GP']).round(1)
@@ -111,7 +85,10 @@ def load_data():
         p_avg['TS%'] = (p_avg['PTS'] / (2 * (p_avg['FGA'] + 0.44 * p_avg.get('FTA', 0))).replace(0,1) * 100).round(1)
 
         # Team Calcs
-        t_stats = df_t.groupby('Team Name').agg({'Win': 'sum', 'Game_ID': 'count', 'PTS': 'sum', 'REB': 'sum', 'AST': 'sum', 'STL': 'sum', 'BLK': 'sum', 'FGA': 'sum', 'FGM': 'sum'}).reset_index()
+        t_stats = df_t.groupby('Team Name').agg({
+            'Win': 'sum', 'Game_ID': 'count', 'PTS': 'sum', 'REB': 'sum', 
+            'AST': 'sum', 'STL': 'sum', 'BLK': 'sum', 'FGA': 'sum', 'FGM': 'sum'
+        }).reset_index()
         t_stats['Loss'] = t_stats['Game_ID'] - t_stats['Win']
         t_stats['Record'] = t_stats['Win'].astype(str) + "-" + t_stats['Loss'].astype(str)
         t_stats['FG%'] = (t_stats['FGM'] / t_stats['FGA'].replace(0,1) * 100).round(1)
@@ -128,9 +105,8 @@ p_avg, df_raw, t_stats = load_data()
 # 3. SPLASH SCREEN
 if 'entered' not in st.session_state: st.session_state.entered = False
 if not st.session_state.entered:
-    st.markdown('<div class="splash-container">', unsafe_allow_html=True)
-    st.markdown("<h1 style='font-size: 80px; color: #d4af37; margin: 0; text-shadow: 0 0 20px rgba(212,175,55,0.4);'>SPAM LEAGUE</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #888; letter-spacing: 8px; font-size: 14px;'>ELITE PERFORMANCE TERMINAL</p>", unsafe_allow_html=True)
+    st.markdown('<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 95vh; width: 100%;">', unsafe_allow_html=True)
+    st.markdown("<h1 style='font-size: 80px; color: #d4af37; margin: 0;'>SPAM LEAGUE</h1>", unsafe_allow_html=True)
     if st.button("ENTER HUB"):
         st.session_state.entered = True
         st.rerun()
@@ -139,7 +115,6 @@ if not st.session_state.entered:
 
 # 4. MAIN HUB
 if p_avg is not None:
-    # TICKER
     leads = [f"🔥 {c}: {p_avg.nlargest(1, c+'/G').iloc[0]['Player/Team']} ({p_avg.nlargest(1, c+'/G').iloc[0][c+'/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']]
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
     st.markdown('<div class="header-banner">🏀 SPAM LEAGUE CENTRAL</div>', unsafe_allow_html=True)
@@ -147,26 +122,40 @@ if p_avg is not None:
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "📖 RECORDS"])
 
     with tabs[0]: # PLAYER HUB
-        st.markdown("### Player Performance Matrix")
-        # Displaying SPG (STL/G) and BPG (BLK/G) explicitly
         table = p_avg[['Player/Team', 'Team Name', 'GP', 'PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', 'TS%', 'PIE']].sort_values('PIE', ascending=False)
         sel = st.dataframe(table.rename(columns={'STL/G': 'SPG', 'BLK/G': 'BPG'}), use_container_width=True, hide_index=True, on_select="rerun", selection_mode="single-row")
         
         if len(sel.selection.rows) > 0:
-            name = table.iloc[sel.selection.rows[0]]['Player/Team']
+            row_data = table.iloc[sel.selection.rows[0]]
+            name = row_data['Player/Team']
             hist = df_raw[df_raw['Player/Team'] == name].sort_values('Game_ID')
-            st.markdown(f"#### 🔎 Scouting: {name}")
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("FG%", f"{table.iloc[sel.selection.rows[0]]['FG%']}%")
-            c2.metric("TS%", f"{table.iloc[sel.selection.rows[0]]['TS%']}%")
-            c3.metric("SPG", table.iloc[sel.selection.rows[0]]['STL/G'])
-            c4.metric("BPG", table.iloc[sel.selection.rows[0]]['BLK/G'])
+            
+            st.markdown(f"### 🔎 Detailed Scouting: {name}")
+            
+            # Row 1: Traditional Stats
+            m1, m2, m3, m4, m5 = st.columns(5)
+            m1.metric("PPG", row_data['PTS/G'])
+            m2.metric("RPG", row_data['REB/G'])
+            m3.metric("APG", row_data['AST/G'])
+            m4.metric("SPG", row_data['STL/G'])
+            m5.metric("BPG", row_data['BLK/G'])
+            
+            # Row 2: Efficiency Stats
+            e1, e2, e3, e4 = st.columns(4)
+            e1.metric("FG%", f"{row_data['FG%']}%")
+            e2.metric("TS%", f"{row_data['TS%']}%")
+            e3.metric("PIE (Impact)", row_data['PIE'])
+            e4.metric("Games Played", int(row_data['GP']))
+
             st.line_chart(hist.set_index('Game_ID')['PTS'])
 
-    with tabs[1]: # STANDINGS
+    with tabs[1]: # STANDINGS (FIXED KEYERROR)
         st.markdown("### League Standings")
-        standings_df = t_stats[['Team Name', 'Record', 'PTS_Avg', 'STL_Avg', 'BLK_Avg', 'FG%']].sort_values('Win', ascending=False)
-        st.dataframe(standings_df.rename(columns={'STL_Avg': 'SPG (Team)', 'BLK_Avg': 'BPG (Team)'}), use_container_width=True, hide_index=True)
+        # Ensure we sort by Win while it's still in the dataframe
+        standings_df = t_stats.sort_values('Win', ascending=False)
+        # Then display only relevant columns
+        display_standings = standings_df[['Team Name', 'Record', 'PTS_Avg', 'STL_Avg', 'BLK_Avg', 'FG%']]
+        st.dataframe(display_standings.rename(columns={'STL_Avg': 'SPG', 'BLK_Avg': 'BPG'}), use_container_width=True, hide_index=True)
 
     with tabs[2]: # LEADERS
         cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "FG%", "TS%", "PIE"])
@@ -180,7 +169,7 @@ if p_avg is not None:
         d1 = p_avg[p_avg['Player/Team']==p1].iloc[0]
         d2 = p_avg[p_avg['Player/Team']==p2].iloc[0]
         
-        for s in ['PTS/G', 'STL/G', 'BLK/G', 'FG%', 'TS%']:
+        for s in ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', 'TS%', 'PIE']:
             c1, c2 = st.columns(2)
             c1.metric(f"{p1} {s}", d1[s], delta=round(d1[s]-d2[s], 1))
             c2.metric(f"{p2} {s}", d2[s], delta=round(d2[s]-d1[s], 1))
