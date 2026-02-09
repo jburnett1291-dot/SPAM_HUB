@@ -43,7 +43,6 @@ def load_data():
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # Calculate Multis
         def calc_multis(row):
             s = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
             tens = sum(1 for x in s if x >= 10)
@@ -75,6 +74,7 @@ def show_card(name, stats_df, raw_df, is_player=True):
     for idx, (col, (_, g)) in enumerate(zip(f_cols, recent.iterrows())):
         col.metric(f"Game {int(g['Game_ID'])}", f"{int(g['PTS'])} PTS", "✅ W" if g['Win'] else "❌ L")
     
+    st.line_chart(raw_df[raw_df[search_col] == name].sort_values(['Season', 'Game_ID']).set_index('Game_ID')['PTS'])
     if st.button("Close & Clear Selection", use_container_width=True):
         st.rerun()
 
@@ -92,10 +92,10 @@ else:
         sums = dataframe.groupby(group).sum(numeric_only=True).reset_index()
         m = pd.merge(sums, gp, on=group)
         for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Win']:
-            m[f'{col}/G'] = (m[col] / m['GP'].replace(0,1)).round(1)
-        m['FG%'] = (m['FGM'] / m['FGA'].replace(0,1) * 100).round(1)
-        m['3P%'] = (m['3PM'] / m['3PA'].replace(0,1) * 100).round(1)
-        m['FT%'] = (m['FTM'] / m['FTA'].replace(0,1) * 100).round(1)
+            m[f'{col}/G'] = (m[col] / m['GP'].replace(0,1)).round(2) # 2 decimal precision
+        m['FG%'] = (m['FGM'] / m['FGA'].replace(0,1) * 100).round(2)
+        m['3P%'] = (m['3PM'] / m['3PA'].replace(0,1) * 100).round(2)
+        m['FT%'] = (m['FTM'] / m['FTA'].replace(0,1) * 100).round(2)
         return m
 
     p_stats = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
@@ -112,23 +112,25 @@ else:
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "📖 HALL OF FAME"])
 
-    with tabs[0]: # PLAYERS (Sorted by PIE)
+    with tabs[0]: # PLAYERS
         p_display = p_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'PIE']].sort_values('PIE', ascending=False)
         sel_p = st.dataframe(p_display, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_p.selection.rows) > 0:
             show_card(p_display.index[sel_p.selection.rows[0]], p_stats, df_active, True)
 
-    with tabs[1]: # STANDINGS (Fixed Sorting Error)
+    with tabs[1]: # STANDINGS
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
-        # Sort BEFORE dropping the 'Win' column to avoid KeyError
         t_display = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'FG%']]
         sel_t = st.dataframe(t_display, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_t.selection.rows) > 0:
             show_card(t_display.index[sel_t.selection.rows[0]], t_stats, df_active, False)
 
-    with tabs[2]: # LEADERS
+    with tabs[2]: # LEADERS (Restored Number Chart + Graph)
         l_cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "PIE"])
-        t10 = p_stats.nlargest(10, l_cat)
+        t10 = p_stats.nlargest(10, l_cat)[[l_cat]]
+        st.markdown(f"### 🏆 Top 10 Leaders: {l_cat}")
+        st.dataframe(t10, width="stretch") # The Number Chart
+        
         fig = px.bar(t10, x=l_cat, y=t10.index, orientation='h', template="plotly_dark", color_discrete_sequence=['#d4af37'])
         fig.update_layout(yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig, width="stretch")
@@ -139,8 +141,8 @@ else:
         d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
         for s in ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', 'PIE']:
             c1, c2 = st.columns(2)
-            c1.metric(f"{p1} {s}", d1[s], round(d1[s]-d2[s],1))
-            c2.metric(f"{p2} {s}", d2[s], round(d2[s]-d1[s],1))
+            c1.metric(f"{p1} {s}", d1[s], round(d1[s]-d2[s], 2))
+            c2.metric(f"{p2} {s}", d2[s], round(d2[s]-d1[s], 2))
 
     with tabs[4]: # HALL OF FAME
         st.subheader("🔥 Single Game Season Highs")
