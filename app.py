@@ -63,20 +63,20 @@ full_df = load_data()
 if isinstance(full_df, str):
     st.error(f"⚠️ DATA ERROR: {full_df}")
 else:
-    # 3. SEASON FILTER (LIFETIME OPTION)
+    # 3. GLOBAL FILTERS
     seasons_list = sorted(full_df['Season'].unique(), reverse=True)
-    options = ["LIFETIME (ALL SEASONS)"] + [f"Season {int(s)}" for s in seasons_list]
+    options = ["CAREER STATS (ALL SEASONS)"] + [f"Season {int(s)}" for s in seasons_list]
     
     with st.sidebar:
-        st.markdown("### 🗓️ ARCHIVES")
-        sel_box = st.selectbox("View Scope", options, index=1) # Defaults to most recent season
+        st.markdown("### 🗓️ LEAGUE SCOPE")
+        sel_box = st.selectbox("Select View", options, index=1)
         st.divider()
-        st.caption("Lifetime view aggregates all stats.")
+        st.caption("Records tab updates in real-time.")
 
-    # Apply Filtering
-    if sel_box == "LIFETIME (ALL SEASONS)":
+    # Apply Filtering Logic
+    if sel_box == "CAREER STATS (ALL SEASONS)":
         df_active = full_df.copy()
-        display_label = "LIFETIME TOTALS"
+        display_label = "CAREER TOTALS"
     else:
         s_num = int(sel_box.replace("Season ", ""))
         df_active = full_df[full_df['Season'] == s_num]
@@ -85,7 +85,7 @@ else:
     df_p_raw = df_active[df_active['Type'].str.lower() == 'player'].copy()
     df_t_raw = df_active[df_active['Type'].str.lower() == 'team'].copy()
 
-    # Player Averages
+    # Player Aggregations
     gp = df_p_raw.groupby('Player/Team')['Game_ID'].nunique().reset_index(name='GP')
     p_sums = df_p_raw.groupby(['Player/Team', 'Team Name']).sum(numeric_only=True).reset_index()
     p_avg = pd.merge(p_sums, gp, on='Player/Team')
@@ -95,7 +95,7 @@ else:
     p_avg['FG%'] = (p_avg['FGM'] / p_avg['FGA'].replace(0,1) * 100).round(1)
     p_avg['TS%'] = (p_avg['PTS'] / (2 * (p_avg['FGA'] + 0.44 * p_avg.get('FTA', 0))).replace(0,1) * 100).round(1)
 
-    # Team Standings
+    # Team Aggregations
     t_stats = df_t_raw.groupby('Team Name').agg({
         'Win': 'sum', 'Game_ID': 'count', 'PTS': 'sum', 'REB': 'sum', 
         'AST': 'sum', 'STL': 'sum', 'BLK': 'sum', 'FGA': 'sum', 'FGM': 'sum'
@@ -107,12 +107,12 @@ else:
     for s in ['PTS', 'REB', 'AST', 'STL', 'BLK']:
         t_stats[f'{s}_Avg'] = (t_stats[s] / t_stats['Game_ID'].replace(0,1)).round(1)
 
-    # 4. UI RENDERING
+    # UI RENDERING
     leads = [f"🔥 {c}: {p_avg.nlargest(1, c+'/G').iloc[0]['Player/Team']} ({p_avg.nlargest(1, c+'/G').iloc[0][c+'/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK'] if not p_avg.empty]
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="header-banner">🏀 SPAM LEAGUE CENTRAL - {display_label}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {display_label}</div>', unsafe_allow_html=True)
 
-    tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS & FORM", "🔝 LEADERS", "⚔️ VERSUS", "📖 ALL-TIME RECORDS"])
+    tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "📖 ALL-TIME HIGHS"])
 
     with tabs[0]: # PLAYER HUB
         table = p_avg[['Player/Team', 'Team Name', 'GP', 'DD_Count', 'TD_Count', 'PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', 'TS%', 'PIE']].sort_values('PIE', ascending=False)
@@ -120,15 +120,17 @@ else:
         
         if len(sel.selection.rows) > 0:
             row = table.iloc[sel.selection.rows[0]]
-            st.markdown(f"### 🔎 Scouting: {row['Player/Team']}")
+            st.markdown(f"### 🔎 Scouting Report: {row['Player/Team']}")
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("PPG", row['PTS/G']); c2.metric("RPG", row['REB/G']); c3.metric("APG", row['AST/G'])
             c4.metric("SPG", row['STL/G']); c5.metric("BPG", row['BLK/G'])
-            hist = df_p_raw[df_p_raw['Player/Team'] == row['Player/Team']].sort_values('Game_ID')
-            st.line_chart(hist.set_index('Game_ID')['PTS'])
+            
+            # Restored Graph
+            p_hist = df_p_raw[df_p_raw['Player/Team'] == row['Player/Team']].sort_values(['Season', 'Game_ID'])
+            st.line_chart(p_hist.set_index('Game_ID')['PTS'])
 
     with tabs[1]: # STANDINGS & FORM
-        st.markdown("### Team Power Rankings")
+        st.markdown("### League Standings")
         st.dataframe(t_stats.sort_values('Win', ascending=False)[['Team Name', 'Record', 'PTS_Avg', 'REB_Avg', 'AST_Avg', 'STL_Avg', 'BLK_Avg', 'FG%']]
                      .rename(columns={'STL_Avg': 'SPG', 'BLK_Avg': 'BPG'}), width="stretch", hide_index=True)
         
@@ -138,10 +140,10 @@ else:
         for i, team in enumerate(t_stats['Team Name'].unique()):
             with form_cols[i % len(form_cols)]:
                 st.write(f"**{team}**")
-                recent = df_t_raw[df_t_raw['Team Name'] == team].sort_values('Game_ID', ascending=False).head(3)
+                recent = df_t_raw[df_t_raw['Team Name'] == team].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
                 for _, game in recent.iterrows():
                     res = "✅ W" if game['Win'] == 1 else "❌ L"
-                    st.caption(f"Game {int(game['Game_ID'])}: {res} ({int(game['PTS'])} pts)")
+                    st.caption(f"S{int(game['Season'])} G{int(game['Game_ID'])}: {res} ({int(game['PTS'])} pts)")
 
     with tabs[2]: # LEADERS
         cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "FG%", "TS%", "PIE"])
@@ -150,31 +152,42 @@ else:
         st.table(t10)
 
     with tabs[3]: # VERSUS
+        v_type = st.radio("Comparison Mode", ["Player vs Player", "Team vs Team"], horizontal=True)
         v1, v2 = st.columns(2)
-        p1 = v1.selectbox("P1", p_avg['Player/Team'].unique(), index=0)
-        p2 = v2.selectbox("P2", p_avg['Player/Team'].unique(), index=1)
-        if not p_avg.empty:
+        
+        if v_type == "Player vs Player":
+            p1 = v1.selectbox("Player 1", p_avg['Player/Team'].unique(), index=0)
+            p2 = v2.selectbox("Player 2", p_avg['Player/Team'].unique(), index=1)
             d1, d2 = p_avg[p_avg['Player/Team']==p1].iloc[0], p_avg[p_avg['Player/Team']==p2].iloc[0]
-            for s in ['PTS/G', 'REB/G', 'AST/G', 'PIE']:
+            for s in ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', 'PIE']:
                 sc1, sc2 = st.columns(2)
                 sc1.metric(f"{p1} {s}", d1[s], delta=round(d1[s]-d2[s], 1))
                 sc2.metric(f"{p2} {s}", d2[s], delta=round(d2[s]-d1[s], 1))
+        else:
+            t1 = v1.selectbox("Team 1", t_stats['Team Name'].unique(), index=0)
+            t2 = v2.selectbox("Team 2", t_stats['Team Name'].unique(), index=1)
+            td1, td2 = t_stats[t_stats['Team Name']==t1].iloc[0], t_stats[t_stats['Team Name']==t2].iloc[0]
+            for s in ['PTS_Avg', 'REB_Avg', 'AST_Avg', 'STL_Avg', 'BLK_Avg', 'FG%']:
+                sc1, sc2 = st.columns(2)
+                sc1.metric(f"{t1} {s}", td1[s], delta=round(td1[s]-td2[s], 1))
+                sc2.metric(f"{t2} {s}", td2[s], delta=round(td2[s]-td1[s], 1))
 
-    with tabs[4]: # ALL-TIME RECORDS
-        st.markdown("### 🏆 League Hall of Fame")
+    with tabs[4]: # ALL-TIME HIGHS
+        st.markdown("### 🏆 League Hall of Fame (Real-Time)")
         r1, r2, r3 = st.columns(3)
-        def get_all_time(col):
+        # Function always pulls from FULL_DF to ensure current season can break records
+        def get_hall_of_fame(col):
             player_rows = full_df[full_df['Type'].str.lower() == 'player']
             if player_rows.empty: return "0", "N/A"
             idx = player_rows[col].idxmax()
             rec = player_rows.loc[idx]
             return f"{int(rec[col])}", f"{rec['Player/Team']} (S{int(rec['Season'])})"
         
-        r1.metric("Most Points", *get_all_time('PTS'))
-        r2.metric("Most Rebounds", *get_all_time('REB'))
-        r3.metric("Most Assists", *get_all_time('AST'))
-        r1.metric("Most Steals", *get_all_time('STL'))
-        r2.metric("Most Blocks", *get_all_time('BLK'))
-        r3.metric("Most 3PM", *get_all_time('3PM'))
+        r1.metric("Single Game Points", *get_hall_of_fame('PTS'))
+        r2.metric("Single Game Rebounds", *get_hall_of_fame('REB'))
+        r3.metric("Single Game Assists", *get_hall_of_fame('AST'))
+        r1.metric("Single Game Steals", *get_hall_of_fame('STL'))
+        r2.metric("Single Game Blocks", *get_hall_of_fame('BLK'))
+        r3.metric("Single Game 3PM", *get_hall_of_fame('3PM'))
 
-    st.markdown(f'<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
