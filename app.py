@@ -80,7 +80,7 @@ def show_card(name, stats_df, raw_df, is_player=True):
         col.metric(f"Game {int(g['Game_ID'])}", f"{int(g['PTS'])} PTS", delta=res)
     
     st.line_chart(recent.sort_values('Game_ID').set_index('Game_ID')['PTS'])
-    if st.button("Close Card & Clear Selection", use_container_width=True):
+    if st.button("Close Card & Reset Selection", use_container_width=True):
         st.rerun()
 
 if isinstance(full_df, str):
@@ -93,14 +93,10 @@ else:
     df_active = full_df if sel_box == "CAREER STATS" else full_df[full_df['Season'] == int(sel_box.replace("Season ", ""))]
 
     def get_stats(dataframe, group):
-        # GP calculation
         gp_counts = dataframe.groupby(group)['Game_ID'].nunique().reset_index(name='GP')
-        # Sum numeric stats
         sums = dataframe.groupby(group).sum(numeric_only=True).reset_index()
-        # Merge - ensuring GP is only added once
         m = pd.merge(sums, gp_counts, on=group)
-        
-        for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Win', 'Poss']:
+        for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Win', 'Poss', 'FGA']:
             m[f'{col}/G'] = (m[col] / m['GP'].replace(0,1)).round(2)
         m['FG%'] = (m['FGM'] / m['FGA'].replace(0,1) * 100).round(2)
         m['3P%'] = (m['3PM'] / m['3PA'].replace(0,1) * 100).round(2)
@@ -117,20 +113,20 @@ else:
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "📖 HALL OF FAME", "🔐 THE VAULT"])
 
-    with tabs[0]: # PLAYERS
+    with tabs[0]:
         p_display = p_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'TO/G', 'PIE']].sort_values('PIE', ascending=False)
         sel_p = st.dataframe(p_display, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_p.selection.rows) > 0:
             show_card(p_display.index[sel_p.selection.rows[0]], p_stats, df_active, True)
 
-    with tabs[1]: # STANDINGS
+    with tabs[1]:
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
         t_display = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'AST/G', 'TO/G', 'FG%']]
         sel_t = st.dataframe(t_display, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_t.selection.rows) > 0:
             show_card(t_display.index[sel_t.selection.rows[0]], t_stats, df_active, False)
 
-    with tabs[2]: # LEADERS
+    with tabs[2]:
         l_cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "TO/G", "PIE"])
         t10 = p_stats.nlargest(10, l_cat)[[l_cat]]
         st.dataframe(t10, width="stretch")
@@ -138,7 +134,7 @@ else:
         fig.update_layout(yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig, width="stretch")
 
-    with tabs[3]: # VERSUS
+    with tabs[3]:
         v1, v2 = st.columns(2)
         p1 = v1.selectbox("P1", p_stats.index, index=0); p2 = v2.selectbox("P2", p_stats.index, index=1)
         d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
@@ -147,7 +143,7 @@ else:
             c1.metric(f"{p1} {s}", d1[s], round(d1[s]-d2[s], 2))
             c2.metric(f"{p2} {s}", d2[s], round(d2[s]-d1[s], 2))
 
-    with tabs[4]: # HALL OF FAME
+    with tabs[4]:
         st.header("🏆 HALL OF FAME RECORD BOOK")
         hof_type = st.radio("Record Type", ["Players", "Teams"], horizontal=True)
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO']
@@ -157,37 +153,33 @@ else:
         for i, col in enumerate(h_cols):
             if not p_only.empty:
                 val = p_only[col].max()
-                # Finding name based on record type
                 name_col = 'Player/Team' if hof_type == "Players" else 'Team Name'
                 holder = p_only.loc[p_only[col].idxmax()][name_col]
                 grid[i%4].metric(f"Record: {col}", f"{int(val)}", f"by {holder}")
         st.divider()
         cat_hof = st.selectbox("All-Time Category", ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', 'DD', 'TD', 'GP', 'Win'])
         career_df = get_stats(full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()], 'Player/Team' if hof_type == "Players" else "Team Name")
-        
-        # Reset index to avoid index naming conflicts and pick columns explicitly to avoid duplicates
         display_hof = career_df.nlargest(10, cat_hof).reset_index(drop=True)
         id_col = 'Player/Team' if hof_type == "Players" else "Team Name"
         st.table(display_hof[[id_col, 'GP', cat_hof]])
 
-    with tabs[5]: # THE VAULT
+    with tabs[5]:
         st.header("🔐 THE VAULT")
         if st.text_input("Enter Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
             st.markdown("### 🧪 Advanced Efficiency & Pace")
             
-            # Reset index so 'Player/Team' becomes a column that Plotly can access
+            # CRITICAL FIX: Reset index so 'Player/Team' is a column for px.scatter
             adv = p_stats[p_stats['GP'] > 0].reset_index().copy()
             
             if not adv.empty:
-                # TS% and PPS calculations
                 adv['TS%'] = (adv['PTS'] / (2 * (adv['FGA'] + 0.44 * adv['FTA']).replace(0, 1)) * 100).round(2)
                 adv['PPS'] = (adv['PTS'] / adv['FGA'].replace(0, 1)).round(2)
                 
-                st.dataframe(adv[['Player/Team', 'Poss/G', 'TS%', 'PPS', 'PIE', 'TO/G']].sort_values('TS%', ascending=False), width="stretch", hide_index=True)
+                st.dataframe(adv[['Player/Team', 'Poss/G', 'TS%', 'PPS', 'PIE', 'TO/G']], width="stretch", hide_index=True)
 
                 st.markdown("### 📊 Scoring Volume vs. Efficiency")
-                # Plotly scatter - using reset index names
+                # Scatter - using Reset Index column names
                 fig_v = px.scatter(
                     adv, x='FGA/G', y='PTS/G', size='Poss/G', color='Player/Team', 
                     hover_data=['TS%', 'PPS', 'PIE'], template="plotly_dark",
@@ -197,8 +189,6 @@ else:
                 st.plotly_chart(fig_v, use_container_width=True)
 
             st.divider()
-            
-            # STREAKS BLOCK
             st.markdown("### 🔥 Streak Tracker (Last 3 Games vs Season Avg)")
             streaks = []
             for player in p_stats.index:
@@ -211,12 +201,7 @@ else:
                     elif l3_avg < avg_pts * 0.80:
                         streaks.append({"Entity": player, "Status": "❄️ COLD", "Trend": f"{round(l3_avg - avg_pts, 1)} PPG"})
             
-            if streaks:
-                st.table(pd.DataFrame(streaks))
-            else:
-                st.info("No major streaks detected currently.")
-        
-        elif st.session_state.get('vault_pass') != "":
-            st.info("Awaiting correct passcode...")
+            if streaks: st.table(pd.DataFrame(streaks))
+            else: st.info("No major streaks detected currently.")
 
     st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
