@@ -58,7 +58,7 @@ def load_data():
 
 full_df = load_data()
 
-# 3. DIALOGS
+# 3. DIALOGS (REPAIRED)
 @st.dialog("🏀 PLAYER SCOUTING CARD", width="large")
 def player_card(name, p_data, df_active):
     row = p_data[p_data['Player/Team'] == name].iloc[0]
@@ -75,7 +75,7 @@ def player_card(name, p_data, df_active):
     t[0].metric("Pts", int(row['PTS'])); t[1].metric("Reb", int(row['REB'])); t[2].metric("Ast", int(row['AST'])); t[3].metric("DDs", int(row['DD_Count'])); t[4].metric("TDs", int(row['TD_Count']))
     st.markdown("---")
     st.markdown("#### 🕒 Recent Form")
-    f = st.columns(3); p_rec = df_active[df_active['Player/Team'] == name].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
+    f = st.columns(3); p_recent = df_active[df_active['Player/Team'] == name].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
     for idx, (col, (_, g)) in enumerate(zip(f, p_recent.iterrows())):
         res = "✅ W" if g['Win'] == 1 else "❌ L"
         col.metric(f"Game {int(g['Game_ID'])}", f"{int(g['PTS'])} PTS", delta=res)
@@ -90,8 +90,8 @@ def team_card(name, t_stats, df_active):
     st.markdown("---")
     ts = st.columns(3); ts[0].metric("3P%", f"{tr['3P%']}%", f"{tr['3PM/G']}/{tr['3PA/G']}"); ts[1].metric("2P%", f"{tr['2P%']}%", f"{tr['2PM/G']}/{tr['2PA/G']}"); ts[2].metric("Wins", int(tr['Wins']))
     st.markdown("#### 🕒 Recent Results")
-    tf = st.columns(3); t_rec = df_active[(df_active['Type'].str.lower()=='team') & (df_active['Team Name']==name)].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
-    for idx, (col, (_, g)) in enumerate(zip(tf, t_rec.iterrows())):
+    tf = st.columns(3); t_recent = df_active[(df_active['Type'].str.lower()=='team') & (df_active['Team Name']==name)].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
+    for idx, (col, (_, g)) in enumerate(zip(tf, t_recent.iterrows())):
         res = "✅ W" if g['Win'] == 1 else "❌ L"
         col.metric(f"Game {int(g['Game_ID'])}", f"{int(g['PTS'])} PTS", delta=res)
     if st.button("Close Card"): st.rerun()
@@ -125,10 +125,8 @@ else:
 
     t_raw = df_active[df_active['Type'].str.lower() == 'team']
     t_stats = get_stats(t_raw, 'Team Name')
-    t_wins = t_raw.groupby('Team Name')['Win'].sum().reset_index().rename(columns={'Win': 'Wins'})
-    t_stats = pd.merge(t_stats, t_wins, on='Team Name')
+    t_stats['Wins'] = t_raw.groupby('Team Name')['Win'].sum().reset_index()['Win'].values.astype(int)
     t_stats['Loss'] = (t_stats['GP'] - t_stats['Wins']).astype(int)
-    # FIXED: Convert to string immediately to avoid decimals in table
     t_stats['Record'] = t_stats['Wins'].astype(str) + "-" + t_stats['Loss'].astype(str)
 
     # TICKER EXPANSION
@@ -168,7 +166,6 @@ else:
         if v_m == "Player vs Player":
             n1 = v1.selectbox("P1", p_data['Player/Team'].unique()); n2 = v2.selectbox("P2", p_data['Player/Team'].unique())
             r1, r2 = p_data[p_data['Player/Team']==n1].iloc[0], p_data[p_data['Player/Team']==n2].iloc[0]
-            # RESTORED VERSUS STATS
             for s in ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', '3P%', '2P%', 'PIE']:
                 c1, c2 = st.columns(2); c1.metric(f"{n1} {s}", r1[s], round(r1[s]-r2[s],1)); c2.metric(f"{n2} {s}", r2[s], round(r2[s]-r1[s],1))
         else:
@@ -185,7 +182,6 @@ else:
             def get_s(c): 
                 row = p_s.loc[p_s[c].idxmax()]
                 return f"{int(row[c])}", f"{row['Player/Team']}"
-            # MATCHED LAYOUT TO SCREENSHOT
             for idx, c in enumerate(['PTS', 'REB', 'AST', '3PM']):
                 r_s[idx].metric(c, *get_s(c))
         
