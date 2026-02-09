@@ -58,7 +58,7 @@ def load_data():
 
 full_df = load_data()
 
-# 3. DIALOGS
+# 3. DIALOGS (MODAL POP-UPS)
 @st.dialog("🏀 PLAYER SCOUTING CARD", width="large")
 def player_card(name, p_data, df_active):
     row = p_data[p_data['Player/Team'] == name].iloc[0]
@@ -80,7 +80,7 @@ def player_card(name, p_data, df_active):
         res = "✅ W" if g['Win'] == 1 else "❌ L"
         col.metric(f"Game {int(g['Game_ID'])}", f"{int(g['PTS'])} PTS", delta=res)
     st.line_chart(df_active[df_active['Player/Team'] == name].sort_values(['Season', 'Game_ID']).set_index('Game_ID')['PTS'])
-    if st.button("Close Card"): st.rerun()
+    if st.button("Close Card & Reset"): st.rerun()
 
 @st.dialog("🏘️ TEAM SCOUTING CARD", width="large")
 def team_card(name, t_stats, df_active):
@@ -94,7 +94,7 @@ def team_card(name, t_stats, df_active):
     for idx, (col, (_, g)) in enumerate(zip(tf, t_recent.iterrows())):
         res = "✅ W" if g['Win'] == 1 else "❌ L"
         col.metric(f"Game {int(g['Game_ID'])}", f"{int(g['PTS'])} PTS", delta=res)
-    if st.button("Close Card"): st.rerun()
+    if st.button("Close Card & Reset"): st.rerun()
 
 if isinstance(full_df, str):
     st.error(f"⚠️ DATA ERROR: {full_df}")
@@ -119,10 +119,12 @@ else:
         m['2P%'] = (m['2PM'] / m['2PA'].replace(0,1) * 100).round(1)
         return m
 
+    # PLAYER AGGREGATION
     p_data = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team')
     teams_map = df_active[df_active['Type'].str.lower() == 'player'].groupby('Player/Team')['Team Name'].last().reset_index()
     p_data = pd.merge(p_data, teams_map, on='Player/Team')
 
+    # TEAM AGGREGATION
     t_raw = df_active[df_active['Type'].str.lower() == 'team']
     t_stats = get_stats(t_raw, 'Team Name')
     t_wins = t_raw.groupby('Team Name')['Win'].sum().reset_index().rename(columns={'Win': 'Wins'})
@@ -136,31 +138,31 @@ else:
         col_name = f'{c}/G' if c not in ['FG%'] else c
         top = p_data.nlargest(1, col_name).iloc[0]
         val = f"{top[col_name]}%" if c == 'FG%' else top[col_name]
-        t_leads.append(f"{c}: {top['Player/Team']} ({val})")
+        icon = "🔥" if c in ['PTS', 'AST', 'REB'] else "🛡️"
+        t_leads.append(f"{icon} {c}: {top['Player/Team']} ({val})")
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(t_leads)}</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {label}</div>', unsafe_allow_html=True)
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "📖 HALL OF FAME"])
 
-    with tabs[0]:
+    with tabs[0]: # PLAYERS
         p_table = p_data[['Player/Team', 'Team Name', 'GP', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'PIE']].sort_values('PIE', ascending=False)
         sel_p = st.dataframe(p_table, width="stretch", hide_index=True, on_select="rerun", selection_mode="single-row")
         if len(sel_p.selection.rows) > 0:
             player_card(p_table.iloc[sel_p.selection.rows[0]]['Player/Team'], p_data, df_active)
 
-    with tabs[1]:
-        # FIX: Include 'Wins' in the dataframe so sort_values doesn't crash
+    with tabs[1]: # STANDINGS
         t_disp = t_stats[['Team Name', 'Record', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'Wins']].sort_values('Wins', ascending=False)
         sel_t = st.dataframe(t_disp.drop(columns=['Wins']), width="stretch", hide_index=True, on_select="rerun", selection_mode="single-row")
         if len(sel_t.selection.rows) > 0:
             team_card(t_disp.iloc[sel_t.selection.rows[0]]['Team Name'], t_stats, df_active)
 
-    with tabs[2]:
+    with tabs[2]: # LEADERS
         cat = st.selectbox("Stat", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "PIE"])
         t10 = p_data.nlargest(10, cat)[['Player/Team', 'Team Name', cat]].reset_index(drop=True)
         st.table(t10); st.plotly_chart(px.bar(t10, x=cat, y='Player/Team', orientation='h', template="plotly_dark", color_discrete_sequence=['#d4af37']))
 
-    with tabs[3]:
+    with tabs[3]: # VERSUS
         v_m = st.radio("Mode", ["Player vs Player", "Team vs Team"], horizontal=True)
         v1, v2 = st.columns(2)
         if v_m == "Player vs Player":
@@ -174,22 +176,35 @@ else:
             for s in ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', '3P%', '2P%']:
                 c1, c2 = st.columns(2); c1.metric(f"{n1} {s}", r1[s], round(r1[s]-r2[s],1)); c2.metric(f"{n2} {s}", r2[s], round(r2[s]-r1[s],1))
 
-    with tabs[4]:
+    with tabs[4]: # HALL OF FAME
         st.header("🏆 SPAM LEAGUE HALL OF FAME")
-        st.subheader("🔥 Current Season Highs")
+        st.subheader("🔥 Current Season Highs (Single Game)")
         r_s = st.columns(4); p_s = full_df[full_df['Season'] == seasons[0]]
         if not p_s.empty:
             def get_s(c): 
-                row = p_s.loc[p_s[c].idxmax()]
-                return f"{int(row[c])}", f"{row['Player/Team']}"
-            for idx, c in enumerate(['PTS', 'REB', 'AST', '3PM']):
-                r_s[idx].metric(c, *get_s(c))
+                row = p_s.loc[p_s[c].idxmax()]; return f"{int(row[c])}", f"{row['Player/Team']}"
+            for idx, c in enumerate(['PTS', 'REB', 'AST', '3PM']): r_s[idx].metric(c, *get_s(c))
         
         st.markdown("---")
-        st.subheader("📈 All-Time Career Leaders")
-        cat_hof = st.selectbox("Browse Career Record Book", ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', '3PA', '2PM', '2PA', 'FGM', 'FGA', 'PIE'])
+        st.subheader("👤 All-Time Player Career Leaders")
+        cat_p = st.selectbox("Player Record Book", ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', '3PA', '2PM', '2PA', 'FGM', 'FGA', 'PIE'])
         p_career = get_stats(full_df[full_df['Type'].str.lower() == 'player'], 'Player/Team')
         if not p_career.empty:
-            st.table(p_career.nlargest(10, cat_hof)[['Player/Team', 'GP', cat_hof]].reset_index(drop=True))
+            p_table = p_career.nlargest(10, cat_p)[['Player/Team', 'GP', cat_p]].reset_index(drop=True)
+            p_table['GP'] = p_table['GP'].astype(int)
+            if cat_p != 'PIE': p_table[cat_p] = p_table[cat_p].astype(int)
+            st.table(p_table.rename(columns={'Player/Team': 'Player'}))
+
+        st.markdown("---")
+        st.subheader("🏘️ All-Time Team Career Leaders")
+        cat_t = st.selectbox("Team Record Book", ['Wins', 'PTS', 'REB', 'AST', 'FGM', '3PM', 'FG%'])
+        t_all_raw = full_df[full_df['Type'].str.lower() == 'team']
+        t_career = get_stats(t_all_raw, 'Team Name')
+        t_career = pd.merge(t_career, t_all_raw.groupby('Team Name')['Win'].sum().reset_index().rename(columns={'Win': 'Wins'}), on='Team Name')
+        if not t_career.empty:
+            t_table = t_career.nlargest(10, cat_t)[['Team Name', 'GP', cat_t]].reset_index(drop=True)
+            t_table['GP'] = t_table['GP'].astype(int)
+            if cat_t not in ['FG%']: t_table[cat_t] = t_table[cat_t].astype(int)
+            st.table(t_table.rename(columns={'Team Name': 'Franchise'}))
 
     st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
