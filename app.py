@@ -29,7 +29,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. DATA ENGINE (FIXED FOR FF RECORD REFLECTION)
+# 2. DATA ENGINE (FIXED FOR FF RECOGNITION)
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
@@ -44,8 +44,8 @@ def load_data():
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # Identify FF: Rows where core stats are 0 (indicates forfeit)
-        df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
+        # IDENTIFY FF: If PTS, REB, and FGA are all 0, it is a Forced Forfeit row
+        df['is_ff'] = (df['PTS'] == 0) & (df['REB'] == 0) & (df['FGA'] == 0)
         
         def calc_multis(row):
             if row['is_ff']: return pd.Series([0, 0])
@@ -75,7 +75,7 @@ def show_card(name, stats_df, raw_df, is_player=True):
     s[0].metric("FG%", f"{row['FG%']}%"); s[1].metric("3P%", f"{row['3P%']}%"); 
     s[2].metric("FT%", f"{row['FT%']}%"); s[3].metric("TO/G", row['TO/G']); s[4].metric("PIE", row['PIE'])
     
-    st.markdown("#### 🕒 Recent Form")
+    st.markdown("#### 🕒 Recent Form (Last 3 Games)")
     search_col = 'Player/Team' if is_player else 'Team Name'
     pt_type = 'player' if is_player else 'team'
     recent = raw_df[(raw_df[search_col] == name) & (raw_df['Type'].str.lower() == pt_type)].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
@@ -86,21 +86,21 @@ def show_card(name, stats_df, raw_df, is_player=True):
         val = "FORFEIT" if g['is_ff'] else f"{int(g['PTS'])} PTS"
         col.metric(f"Game {int(g['Game_ID'])}", val, delta=res)
     
-    if st.button("Close Card"): st.rerun()
+    if st.button("Close Card & Reset"): st.rerun()
 
 if isinstance(full_df, str):
     st.error(f"⚠️ DATA ERROR: {full_df}")
 else:
-    # 4. FILTERS
+    # 4. FILTERS & PROCESSING
     seasons = sorted(full_df['Season'].unique(), reverse=True)
     opts = ["CAREER STATS"] + [f"Season {int(s)}" for s in seasons]
     with st.sidebar: sel_box = st.selectbox("League Scope", opts, index=1)
     df_active = full_df if sel_box == "CAREER STATS" else full_df[full_df['Season'] == int(sel_box.replace("Season ", ""))]
 
     def get_stats(dataframe, group):
-        # FIX: Ensure GP counts every row (including FF)
+        # GP includes FF rows
         total_gp = dataframe.groupby(group).size().reset_index(name='GP')
-        # Stats only for games actually played
+        # Stats averages only use non-FF rows
         played_df = dataframe[dataframe['is_ff'] == False]
         played_gp = played_df.groupby(group).size().reset_index(name='Played_GP')
         
@@ -109,9 +109,9 @@ else:
         m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
         
         divisor = m['Played_GP'].replace(0, 1)
-        for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Poss']:
+        for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Poss', 'FGA']:
             m[f'{col}/G'] = (m[col] / divisor).round(2)
-            
+        
         m['FG%'] = (m['FGM'] / m['FGA'].replace(0,1) * 100).round(2)
         m['3P%'] = (m['3PM'] / m['3PA'].replace(0,1) * 100).round(2)
         m['FT%'] = (m['FTM'] / m['FTA'].replace(0,1) * 100).round(2)
@@ -121,7 +121,6 @@ else:
     p_stats = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
     t_stats = get_stats(df_active[df_active['Type'].str.lower() == 'team'], 'Team Name').set_index('Team Name')
 
-    # 5. TICKER
     leads = [f"🔥 {c}: {p_stats.nlargest(1, f'{c}/G').index[0]} ({p_stats.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']]
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {sel_box.upper()}</div>', unsafe_allow_html=True)
@@ -133,11 +132,11 @@ else:
         sel_p = st.dataframe(p_disp, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_p.selection.rows) > 0: show_card(p_disp.index[sel_p.selection.rows[0]], p_stats, df_active, True)
 
-    with tabs[1]: # STANDINGS (FIXED FOR FF REFLECTION)
+    with tabs[1]: # STANDINGS
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
-        t_disp = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'FG%']]
-        sel_t = st.dataframe(t_disp, width="stretch", on_select="rerun", selection_mode="single-row")
-        if len(sel_t.selection.rows) > 0: show_card(t_disp.index[sel_t.selection.rows[0]], t_stats, df_active, False)
+        t_display = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'AST/G', 'TO/G', 'FG%']]
+        sel_t = st.dataframe(t_display, width="stretch", on_select="rerun", selection_mode="single-row")
+        if len(sel_t.selection.rows) > 0: show_card(t_display.index[sel_t.selection.rows[0]], t_stats, df_active, False)
 
     with tabs[2]: # LEADERS
         l_cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "TO/G", "PIE"])
@@ -159,15 +158,15 @@ else:
         st.header("🏆 HALL OF FAME RECORD BOOK")
         hof_type = st.radio("Record Type", ["Players", "Teams"], horizontal=True)
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO']
+        # FF games are excluded from single-game records
         valid_games = full_df[(full_df['Type'].str.lower() == hof_type[:-1].lower()) & (full_df['is_ff'] == False)]
         st.subheader(f"🔥 {hof_type} Single Game Season Highs")
         grid = st.columns(4)
         for i, col in enumerate(h_cols):
             if not valid_games.empty:
                 val = valid_games[col].max()
-                name_col = 'Player/Team' if hof_type == "Players" else 'Team Name'
-                holder = valid_games.loc[valid_games[col].idxmax()][name_col]
-                grid[i%4].metric(f"Record: {col}", f"{int(val)}", f"by {holder}")
+                n_col = 'Player/Team' if hof_type == "Players" else 'Team Name'
+                grid[i%4].metric(f"Record: {col}", f"{int(val)}", f"by {valid_games.loc[valid_games[col].idxmax()][n_col]}")
         st.divider()
         cat_hof = st.selectbox("All-Time Category", ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', 'DD', 'TD', 'GP', 'Win'])
         career_df = get_stats(full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()], 'Player/Team' if hof_type == "Players" else "Team Name")
