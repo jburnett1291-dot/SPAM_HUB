@@ -45,10 +45,16 @@ def load_data():
         if 'Season' not in df.columns:
             df['Season'] = 1
             
+        # SAFETY CHECK: Ensure '3PM' exists so it doesn't crash the Records tab
+        if '3PM' not in df.columns:
+            df['3PM'] = 0
+
         cols_to_fix = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FGA', 'FGM', '3PM', 'FTA', 'Game_ID', 'Win', 'Season']
         for c in cols_to_fix:
             if c in df.columns:
                 df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+            else:
+                df[c] = 0.0 # Create column if missing
         
         # DD & TD logic
         def calc_multis(row):
@@ -113,7 +119,8 @@ else:
 
     with tabs[0]: # PLAYER HUB
         table = p_avg[['Player/Team', 'Team Name', 'GP', 'DD_Count', 'TD_Count', 'PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', 'TS%', 'PIE']].sort_values('PIE', ascending=False)
-        sel = st.dataframe(table.rename(columns={'STL/G': 'SPG', 'BLK/G': 'BPG', 'DD_Count': 'DD', 'TD_Count': 'TD'}), use_container_width=True, hide_index=True, on_select="rerun", selection_mode="single-row")
+        # FIXED: replaced use_container_width=True with width="stretch"
+        sel = st.dataframe(table.rename(columns={'STL/G': 'SPG', 'BLK/G': 'BPG', 'DD_Count': 'DD', 'TD_Count': 'TD'}), width="stretch", hide_index=True, on_select="rerun", selection_mode="single-row")
         
         if len(sel.selection.rows) > 0:
             row = table.iloc[sel.selection.rows[0]]
@@ -126,8 +133,9 @@ else:
             st.line_chart(hist.set_index('Game_ID')['PTS'])
 
     with tabs[1]: # STANDINGS
+        # FIXED: replaced use_container_width=True with width="stretch"
         st.dataframe(t_stats.sort_values('Win', ascending=False)[['Team Name', 'Record', 'PTS_Avg', 'REB_Avg', 'AST_Avg', 'STL_Avg', 'BLK_Avg', 'FG%']]
-                     .rename(columns={'STL_Avg': 'SPG', 'BLK_Avg': 'BPG'}), use_container_width=True, hide_index=True)
+                     .rename(columns={'STL_Avg': 'SPG', 'BLK_Avg': 'BPG'}), width="stretch", hide_index=True)
 
     with tabs[2]: # LEADERS
         cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "FG%", "TS%", "PIE"])
@@ -139,18 +147,22 @@ else:
         v1, v2 = st.columns(2)
         p1 = v1.selectbox("P1", p_avg['Player/Team'].unique(), index=0)
         p2 = v2.selectbox("P2", p_avg['Player/Team'].unique(), index=1)
-        d1, d2 = p_avg[p_avg['Player/Team']==p1].iloc[0], p_avg[p_avg['Player/Team']==p2].iloc[0]
-        for s in ['PTS/G', 'REB/G', 'AST/G', 'PIE']:
-            sc1, sc2 = st.columns(2)
-            sc1.metric(f"{p1} {s}", d1[s], delta=round(d1[s]-d2[s], 1))
-            sc2.metric(f"{p2} {s}", d2[s], delta=round(d2[s]-d1[s], 1))
+        if not p_avg.empty:
+            d1, d2 = p_avg[p_avg['Player/Team']==p1].iloc[0], p_avg[p_avg['Player/Team']==p2].iloc[0]
+            for s in ['PTS/G', 'REB/G', 'AST/G', 'PIE']:
+                sc1, sc2 = st.columns(2)
+                sc1.metric(f"{p1} {s}", d1[s], delta=round(d1[s]-d2[s], 1))
+                sc2.metric(f"{p2} {s}", d2[s], delta=round(d2[s]-d1[s], 1))
 
-    with tabs[4]: # ALL-TIME RECORDS (Uses full_df)
+    with tabs[4]: # ALL-TIME RECORDS
         st.markdown("### 🏆 League Hall of Fame (All Seasons)")
         r1, r2, r3 = st.columns(3)
         def get_all_time(col):
-            idx = full_df[full_df['Type'].str.lower() == 'player'][col].idxmax()
-            rec = full_df.loc[idx]
+            player_rows = full_df[full_df['Type'].str.lower() == 'player']
+            if player_rows.empty or col not in player_rows.columns:
+                return "0", "N/A"
+            idx = player_rows[col].idxmax()
+            rec = player_rows.loc[idx]
             return f"{int(rec[col])}", f"{rec['Player/Team']} (S{int(rec['Season'])})"
         
         r1.metric("Most Points", *get_all_time('PTS'))
