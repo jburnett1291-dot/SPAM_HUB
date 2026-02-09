@@ -29,7 +29,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. DATA ENGINE (FIXED FOR FF RECOGNITION)
+# 2. DATA ENGINE (FIXED FOR FF AND FULL STATS)
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
@@ -39,21 +39,24 @@ def load_data():
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
         
+        # Ensure every requested stat is present and numeric
         req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win', 'Season']
         for c in req_cols:
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # IDENTIFY FF: Rows where stats are 0 but Win is recorded
+        # FF Detection: Stats are 0 but a Win/Loss is present
         df['is_ff'] = (df['PTS'] == 0) & (df['REB'] == 0) & (df['FGA'] == 0)
         
+        # Triple Double / Double Double Logic
         def calc_multis(row):
             if row['is_ff']: return pd.Series([0, 0])
             s = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
             tens = sum(1 for x in s if x >= 10)
             return pd.Series([1 if tens >= 2 else 0, 1 if tens >= 3 else 0])
-            
         df[['DD', 'TD']] = df.apply(calc_multis, axis=1)
+        
+        # PIE Calculation
         df['PIE'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
         return df
@@ -91,27 +94,26 @@ def show_card(name, stats_df, raw_df, is_player=True):
 if isinstance(full_df, str):
     st.error(f"⚠️ DATA ERROR: {full_df}")
 else:
-    # 4. FILTERS & PROCESSING
+    # 4. STATS ENGINE
     seasons = sorted(full_df['Season'].unique(), reverse=True)
     opts = ["CAREER STATS"] + [f"Season {int(s)}" for s in seasons]
     with st.sidebar: sel_box = st.selectbox("League Scope", opts, index=1)
     df_active = full_df if sel_box == "CAREER STATS" else full_df[full_df['Season'] == int(sel_box.replace("Season ", ""))]
 
     def get_stats(dataframe, group):
-        # GP includes FF rows
-        total_gp = dataframe.groupby(group).size().reset_index(name='GP')
-        # Stats averages only use non-FF rows
+        # GP counts EVERY row (Records forced forfeits)
+        gp_counts = dataframe.groupby(group).size().reset_index(name='GP')
+        # Stats averages only use rows with actual data (Played_GP)
         played_df = dataframe[dataframe['is_ff'] == False]
         played_gp = played_df.groupby(group).size().reset_index(name='Played_GP')
         
         sums = dataframe.groupby(group).sum(numeric_only=True).reset_index()
-        m = pd.merge(sums, total_gp, on=group)
+        m = pd.merge(sums, gp_counts, on=group)
         m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
         
         divisor = m['Played_GP'].replace(0, 1)
-        for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Poss', 'FGA']:
+        for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Win', 'Poss', 'FGA']:
             m[f'{col}/G'] = (m[col] / divisor).round(2)
-        
         m['FG%'] = (m['FGM'] / m['FGA'].replace(0,1) * 100).round(2)
         m['3P%'] = (m['3PM'] / m['3PA'].replace(0,1) * 100).round(2)
         m['FT%'] = (m['FTM'] / m['FTA'].replace(0,1) * 100).round(2)
@@ -121,22 +123,23 @@ else:
     p_stats = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
     t_stats = get_stats(df_active[df_active['Type'].str.lower() == 'team'], 'Team Name').set_index('Team Name')
 
+    # 5. TICKER
     leads = [f"🔥 {c}: {p_stats.nlargest(1, f'{c}/G').index[0]} ({p_stats.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']]
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {sel_box.upper()}</div>', unsafe_allow_html=True)
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "📖 HALL OF FAME", "🔐 THE VAULT"])
 
-    with tabs[0]: # PLAYERS
-        p_disp = p_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'PIE']].sort_values('PIE', ascending=False)
+    with tabs[0]: # PLAYERS (RESTORED PIE SORT)
+        p_disp = p_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'TO/G', 'PIE']].sort_values('PIE', ascending=False)
         sel_p = st.dataframe(p_disp, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_p.selection.rows) > 0: show_card(p_disp.index[sel_p.selection.rows[0]], p_stats, df_active, True)
 
-    with tabs[1]: # STANDINGS
+    with tabs[1]: # STANDINGS (FIXED RECORD)
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
-        t_display = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'FG%']]
-        sel_t = st.dataframe(t_display, width="stretch", on_select="rerun", selection_mode="single-row")
-        if len(sel_t.selection.rows) > 0: show_card(t_display.index[sel_t.selection.rows[0]], t_stats, df_active, False)
+        t_disp = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'AST/G', 'TO/G', 'FG%']]
+        sel_t = st.dataframe(t_disp, width="stretch", on_select="rerun", selection_mode="single-row")
+        if len(sel_t.selection.rows) > 0: show_card(t_disp.index[sel_t.selection.rows[0]], t_stats, df_active, False)
 
     with tabs[2]: # LEADERS
         l_cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "TO/G", "PIE"])
@@ -154,28 +157,24 @@ else:
             c1, c2 = st.columns(2)
             c1.metric(f"{p1} {s}", d1[s], round(d1[s]-d2[s], 2)); c2.metric(f"{p2} {s}", d2[s], round(d2[s]-d1[s], 2))
 
-    with tabs[4]: # HALL OF FAME
+    with tabs[4]: # HALL OF FAME (PLAYER & TEAM)
         st.header("🏆 HALL OF FAME RECORD BOOK")
         hof_type = st.radio("Record Type", ["Players", "Teams"], horizontal=True)
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO']
-        # FF games are excluded from single-game records
         valid_games = full_df[(full_df['Type'].str.lower() == hof_type[:-1].lower()) & (full_df['is_ff'] == False)]
-        
         st.subheader(f"🔥 {hof_type} Single Game Season Highs")
         grid = st.columns(4)
         for i, col in enumerate(h_cols):
             if not valid_games.empty:
                 val = valid_games[col].max()
-                name_col = 'Player/Team' if hof_type == "Players" else 'Team Name'
-                holder = valid_games.loc[valid_games[col].idxmax()][name_col]
-                grid[i%4].metric(f"Record: {col}", f"{int(val)}", f"by {holder}")
-        
+                n_col = 'Player/Team' if hof_type == "Players" else 'Team Name'
+                grid[i%4].metric(f"Record: {col}", f"{int(val)}", f"by {valid_games.loc[valid_games[col].idxmax()][n_col]}")
         st.divider()
         cat_hof = st.selectbox("All-Time Category", ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', 'DD', 'TD', 'GP', 'Win'])
         career_df = get_stats(full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()], 'Player/Team' if hof_type == "Players" else "Team Name")
         st.table(career_df.nlargest(10, cat_hof).reset_index(drop=True)[[career_df.columns[0], 'GP', cat_hof]])
 
-    with tabs[5]: # THE VAULT
+    with tabs[5]: # THE VAULT (RESTORED ALL ADV METRICS)
         st.header("🔐 THE VAULT")
         if st.text_input("Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
@@ -194,7 +193,9 @@ else:
                 p_games = df_active[(df_active['Player/Team'] == player) & (df_active['is_ff'] == False)]
                 if len(p_games) >= 3:
                     avg_pts = p_stats.loc[player, 'PTS/G']
-                    l3_avg = p_games.sort_values('Game_ID', ascending=False).head(3)['PTS'].mean()
+                    l3_avg = p_games.sort_values(['Season', 'Game_ID'], ascending=False).head(3)['PTS'].mean()
                     if l3_avg > avg_pts * 1.20: streaks.append({"Entity": player, "Status": "🔥 HOT", "Trend": f"+{round(l3_avg - avg_pts, 1)} PPG"})
                     elif l3_avg < avg_pts * 0.80: streaks.append({"Entity": player, "Status": "❄️ COLD", "Trend": f"{round(l3_avg - avg_pts, 1)} PPG"})
             if streaks: st.table(pd.DataFrame(streaks))
+
+    st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
