@@ -43,9 +43,7 @@ def load_data():
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # Splits & Multis
-        df['2PM'] = df['FGM'] - df['3PM']
-        df['2PA'] = df['FGA'] - df['3PA']
+        # Calculate Multis
         def calc_multis(row):
             s = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
             tens = sum(1 for x in s if x >= 10)
@@ -77,7 +75,8 @@ def show_card(name, stats_df, raw_df, is_player=True):
     for idx, (col, (_, g)) in enumerate(zip(f_cols, recent.iterrows())):
         col.metric(f"Game {int(g['Game_ID'])}", f"{int(g['PTS'])} PTS", "✅ W" if g['Win'] else "❌ L")
     
-    if st.button("Close & Clear", use_container_width=True): st.rerun()
+    if st.button("Close & Clear Selection", use_container_width=True):
+        st.rerun()
 
 if isinstance(full_df, str):
     st.error(f"⚠️ DATA ERROR: {full_df}")
@@ -102,26 +101,37 @@ else:
     p_stats = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
     t_stats = get_stats(df_active[df_active['Type'].str.lower() == 'team'], 'Team Name').set_index('Team Name')
 
-    # TICKER RESTORED
-    leads = [f"🔥 {c}: {p_stats.nlargest(1, c+'/G').index[0]} ({p_stats.nlargest(1, c+'/G').iloc[0][c+'/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']]
+    # 5. TICKER
+    leads = []
+    if not p_stats.empty:
+        for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']:
+            top = p_stats.nlargest(1, f'{c}/G')
+            leads.append(f"🔥 {c}: {top.index[0]} ({top[f'{c}/G'].values[0]})")
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {sel_box.upper()}</div>', unsafe_allow_html=True)
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "📖 HALL OF FAME"])
 
-    with tabs[0]: # PLAYERS
-        sel_p = st.dataframe(p_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'PIE']].sort_values('PIE', ascending=False), width="stretch", on_select="rerun", selection_mode="single-row")
-        if len(sel_p.selection.rows) > 0: show_card(p_stats.sort_values('PIE', ascending=False).index[sel_p.selection.rows[0]], p_stats, df_active, True)
+    with tabs[0]: # PLAYERS (Sorted by PIE)
+        p_display = p_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'PIE']].sort_values('PIE', ascending=False)
+        sel_p = st.dataframe(p_display, width="stretch", on_select="rerun", selection_mode="single-row")
+        if len(sel_p.selection.rows) > 0:
+            show_card(p_display.index[sel_p.selection.rows[0]], p_stats, df_active, True)
 
-    with tabs[1]: # STANDINGS
+    with tabs[1]: # STANDINGS (Fixed Sorting Error)
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
-        sel_t = st.dataframe(t_stats[['Record', 'PTS/G', 'REB/G', 'FG%']].sort_values('Win', ascending=False), width="stretch", on_select="rerun", selection_mode="single-row")
-        if len(sel_t.selection.rows) > 0: show_card(t_stats.sort_values('Win', ascending=False).index[sel_t.selection.rows[0]], t_stats, df_active, False)
+        # Sort BEFORE dropping the 'Win' column to avoid KeyError
+        t_display = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'FG%']]
+        sel_t = st.dataframe(t_display, width="stretch", on_select="rerun", selection_mode="single-row")
+        if len(sel_t.selection.rows) > 0:
+            show_card(t_display.index[sel_t.selection.rows[0]], t_stats, df_active, False)
 
     with tabs[2]: # LEADERS
         l_cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "PIE"])
         t10 = p_stats.nlargest(10, l_cat)
-        st.plotly_chart(px.bar(t10, x=l_cat, y=t10.index, orientation='h', template="plotly_dark", color_discrete_sequence=['#d4af37']), width="stretch")
+        fig = px.bar(t10, x=l_cat, y=t10.index, orientation='h', template="plotly_dark", color_discrete_sequence=['#d4af37'])
+        fig.update_layout(yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig, width="stretch")
 
     with tabs[3]: # VERSUS
         v1, v2 = st.columns(2)
@@ -129,7 +139,8 @@ else:
         d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
         for s in ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', 'PIE']:
             c1, c2 = st.columns(2)
-            c1.metric(f"{p1} {s}", d1[s], round(d1[s]-d2[s],1)); c2.metric(f"{p2} {s}", d2[s], round(d2[s]-d1[s],1))
+            c1.metric(f"{p1} {s}", d1[s], round(d1[s]-d2[s],1))
+            c2.metric(f"{p2} {s}", d2[s], round(d2[s]-d1[s],1))
 
     with tabs[4]: # HALL OF FAME
         st.subheader("🔥 Single Game Season Highs")
@@ -137,8 +148,10 @@ else:
         p_only = full_df[full_df['Type'].str.lower() == 'player']
         grid = st.columns(4)
         for i, col in enumerate(h_cols):
-            val = p_only[col].max()
-            grid[i%4].metric(f"Record: {col}", f"{int(val)}", f"by {p_only.loc[p_only[col].idxmax()]['Player/Team']}")
+            if not p_only.empty:
+                val = p_only[col].max()
+                holder = p_only.loc[p_only[col].idxmax()]['Player/Team']
+                grid[i%4].metric(f"Record: {col}", f"{int(val)}", f"by {holder}")
         
         st.divider()
         st.subheader("📊 Career Record Books")
