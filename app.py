@@ -29,7 +29,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. DATA ENGINE (Optimized for FF Rows)
+# 2. DATA ENGINE (FIXED FOR FF RECORD REFLECTION)
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
@@ -39,13 +39,12 @@ def load_data():
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
         
-        # Standardize columns
         req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win', 'Season']
         for c in req_cols:
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # IDENTIFY FORFEITS: Rows where stats are 0 but Win is recorded
+        # Identify FF: Rows where core stats are 0 (indicates forfeit)
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
         
         def calc_multis(row):
@@ -83,8 +82,8 @@ def show_card(name, stats_df, raw_df, is_player=True):
     
     f_cols = st.columns(3)
     for idx, (col, (_, g)) in enumerate(zip(f_cols, recent.iterrows())):
-        res = "✅ W" if g['Win'] else "❌ L"
-        val = "FF" if g['is_ff'] else f"{int(g['PTS'])} PTS"
+        res = "✅ W" if g['Win'] == 1 else "❌ L"
+        val = "FORFEIT" if g['is_ff'] else f"{int(g['PTS'])} PTS"
         col.metric(f"Game {int(g['Game_ID'])}", val, delta=res)
     
     if st.button("Close Card"): st.rerun()
@@ -92,27 +91,27 @@ def show_card(name, stats_df, raw_df, is_player=True):
 if isinstance(full_df, str):
     st.error(f"⚠️ DATA ERROR: {full_df}")
 else:
-    # 4. FILTERS & PROCESSING
+    # 4. FILTERS
     seasons = sorted(full_df['Season'].unique(), reverse=True)
     opts = ["CAREER STATS"] + [f"Season {int(s)}" for s in seasons]
     with st.sidebar: sel_box = st.selectbox("League Scope", opts, index=1)
     df_active = full_df if sel_box == "CAREER STATS" else full_df[full_df['Season'] == int(sel_box.replace("Season ", ""))]
 
     def get_stats(dataframe, group):
-        # Total GP includes FF, but Per-Game averages only use "Played" games
-        total_gp = dataframe.groupby(group)['Game_ID'].count().reset_index(name='Total_GP')
-        played_gp = dataframe[dataframe['is_ff'] == False].groupby(group)['Game_ID'].count().reset_index(name='Played_GP')
+        # FIX: Ensure GP counts every row (including FF)
+        total_gp = dataframe.groupby(group).size().reset_index(name='GP')
+        # Stats only for games actually played
+        played_df = dataframe[dataframe['is_ff'] == False]
+        played_gp = played_df.groupby(group).size().reset_index(name='Played_GP')
         
         sums = dataframe.groupby(group).sum(numeric_only=True).reset_index()
         m = pd.merge(sums, total_gp, on=group)
         m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
         
-        # GP is for standings; Played_GP is for averages
-        m['GP'] = m['Total_GP']
         divisor = m['Played_GP'].replace(0, 1)
-        
         for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Poss']:
             m[f'{col}/G'] = (m[col] / divisor).round(2)
+            
         m['FG%'] = (m['FGM'] / m['FGA'].replace(0,1) * 100).round(2)
         m['3P%'] = (m['3PM'] / m['3PA'].replace(0,1) * 100).round(2)
         m['FT%'] = (m['FTM'] / m['FTA'].replace(0,1) * 100).round(2)
@@ -134,7 +133,7 @@ else:
         sel_p = st.dataframe(p_disp, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_p.selection.rows) > 0: show_card(p_disp.index[sel_p.selection.rows[0]], p_stats, df_active, True)
 
-    with tabs[1]: # STANDINGS
+    with tabs[1]: # STANDINGS (FIXED FOR FF REFLECTION)
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
         t_disp = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'FG%']]
         sel_t = st.dataframe(t_disp, width="stretch", on_select="rerun", selection_mode="single-row")
@@ -154,16 +153,13 @@ else:
         d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
         for s in ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', 'FG%', 'PIE']:
             c1, c2 = st.columns(2)
-            c1.metric(f"{p1} {s}", d1[s], round(d1[s]-d2[s], 2))
-            c2.metric(f"{p2} {s}", d2[s], round(d2[s]-d1[s], 2))
+            c1.metric(f"{p1} {s}", d1[s], round(d1[s]-d2[s], 2)); c2.metric(f"{p2} {s}", d2[s], round(d2[s]-d1[s], 2))
 
     with tabs[4]: # HALL OF FAME
         st.header("🏆 HALL OF FAME RECORD BOOK")
         hof_type = st.radio("Record Type", ["Players", "Teams"], horizontal=True)
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO']
-        # Season Highs don't count FF
         valid_games = full_df[(full_df['Type'].str.lower() == hof_type[:-1].lower()) & (full_df['is_ff'] == False)]
-        
         st.subheader(f"🔥 {hof_type} Single Game Season Highs")
         grid = st.columns(4)
         for i, col in enumerate(h_cols):
@@ -172,7 +168,6 @@ else:
                 name_col = 'Player/Team' if hof_type == "Players" else 'Team Name'
                 holder = valid_games.loc[valid_games[col].idxmax()][name_col]
                 grid[i%4].metric(f"Record: {col}", f"{int(val)}", f"by {holder}")
-        
         st.divider()
         cat_hof = st.selectbox("All-Time Category", ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', 'DD', 'TD', 'GP', 'Win'])
         career_df = get_stats(full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()], 'Player/Team' if hof_type == "Players" else "Team Name")
@@ -201,3 +196,5 @@ else:
                     if l3_avg > avg_pts * 1.20: streaks.append({"Entity": player, "Status": "🔥 HOT", "Trend": f"+{round(l3_avg - avg_pts, 1)} PPG"})
                     elif l3_avg < avg_pts * 0.80: streaks.append({"Entity": player, "Status": "❄️ COLD", "Trend": f"{round(l3_avg - avg_pts, 1)} PPG"})
             if streaks: st.table(pd.DataFrame(streaks))
+
+    st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
