@@ -42,17 +42,23 @@ def load_data():
         for c in req_cols:
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+        
+        # FF Detection: Stats are 0 but Season/Win present
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
+        
         def calc_multis(row):
             if row['is_ff']: return pd.Series([0, 0])
-            tens = sum(1 for s in [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']] if s >= 10)
+            s = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
+            tens = sum(1 for x in s if x >= 10)
             return pd.Series([1 if tens >= 2 else 0, 1 if tens >= 3 else 0])
         df[['DD', 'TD']] = df.apply(calc_multis, axis=1)
+        
         df['PIE'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
         df['FG%_Raw'] = (df['FGM'] / df['FGA'].replace(0,1) * 100).round(1)
         return df
-    except Exception as e: return str(e)
+    except Exception as e:
+        return str(e)
 
 full_df = load_data()
 
@@ -71,7 +77,7 @@ def get_stats(dataframe, group):
     m['PIE'] = (m['PIE'] / divisor).round(2)
     return m
 
-# 4. DIALOG CARDS (UPDATED WITH RECENT FORM & HIGHS)
+# 4. DIALOG CARDS (UPDATED FOR TOTAL TEAM LINES)
 @st.dialog("🏀 SCOUTING REPORT", width="large")
 def show_card(name, stats_df, raw_df, is_player=True):
     row = stats_df.loc[name]
@@ -81,28 +87,34 @@ def show_card(name, stats_df, raw_df, is_player=True):
     cols = st.columns(5)
     cols[0].metric("PPG", row['PTS/G']); cols[1].metric("RPG", row['REB/G']); cols[2].metric("APG", row['AST/G'])
     cols[3].metric("SPG", row['STL/G']); cols[4].metric("BPG", row['BLK/G'])
-    
     st.markdown("---")
     
-    # Game Highs
+    # Season Highs
     st.subheader("🏆 Season Highs")
     search_col = 'Player/Team' if is_player else 'Team Name'
-    personal_raw = raw_df[raw_df[search_col] == name]
+    if is_player:
+        personal_raw = raw_df[raw_df[search_col] == name]
+    else:
+        personal_raw = raw_df[(raw_df[search_col] == name) & (raw_df['Type'].str.lower() == 'team')]
+        
     h1, h2, h3, h4, h5 = st.columns(5)
     h1.metric("Max PTS", int(personal_raw['PTS'].max()))
     h2.metric("Max REB", int(personal_raw['REB'].max()))
     h3.metric("Max AST", int(personal_raw['AST'].max()))
     h4.metric("Max STL", int(personal_raw['STL'].max()))
     h5.metric("Max BLK", int(personal_raw['BLK'].max()))
-
     st.markdown("---")
 
     # Expanded Recent Form
-    st.subheader("🕒 Recent Form (Last 3 Games)")
-    recent = personal_raw.sort_values(['Season', 'Game_ID'], ascending=False).head(3)
+    st.subheader("🕒 Recent Form (Full Stat Lines)")
+    if is_player:
+        recent_data = raw_df[(raw_df['Player/Team'] == name) & (raw_df['Type'].str.lower() == 'player')]
+    else:
+        recent_data = raw_df[(raw_df['Team Name'] == name) & (raw_df['Type'].str.lower() == 'team')]
     
+    recent = recent_data.sort_values(['Season', 'Game_ID'], ascending=False).head(3)
     for _, g in recent.iterrows():
-        res = "✅ W" if g['Win'] else "❌ L"
+        res = "✅ W" if g['Win'] == 1 else "❌ L"
         label = f"Game {int(g['Game_ID'])} | {res}"
         if g['is_ff']:
             st.info(f"{label} - FORFEIT")
@@ -141,9 +153,9 @@ elif full_df is not None:
 
     with tabs[1]: # STANDINGS
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
-        t_display = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'AST/G', 'TO/G', 'FG%']]
-        sel_t = st.dataframe(t_display, width="stretch", on_select="rerun", selection_mode="single-row")
-        if len(sel_t.selection.rows) > 0: show_card(t_display.index[sel_t.selection.rows[0]], t_stats, df_active, False)
+        t_disp = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'AST/G', 'TO/G', 'FG%']]
+        sel_t = st.dataframe(t_disp, width="stretch", on_select="rerun", selection_mode="single-row")
+        if len(sel_t.selection.rows) > 0: show_card(t_disp.index[sel_t.selection.rows[0]], t_stats, df_active, False)
 
     with tabs[2]: # LEADERS
         l_cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "TO/G", "PIE"])
