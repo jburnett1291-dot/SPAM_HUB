@@ -58,7 +58,7 @@ def load_data():
 
 full_df = load_data()
 
-# 3. MODAL DIALOGS
+# 3. MODAL DIALOGS WITH RESET LOGIC
 @st.dialog("🏀 PLAYER SCOUTING CARD", width="large")
 def player_card(name, p_data, df_active):
     row = p_data[p_data['Player/Team'] == name].iloc[0]
@@ -69,13 +69,24 @@ def player_card(name, p_data, df_active):
     s[0].metric("FG%", f"{row['FG%']}%", f"{row['FGM/G']}/{row['FGA/G']}")
     s[1].metric("3P%", f"{row['3P%']}%", f"{row['3PM/G']}/{row['3PA/G']}")
     s[2].metric("2P%", f"{row['2P%']}%", f"{row['2PM/G']}/{row['2PA/G']}")
-    s[3].metric("GP", int(row['GP']))
+    s[3].metric("PIE", row['PIE'])
+    
+    # RESTORED TOTAL STATS
+    st.markdown("#### 📊 Career Totals & Milestones")
+    t = st.columns(5)
+    t[0].metric("Total Pts", int(row['PTS'])); t[1].metric("Total Reb", int(row['REB']))
+    t[2].metric("Total Ast", int(row['AST'])); t[3].metric("DDs", int(row['DD_Count'])); t[4].metric("TDs", int(row['TD_Count']))
+    
     st.markdown("---")
     st.markdown("#### 🕒 Recent Form")
     f = st.columns(3); p_rec = df_active[df_active['Player/Team'] == name].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
     for _, g in p_rec.iterrows():
         f[0].metric(f"Game {int(g['Game_ID'])}", f"{int(g['PTS'])} PTS", "✅ W" if g['Win'] else "❌ L")
     st.line_chart(df_active[df_active['Player/Team'] == name].sort_values(['Season', 'Game_ID']).set_index('Game_ID')['PTS'])
+    
+    # UI RESET BUTTON
+    if st.button("Close & Clear Selection"):
+        st.rerun()
 
 @st.dialog("🏘️ TEAM SCOUTING CARD", width="large")
 def team_card(name, t_stats, df_active):
@@ -88,6 +99,9 @@ def team_card(name, t_stats, df_active):
     tf = st.columns(3); t_rec = df_active[(df_active['Type'].str.lower()=='team') & (df_active['Team Name']==name)].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
     for _, g in t_rec.iterrows():
         tf[0].metric(f"Game {int(g['Game_ID'])}", f"{int(g['PTS'])} PTS", "✅ W" if g['Win'] else "❌ L")
+    
+    if st.button("Close & Clear Selection"):
+        st.rerun()
 
 if isinstance(full_df, str):
     st.error(f"⚠️ DATA ERROR: {full_df}")
@@ -141,6 +155,7 @@ else:
         if len(sel_t.selection.rows) > 0:
             team_card(t_disp.iloc[sel_t.selection.rows[0]]['Team Name'], t_stats, df_active)
 
+    # (Other tabs logic remains identical to previous version)
     with tabs[2]:
         cat = st.selectbox("Stat", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "PIE"])
         t10 = p_data.nlargest(10, cat)[['Player/Team', 'Team Name', cat]].reset_index(drop=True)
