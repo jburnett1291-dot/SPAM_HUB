@@ -49,7 +49,6 @@ def load_data():
             return pd.Series([1 if tens >= 2 else 0, 1 if tens >= 3 else 0])
         df[['DD', 'TD']] = df.apply(calc_multis, axis=1)
         df['PIE'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
-        # Advanced Base: Possessions
         df['Poss'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
         return df
     except Exception as e:
@@ -87,7 +86,7 @@ def show_card(name, stats_df, raw_df, is_player=True):
 if isinstance(full_df, str):
     st.error(f"⚠️ DATA ERROR: {full_df}")
 else:
-    # 4. FILTERS
+    # 4. FILTERS & PROCESSING
     seasons = sorted(full_df['Season'].unique(), reverse=True)
     opts = ["CAREER STATS"] + [f"Season {int(s)}" for s in seasons]
     with st.sidebar: sel_box = st.selectbox("League Scope", opts, index=1)
@@ -108,7 +107,12 @@ else:
     p_stats = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
     t_stats = get_stats(df_active[df_active['Type'].str.lower() == 'team'], 'Team Name').set_index('Team Name')
 
-    leads = [f"🔥 {c}: {p_stats.nlargest(1, f'{c}/G').index[0]} ({p_stats.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']]
+    # 5. TICKER
+    leads = []
+    if not p_stats.empty:
+        for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']:
+            top = p_stats.nlargest(1, f'{c}/G')
+            leads.append(f"🔥 {c}: {top.index[0]} ({top[f'{c}/G'].values[0]})")
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {sel_box.upper()}</div>', unsafe_allow_html=True)
 
@@ -164,25 +168,36 @@ else:
     with tabs[5]: # THE VAULT
         st.header("🔐 THE VAULT")
         if st.text_input("Enter Passcode", type="password") == "SPAM2026":
+            st.success("Access Granted.")
             st.markdown("### 🧪 Advanced Efficiency & Pace")
-            # PACE AND POSSESSION
-            adv = p_stats.copy()
-            adv['TS%'] = (adv['PTS'] / (2 * (adv['FGA'] + 0.44 * adv['FTA'])) * 100).round(2)
-            adv['PPS'] = (adv['PTS'] / adv['FGA'].replace(0,1)).round(2)
-            st.dataframe(adv[['Poss/G', 'TS%', 'PPS', 'PIE']].sort_values('TS%', ascending=False), width="stretch")
+            adv = p_stats[p_stats['GP'] > 0].copy()
+            if not adv.empty:
+                adv['TS%'] = (adv['PTS'] / (2 * (adv['FGA'] + 0.44 * adv['FTA']).replace(0, 1)) * 100).round(2)
+                adv['PPS'] = (adv['PTS'] / adv['FGA'].replace(0, 1)).round(2)
+                
+                req_plot = ['FGA/G', 'PTS/G', 'Poss/G']
+                if all(col in adv.columns for col in req_plot):
+                    st.dataframe(adv[['Poss/G', 'TS%', 'PPS', 'PIE']].sort_values('TS%', ascending=False), width="stretch")
+                    st.markdown("### 📊 Scoring Volume vs. Efficiency")
+                    fig_v = px.scatter(adv, x='FGA/G', y='PTS/G', size='Poss/G', color=adv.index, hover_data=['TS%', 'PPS'], template="plotly_dark")
+                    st.plotly_chart(fig_v, use_container_width=True)
 
-            # STREAKS
+            st.divider()
             st.markdown("### 🔥 Streak Tracker (Last 3 Games vs Season Avg)")
             streaks = []
             for player in p_stats.index:
-                avg = p_stats.loc[player, 'PTS/G']
-                last_3 = df_active[(df_active['Player/Team'] == player) & (df_active['Type'].str.lower() == 'player')].sort_values('Game_ID', ascending=False).head(3)['PTS'].mean()
-                if last_3 > avg * 1.15: streaks.append({"Player": player, "Status": "🔥 HOT", "Last 3 Avg": round(last_3, 1), "Season Avg": avg})
-                elif last_3 < avg * 0.85: streaks.append({"Player": player, "Status": "❄️ COLD", "Last 3 Avg": round(last_3, 1), "Season Avg": avg})
+                p_games = df_active[(df_active['Player/Team'] == player) & (df_active['Type'].str.lower() == 'player')]
+                if len(p_games) >= 3:
+                    avg_pts = p_stats.loc[player, 'PTS/G']
+                    l3_avg = p_games.sort_values('Game_ID', ascending=False).head(3)['PTS'].mean()
+                    if l3_avg > avg_pts * 1.20:
+                        streaks.append({"Entity": player, "Status": "🔥 HOT", "Trend": f"+{round(l3_avg - avg_pts, 1)} PPG"})
+                    elif l3_avg < avg_pts * 0.80:
+                        streaks.append({"Entity": player, "Status": "❄️ COLD", "Trend": f"{round(l3_avg - avg_pts, 1)} PPG"})
             
             if streaks: st.table(pd.DataFrame(streaks))
-            else: st.info("No major streaks detected currently.")
-            
-            st.markdown("### 📊 Scoring Volume vs. Efficiency")
-            st.plotly_chart(px.scatter(adv, x='FGA/G', y='PTS/G', size='Poss/G', color=adv.index, hover_data=['TS%', 'PPS']))
-        elif st.session_state.get('pass_attempt'): st.error("Access Denied.")
+            else: st.info("No major streaks detected.")
+        elif st.session_state.get('vault_pass') != "":
+            st.info("Awaiting correct passcode...")
+
+    st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
