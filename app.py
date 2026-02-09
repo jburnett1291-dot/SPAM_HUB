@@ -43,7 +43,7 @@ def load_data():
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # FF Detection: Stats are 0 but Season is valid
+        # FF Detection: Stats are 0 but Season/Win is valid
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
         
         def calc_multis(row):
@@ -61,9 +61,9 @@ def load_data():
 
 full_df = load_data()
 
-# 3. STATS LOGIC (THE HEART OF THE HUB)
+# 3. STATS LOGIC
 def get_stats(dataframe, group):
-    # CRITICAL: GP counts every row (including FF) for the Record
+    # GP counts every row (including FF) for the Record
     total_gp = dataframe.groupby(group).size().reset_index(name='GP')
     # Stats averages ONLY use rows with actual data (Played_GP)
     played_df = dataframe[dataframe['is_ff'] == False]
@@ -183,7 +183,6 @@ else:
                 adv['TS%'] = (adv['PTS'] / (2 * (adv['FGA'] + 0.44 * adv['FTA']).replace(0, 1)) * 100).round(2)
                 adv['PPS'] = (adv['PTS'] / adv['FGA'].replace(0, 1)).round(2)
                 st.dataframe(adv[['Player/Team', 'Poss/G', 'TS%', 'PPS', 'PIE']], width="stretch", hide_index=True)
-                # FIX for Scatter: Ensuring column exists
                 adv_plot = adv.rename(columns={'FGA/G': 'FGA_G', 'PTS/G': 'PTS_G', 'Poss/G': 'Poss_G'})
                 fig_v = px.scatter(adv_plot, x='FGA_G', y='PTS_G', size='Poss_G', color='Player/Team', template="plotly_dark")
                 st.plotly_chart(fig_v, use_container_width=True)
@@ -194,7 +193,7 @@ else:
                 p_games = df_active[(df_active['Player/Team'] == player) & (df_active['is_ff'] == False)]
                 if len(p_games) >= 3:
                     avg_pts = p_stats.loc[player, 'PTS/G']
-                    l3_avg = p_games.sort_values('Game_ID', ascending=False).head(3)['PTS'].mean()
+                    l3_avg = p_games.sort_values(['Season', 'Game_ID'], ascending=False).head(3)['PTS'].mean()
                     if l3_avg > avg_pts * 1.20: streaks.append({"Entity": player, "Status": "🔥 HOT", "Trend": f"+{round(l3_avg - avg_pts, 1)} PPG"})
                     elif l3_avg < avg_pts * 0.80: streaks.append({"Entity": player, "Status": "❄️ COLD", "Trend": f"{round(l3_avg - avg_pts, 1)} PPG"})
             if streaks: st.table(pd.DataFrame(streaks))
