@@ -58,7 +58,7 @@ def load_data():
 
 full_df = load_data()
 
-# 3. DIALOGS (REPAIRED)
+# 3. DIALOGS
 @st.dialog("🏀 PLAYER SCOUTING CARD", width="large")
 def player_card(name, p_data, df_active):
     row = p_data[p_data['Player/Team'] == name].iloc[0]
@@ -120,24 +120,23 @@ else:
         return m
 
     p_data = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team')
-    teams = df_active[df_active['Type'].str.lower() == 'player'].groupby('Player/Team')['Team Name'].last().reset_index()
-    p_data = pd.merge(p_data, teams, on='Player/Team')
+    teams_map = df_active[df_active['Type'].str.lower() == 'player'].groupby('Player/Team')['Team Name'].last().reset_index()
+    p_data = pd.merge(p_data, teams_map, on='Player/Team')
 
     t_raw = df_active[df_active['Type'].str.lower() == 'team']
     t_stats = get_stats(t_raw, 'Team Name')
-    t_stats['Wins'] = t_raw.groupby('Team Name')['Win'].sum().reset_index()['Win'].values.astype(int)
+    t_wins = t_raw.groupby('Team Name')['Win'].sum().reset_index().rename(columns={'Win': 'Wins'})
+    t_stats = pd.merge(t_stats, t_wins, on='Team Name')
     t_stats['Loss'] = (t_stats['GP'] - t_stats['Wins']).astype(int)
     t_stats['Record'] = t_stats['Wins'].astype(str) + "-" + t_stats['Loss'].astype(str)
 
-    # TICKER EXPANSION
+    # TICKER
     t_leads = []
     for c in ['PTS', 'AST', 'REB', 'STL', 'BLK', 'FG%']:
         col_name = f'{c}/G' if c not in ['FG%'] else c
         top = p_data.nlargest(1, col_name).iloc[0]
         val = f"{top[col_name]}%" if c == 'FG%' else top[col_name]
-        icon = "🔥" if c in ['PTS', 'AST', 'REB'] else "🛡️"
-        t_leads.append(f"{icon} {c}: {top['Player/Team']} ({val})")
-
+        t_leads.append(f"{c}: {top['Player/Team']} ({val})")
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(t_leads)}</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {label}</div>', unsafe_allow_html=True)
 
@@ -150,8 +149,9 @@ else:
             player_card(p_table.iloc[sel_p.selection.rows[0]]['Player/Team'], p_data, df_active)
 
     with tabs[1]:
-        t_disp = t_stats[['Team Name', 'Record', 'PTS/G', 'REB/G', 'AST/G', 'FG%']].sort_values('Wins', ascending=False)
-        sel_t = st.dataframe(t_disp, width="stretch", hide_index=True, on_select="rerun", selection_mode="single-row")
+        # FIX: Include 'Wins' in the dataframe so sort_values doesn't crash
+        t_disp = t_stats[['Team Name', 'Record', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'Wins']].sort_values('Wins', ascending=False)
+        sel_t = st.dataframe(t_disp.drop(columns=['Wins']), width="stretch", hide_index=True, on_select="rerun", selection_mode="single-row")
         if len(sel_t.selection.rows) > 0:
             team_card(t_disp.iloc[sel_t.selection.rows[0]]['Team Name'], t_stats, df_active)
 
