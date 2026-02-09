@@ -43,7 +43,7 @@ def load_data():
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # FF Detection: Stats are 0 but Season/Win present
+        # FF Detection
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
         
         def calc_multis(row):
@@ -77,7 +77,7 @@ def get_stats(dataframe, group):
     m['PIE'] = (m['PIE'] / divisor).round(2)
     return m
 
-# 4. DIALOG CARDS (UPDATED FOR TOTAL TEAM LINES)
+# 4. DIALOG CARDS
 @st.dialog("🏀 SCOUTING REPORT", width="large")
 def show_card(name, stats_df, raw_df, is_player=True):
     row = stats_df.loc[name]
@@ -189,17 +189,40 @@ elif full_df is not None:
         career_df = get_stats(full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()], 'Player/Team' if hof_type == "Players" else "Team Name")
         st.table(career_df.nlargest(10, cat_hof).reset_index(drop=True)[[career_df.columns[0], 'GP', cat_hof]])
 
-    with tabs[5]: # THE VAULT
+    with tabs[5]: # THE VAULT (NEW MULTI-VIEW ENGINE)
         st.header("🔐 THE VAULT")
         if st.text_input("Enter Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
+            
             adv = p_stats[p_stats['Played_GP'] > 0].reset_index().copy()
             if not adv.empty:
-                adv['TS%'] = (adv['PTS'] / (2 * (adv['FGA'] + 0.44 * adv.get('FTA', 0))).replace(0, 1) * 100).round(2)
+                # Advanced Logic
                 adv['PPS'] = (adv['PTS'] / adv['FGA'].replace(0, 1)).round(2)
-                st.dataframe(adv[['Player/Team', 'Poss/G', 'TS%', 'PPS', 'PIE']], width="stretch", hide_index=True)
-                adv_plot = adv.rename(columns={'FGA/G': 'FGA_G', 'PTS/G': 'PTS_G', 'Poss/G': 'Poss_G'})
-                st.plotly_chart(px.scatter(adv_plot, x='FGA_G', y='PTS_G', size='Poss_G', color='Player/Team', template="plotly_dark"), use_container_width=True)
+                adv['TS%'] = (adv['PTS'] / (2 * (adv['FGA'] + 0.44 * adv['FTA']).replace(0, 1)) * 100).round(2)
+                adv['OReb_Opps/G'] = ((adv['FGA'] - adv['FGM']) + (adv['FTA'] - adv['FTM']) * 0.44) / adv['Played_GP']
+                
+                st.markdown("### 🧪 Advanced Analytics Engine")
+                vault_view = st.selectbox("Select Analysis View", [
+                    "Volume vs. Efficiency (PTS/G vs FGA/G)",
+                    "Efficiency Hub (TS% vs. PPS)",
+                    "Possession Control (Poss/G vs. TO/G)",
+                    "Opportunity Tracker (OReb Opps/G vs. REB/G)"
+                ])
+
+                # Internal renames for plotly safety
+                adv_plot = adv.rename(columns={'FGA/G': 'FGA_G', 'PTS/G': 'PTS_G', 'Poss/G': 'Poss_G', 'TO/G': 'TO_G', 'REB/G': 'REB_G'})
+                
+                if vault_view == "Volume vs. Efficiency (PTS/G vs FGA/G)":
+                    fig_v = px.scatter(adv_plot, x='FGA_G', y='PTS_G', size='PIE', color='Player/Team', template="plotly_dark")
+                elif vault_view == "Efficiency Hub (TS% vs. PPS)":
+                    fig_v = px.scatter(adv_plot, x='PPS', y='TS%', size='PTS_G', color='Player/Team', template="plotly_dark")
+                    fig_v.add_vline(x=1.0, line_dash="dash", line_color="gray")
+                elif vault_view == "Possession Control (Poss/G vs. TO/G)":
+                    fig_v = px.scatter(adv_plot, x='Poss_G', y='TO_G', size='AST/G', color='Player/Team', template="plotly_dark")
+                elif vault_view == "Opportunity Tracker (OReb Opps/G vs. REB/G)":
+                    fig_v = px.scatter(adv_plot, x='OReb_Opps/G', y='REB_G', size='PIE', color='Player/Team', template="plotly_dark")
+
+                st.plotly_chart(fig_v, use_container_width=True)
             
             st.markdown("### 🔥 Streak Tracker")
             streaks = []
