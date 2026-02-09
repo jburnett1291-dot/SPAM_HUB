@@ -63,16 +63,19 @@ full_df = load_data()
 def player_card(name, p_data, df_active):
     row = p_data[p_data['Player/Team'] == name].iloc[0]
     st.title(f"Scouting: {name}")
-    c = st.columns(5); c[0].metric("PPG", row['PTS/G']); c[1].metric("RPG", row['REB/G']); c[2].metric("APG", row['AST/G']); c[3].metric("SPG", row['STL/G']); c[4].metric("BPG", row['BLK/G'])
+    # Image 1 Layout Replication
+    c = st.columns(5)
+    c[0].metric("PPG", row['PTS/G'])
+    c[1].metric("RPG", row['REB/G'])
+    c[2].metric("APG", row['AST/G'])
+    c[3].metric("SPG", row['STL/G'])
+    c[4].metric("BPG", row['BLK/G'])
     st.markdown("---")
     s = st.columns(4)
     s[0].metric("FG%", f"{row['FG%']}%", f"{row['FGM/G']}/{row['FGA/G']}")
     s[1].metric("3P%", f"{row['3P%']}%", f"{row['3PM/G']}/{row['3PA/G']}")
     s[2].metric("2P%", f"{row['2P%']}%", f"{row['2PM/G']}/{row['2PA/G']}")
-    s[3].metric("PIE", row['PIE'])
-    st.markdown("#### 📊 Career Totals")
-    t = st.columns(5)
-    t[0].metric("Pts", int(row['PTS'])); t[1].metric("Reb", int(row['REB'])); t[2].metric("Ast", int(row['AST'])); t[3].metric("DDs", int(row['DD_Count'])); t[4].metric("TDs", int(row['TD_Count']))
+    s[3].metric("GP", int(row['GP']))
     st.markdown("---")
     st.markdown("#### 🕒 Recent Form")
     f = st.columns(3); p_recent = df_active[df_active['Player/Team'] == name].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
@@ -119,18 +122,17 @@ else:
         m['2P%'] = (m['2PM'] / m['2PA'].replace(0,1) * 100).round(1)
         return m
 
-    # PLAYER AGGREGATION
     p_data = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team')
     teams_map = df_active[df_active['Type'].str.lower() == 'player'].groupby('Player/Team')['Team Name'].last().reset_index()
     p_data = pd.merge(p_data, teams_map, on='Player/Team')
 
-    # TEAM AGGREGATION
     t_raw = df_active[df_active['Type'].str.lower() == 'team']
     t_stats = get_stats(t_raw, 'Team Name')
     t_wins = t_raw.groupby('Team Name')['Win'].sum().reset_index().rename(columns={'Win': 'Wins'})
     t_stats = pd.merge(t_stats, t_wins, on='Team Name')
     t_stats['Loss'] = (t_stats['GP'] - t_stats['Wins']).astype(int)
-    t_stats['Record'] = t_stats['Wins'].astype(str) + "-" + t_stats['Loss'].astype(str)
+    # Fix decimal record issue
+    t_stats['Record'] = t_stats['Wins'].astype(int).astype(str) + "-" + t_stats['Loss'].astype(int).astype(str)
 
     # TICKER
     t_leads = []
@@ -152,6 +154,7 @@ else:
             player_card(p_table.iloc[sel_p.selection.rows[0]]['Player/Team'], p_data, df_active)
 
     with tabs[1]: # STANDINGS
+        # Resolve sorting keyerror by ensuring Wins is present in sort but not display
         t_disp = t_stats[['Team Name', 'Record', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'Wins']].sort_values('Wins', ascending=False)
         sel_t = st.dataframe(t_disp.drop(columns=['Wins']), width="stretch", hide_index=True, on_select="rerun", selection_mode="single-row")
         if len(sel_t.selection.rows) > 0:
@@ -192,6 +195,7 @@ else:
         if not p_career.empty:
             p_table = p_career.nlargest(10, cat_p)[['Player/Team', 'GP', cat_p]].reset_index(drop=True)
             p_table['GP'] = p_table['GP'].astype(int)
+            # Career totals as integers, PIE as float
             if cat_p != 'PIE': p_table[cat_p] = p_table[cat_p].astype(int)
             st.table(p_table.rename(columns={'Player/Team': 'Player'}))
 
@@ -204,7 +208,7 @@ else:
         if not t_career.empty:
             t_table = t_career.nlargest(10, cat_t)[['Team Name', 'GP', cat_t]].reset_index(drop=True)
             t_table['GP'] = t_table['GP'].astype(int)
-            if cat_t not in ['FG%']: t_table[cat_t] = t_table[cat_t].astype(int)
+            if cat_t not in ['FG%', '3P%', '2P%']: t_table[cat_t] = t_table[cat_t].astype(int)
             st.table(t_table.rename(columns={'Team Name': 'Franchise'}))
 
     st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
