@@ -48,14 +48,14 @@ def load_data():
             tens = sum(1 for x in s if x >= 10)
             return pd.Series([1 if tens >= 2 else 0, 1 if tens >= 3 else 0])
         df[['DD', 'TD']] = df.apply(calc_multis, axis=1)
-        df['PIE'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5)
+        df['PIE'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         return df
     except Exception as e:
         return str(e)
 
 full_df = load_data()
 
-# 3. DIALOG CARDS (POP-UP SCOUTING REPORTS)
+# 3. DIALOG CARDS
 @st.dialog("🏀 SCOUTING REPORT", width="large")
 def show_card(name, stats_df, raw_df, is_player=True):
     row = stats_df.loc[name]
@@ -64,18 +64,24 @@ def show_card(name, stats_df, raw_df, is_player=True):
     c[0].metric("PPG", row['PTS/G']); c[1].metric("RPG", row['REB/G']); c[2].metric("APG", row['AST/G'])
     c[3].metric("SPG", row['STL/G']); c[4].metric("BPG", row['BLK/G'])
     st.markdown("---")
-    s = st.columns(4)
-    s[0].metric("FG%", f"{row['FG%']}%"); s[1].metric("3P%", f"{row['3P%']}%"); s[2].metric("FT%", f"{row['FT%']}%"); s[3].metric("PIE", row['PIE'])
+    s = st.columns(5) # Added TO/G here
+    s[0].metric("FG%", f"{row['FG%']}%"); s[1].metric("3P%", f"{row['3P%']}%"); 
+    s[2].metric("FT%", f"{row['FT%']}%"); s[3].metric("TO/G", row['TO/G']); s[4].metric("PIE", row['PIE'])
     
     st.markdown("#### 🕒 Recent Form (Last 3 Games)")
     search_col = 'Player/Team' if is_player else 'Team Name'
-    recent = raw_df[raw_df[search_col] == name].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
+    # Fixed filtering logic for Team Scouting
+    if is_player:
+        recent = raw_df[(raw_df['Player/Team'] == name) & (raw_df['Type'].str.lower() == 'player')].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
+    else:
+        recent = raw_df[(raw_df['Team Name'] == name) & (raw_df['Type'].str.lower() == 'team')].sort_values(['Season', 'Game_ID'], ascending=False).head(3)
+    
     f_cols = st.columns(3)
     for idx, (col, (_, g)) in enumerate(zip(f_cols, recent.iterrows())):
         res = "✅ W" if g['Win'] else "❌ L"
         col.metric(f"Game {int(g['Game_ID'])}", f"{int(g['PTS'])} PTS", delta=res)
     
-    st.line_chart(raw_df[raw_df[search_col] == name].sort_values(['Season', 'Game_ID']).set_index('Game_ID')['PTS'])
+    st.line_chart(recent.set_index('Game_ID')['PTS'])
     if st.button("Close Card & Clear Selection", use_container_width=True):
         st.rerun()
 
@@ -97,6 +103,7 @@ else:
         m['FG%'] = (m['FGM'] / m['FGA'].replace(0,1) * 100).round(2)
         m['3P%'] = (m['3PM'] / m['3PA'].replace(0,1) * 100).round(2)
         m['FT%'] = (m['FTM'] / m['FTA'].replace(0,1) * 100).round(2)
+        m['PIE'] = m['PIE'].round(2)
         return m
 
     p_stats = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
@@ -105,63 +112,80 @@ else:
     # 5. TICKER (Restored BPG, SPG, FG%)
     leads = []
     if not p_stats.empty:
-        for c in ['PTS', 'AST', 'REB', 'STL', 'BLK', 'FG%']:
-            top = p_stats.nlargest(1, c if c == 'FG%' else f'{c}/G')
-            val = top[c].values[0] if c == 'FG%' else top[f'{c}/G'].values[0]
-            leads.append(f"🔥 {c}: {top.index[0]} ({val})")
+        for c in ['PTS', 'AST', 'REB', 'STL', 'BLK', 'TO']:
+            top = p_stats.nlargest(1, f'{c}/G')
+            leads.append(f"🔥 {c}: {top.index[0]} ({top[f'{c}/G'].values[0]})")
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {sel_box.upper()}</div>', unsafe_allow_html=True)
 
-    tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "📖 HALL OF FAME"])
+    tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "📖 HALL OF FAME", "🔐 THE VAULT"])
 
     with tabs[0]: # PLAYERS
-        p_display = p_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'PIE']].sort_values('PIE', ascending=False)
+        p_display = p_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'TO/G', 'PIE']].sort_values('PIE', ascending=False)
         sel_p = st.dataframe(p_display, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_p.selection.rows) > 0:
             show_card(p_display.index[sel_p.selection.rows[0]], p_stats, df_active, True)
 
-    with tabs[1]: # STANDINGS (Fixed Decimal Records)
+    with tabs[1]: # STANDINGS
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
-        t_display = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'FG%']]
+        t_display = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', 'FG%']]
         sel_t = st.dataframe(t_display, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_t.selection.rows) > 0:
             show_card(t_display.index[sel_t.selection.rows[0]], t_stats, df_active, False)
 
-    with tabs[2]: # LEADERS (2-Decimal Chart + Graph)
-        l_cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "PIE"])
+    with tabs[2]: # LEADERS
+        l_cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "TO/G", "PIE"])
         t10 = p_stats.nlargest(10, l_cat)[[l_cat]]
-        st.markdown(f"### 🏆 Top 10 Leaders: {l_cat}")
         st.dataframe(t10, width="stretch") 
-        
         fig = px.bar(t10, x=l_cat, y=t10.index, orientation='h', template="plotly_dark", color_discrete_sequence=['#d4af37'])
         fig.update_layout(yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig, width="stretch")
 
-    with tabs[3]: # VERSUS (Restored All Comparison Stats)
+    with tabs[3]: # VERSUS
         v1, v2 = st.columns(2)
         p1 = v1.selectbox("P1", p_stats.index, index=0); p2 = v2.selectbox("P2", p_stats.index, index=1)
         d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
-        for s in ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', 'PIE']:
+        for s in ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', 'FG%', 'PIE']:
             c1, c2 = st.columns(2)
             c1.metric(f"{p1} {s}", d1[s], round(d1[s]-d2[s], 2))
             c2.metric(f"{p2} {s}", d2[s], round(d2[s]-d1[s], 2))
 
-    with tabs[4]: # HALL OF FAME (Fixed Layout & Dual Dropdowns)
+    with tabs[4]: # HALL OF FAME
         st.header("🏆 HALL OF FAME RECORD BOOK")
-        st.subheader("🔥 Current Season Highs (Single Game)")
+        hof_type = st.radio("Record Type", ["Players", "Teams"], horizontal=True)
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO']
-        p_only = full_df[full_df['Type'].str.lower() == 'player']
+        p_only = full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()]
+        
+        st.subheader(f"🔥 {hof_type} Single Game Season Highs")
         grid = st.columns(4)
         for i, col in enumerate(h_cols):
             if not p_only.empty:
                 val = p_only[col].max()
-                holder = p_only.loc[p_only[col].idxmax()]['Player/Team']
+                holder_col = 'Player/Team' if hof_type == "Players" else 'Team Name'
+                holder = p_only.loc[p_only[col].idxmax()][holder_col]
                 grid[i%4].metric(f"Record: {col}", f"{int(val)}", f"by {holder}")
         
         st.divider()
-        type_sel = st.radio("View All-Time Leaders For:", ["Players", "Teams"], horizontal=True)
-        cat_hof = st.selectbox("All-Time Category", ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'DD', 'TD', 'GP', 'Win'])
-        career_df = get_stats(full_df[full_df['Type'].str.lower() == type_sel[:-1].lower()], 'Player/Team' if type_sel == "Players" else "Team Name")
+        st.subheader("📊 Career All-Time Leaders")
+        cat_hof = st.selectbox("All-Time Category", ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', 'DD', 'TD', 'GP', 'Win'])
+        career_df = get_stats(full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()], 'Player/Team' if hof_type == "Players" else "Team Name")
         st.table(career_df.nlargest(10, cat_hof)[[career_df.columns[0], 'GP', cat_hof]].reset_index(drop=True))
+
+    with tabs[5]: # THE VAULT (Secret Tab)
+        st.header("🔐 THE VAULT")
+        password = st.text_input("Enter Passcode for Advanced Analytics", type="password")
+        if password == "SPAM2026":
+            st.success("Access Granted. Welcome to the Secret Area.")
+            st.markdown("### 🧪 Advanced Analytics & Tracking")
+            # Example Adv. Metrics
+            adv_p = p_stats.copy()
+            adv_p['Usage %'] = (adv_p['FGA'] + 0.44 * adv_p['FTA'] + adv_p['TO']).round(2)
+            st.dataframe(adv_p[['Usage %', 'TS%', 'TO/G', 'PIE']].sort_values('Usage %', ascending=False), width="stretch")
+            
+            st.markdown("### 📊 Points per Shot (Efficiency)")
+            adv_p['PPS'] = (adv_p['PTS'] / adv_p['FGA'].replace(0,1)).round(2)
+            st.plotly_chart(px.scatter(adv_p, x='FGA/G', y='PTS/G', size='PIE', color=adv_p.index, title="Volume vs. Efficiency"))
+        elif password != "":
+            st.error("Incorrect Passcode. Access Denied.")
 
     st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
