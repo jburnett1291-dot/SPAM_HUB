@@ -107,12 +107,7 @@ else:
     p_stats = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
     t_stats = get_stats(df_active[df_active['Type'].str.lower() == 'team'], 'Team Name').set_index('Team Name')
 
-    # 5. TICKER
-    leads = []
-    if not p_stats.empty:
-        for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']:
-            top = p_stats.nlargest(1, f'{c}/G')
-            leads.append(f"🔥 {c}: {top.index[0]} ({top[f'{c}/G'].values[0]})")
+    leads = [f"🔥 {c}: {p_stats.nlargest(1, f'{c}/G').index[0]} ({p_stats.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']]
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {sel_box.upper()}</div>', unsafe_allow_html=True)
 
@@ -165,24 +160,36 @@ else:
         career_df = get_stats(full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()], 'Player/Team' if hof_type == "Players" else "Team Name")
         st.table(career_df.nlargest(10, cat_hof)[[career_df.columns[0], 'GP', cat_hof]].reset_index(drop=True))
 
-    with tabs[5]: # THE VAULT
+    with tabs[5]: # THE VAULT (RESTORED ADVANCED METRICS)
         st.header("🔐 THE VAULT")
         if st.text_input("Enter Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
+            
+            # ADVANCED STATS BLOCK
             st.markdown("### 🧪 Advanced Efficiency & Pace")
             adv = p_stats[p_stats['GP'] > 0].copy()
             if not adv.empty:
+                # Calculations
                 adv['TS%'] = (adv['PTS'] / (2 * (adv['FGA'] + 0.44 * adv['FTA']).replace(0, 1)) * 100).round(2)
                 adv['PPS'] = (adv['PTS'] / adv['FGA'].replace(0, 1)).round(2)
                 
-                req_plot = ['FGA/G', 'PTS/G', 'Poss/G']
-                if all(col in adv.columns for col in req_plot):
-                    st.dataframe(adv[['Poss/G', 'TS%', 'PPS', 'PIE']].sort_values('TS%', ascending=False), width="stretch")
-                    st.markdown("### 📊 Scoring Volume vs. Efficiency")
-                    fig_v = px.scatter(adv, x='FGA/G', y='PTS/G', size='Poss/G', color=adv.index, hover_data=['TS%', 'PPS'], template="plotly_dark")
-                    st.plotly_chart(fig_v, use_container_width=True)
+                # Table View
+                st.dataframe(adv[['Poss/G', 'TS%', 'PPS', 'PIE', 'TO/G']].sort_values('TS%', ascending=False), width="stretch")
+                
+                # Scatter Chart
+                st.markdown("### 📊 Scoring Volume vs. Efficiency")
+                fig_v = px.scatter(
+                    adv, x='FGA/G', y='PTS/G', size='Poss/G', color=adv.index, 
+                    hover_data=['TS%', 'PPS', 'PIE'], template="plotly_dark",
+                    title="Volume vs. Output"
+                )
+                # League Average Line
+                fig_v.add_hline(y=adv['PTS/G'].mean(), line_dash="dash", line_color="gray", annotation_text="League Avg PPG")
+                st.plotly_chart(fig_v, use_container_width=True)
 
             st.divider()
+            
+            # STREAKS BLOCK
             st.markdown("### 🔥 Streak Tracker (Last 3 Games vs Season Avg)")
             streaks = []
             for player in p_stats.index:
@@ -195,8 +202,11 @@ else:
                     elif l3_avg < avg_pts * 0.80:
                         streaks.append({"Entity": player, "Status": "❄️ COLD", "Trend": f"{round(l3_avg - avg_pts, 1)} PPG"})
             
-            if streaks: st.table(pd.DataFrame(streaks))
-            else: st.info("No major streaks detected.")
+            if streaks:
+                st.table(pd.DataFrame(streaks))
+            else:
+                st.info("No major streaks detected currently.")
+        
         elif st.session_state.get('vault_pass') != "":
             st.info("Awaiting correct passcode...")
 
