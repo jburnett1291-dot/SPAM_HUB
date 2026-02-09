@@ -29,7 +29,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. DATA ENGINE
+# 2. DATA ENGINE (Handles Forfeits by counting GP and Win/Loss)
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
@@ -77,6 +77,7 @@ def show_card(name, stats_df, raw_df, is_player=True):
     f_cols = st.columns(3)
     for idx, (col, (_, g)) in enumerate(zip(f_cols, recent.iterrows())):
         res = "✅ W" if g['Win'] else "❌ L"
+        # Displaying Forfeits as 0 PTS if applicable
         col.metric(f"Game {int(g['Game_ID'])}", f"{int(g['PTS'])} PTS", delta=res)
     
     st.line_chart(recent.sort_values('Game_ID').set_index('Game_ID')['PTS'])
@@ -120,6 +121,7 @@ else:
             show_card(p_display.index[sel_p.selection.rows[0]], p_stats, df_active, True)
 
     with tabs[1]:
+        # Record calculation: Admin Forfeits (Win=1 or 0) now factor into the Win/GP math perfectly
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
         t_display = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'REB/G', 'AST/G', 'TO/G', 'FG%']]
         sel_t = st.dataframe(t_display, width="stretch", on_select="rerun", selection_mode="single-row")
@@ -168,18 +170,13 @@ else:
         if st.text_input("Enter Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
             st.markdown("### 🧪 Advanced Efficiency & Pace")
-            
-            # CRITICAL FIX: Reset index so 'Player/Team' is a column for px.scatter
             adv = p_stats[p_stats['GP'] > 0].reset_index().copy()
-            
             if not adv.empty:
                 adv['TS%'] = (adv['PTS'] / (2 * (adv['FGA'] + 0.44 * adv['FTA']).replace(0, 1)) * 100).round(2)
                 adv['PPS'] = (adv['PTS'] / adv['FGA'].replace(0, 1)).round(2)
-                
                 st.dataframe(adv[['Player/Team', 'Poss/G', 'TS%', 'PPS', 'PIE', 'TO/G']], width="stretch", hide_index=True)
 
                 st.markdown("### 📊 Scoring Volume vs. Efficiency")
-                # Scatter - using Reset Index column names
                 fig_v = px.scatter(
                     adv, x='FGA/G', y='PTS/G', size='Poss/G', color='Player/Team', 
                     hover_data=['TS%', 'PPS', 'PIE'], template="plotly_dark",
