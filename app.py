@@ -48,9 +48,10 @@ def load_data():
         for c in req_cols:
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
-        df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
         
-        # Categorize Game Types
+        # FF RULE: Mark as FF if stats are 0 OR if Game_ID is 1111
+        df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0) | (df['Game_ID'] == 1111)
+        
         def get_game_type(gid):
             if gid >= 9000: return "Playoff"
             if gid >= 8000: return "Tournament"
@@ -58,7 +59,6 @@ def load_data():
             return "Excluded"
         df['Game_Category'] = df['Game_ID'].apply(get_game_type)
         
-        # Double-Double / Triple-Double Logic
         def calc_multis(row):
             if row['is_ff']: return pd.Series([0, 0])
             stats = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
@@ -104,7 +104,6 @@ elif full_df is not None:
     p_stats = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
     t_stats = get_stats(df_active[df_active['Type'].str.lower() == 'team'], 'Team Name').set_index('Team Name')
     
-    # 7-Game Min for Ticker & Top Leaders
     GAME_MIN = 7
     p_qualified = p_stats[p_stats['GP'] >= GAME_MIN] if not p_stats.empty else p_stats
     
@@ -114,7 +113,6 @@ elif full_df is not None:
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "🏟️ POSTSEASON", "📖 RECORD BOOK", "🔐 THE VAULT"])
 
-    # Locked-in Column View
     locked_cols = ['GP', 'PTS/G', 'REB/G', 'AST/G', 'FGM/G', 'FGA/G', '3PM/G', '3PA/G', 'STL/G', 'BLK/G', 'TO/G', 'DD', 'TD']
 
     with tabs[0]:
@@ -167,7 +165,6 @@ elif full_df is not None:
         hof_type = st.radio("Records For", ["Players", "Teams"], horizontal=True)
         ent_col = 'Player/Team' if hof_type == "Players" else "Team Name"
         
-        # Season Highs
         st.subheader("✨ Season Single-Game Highs")
         valid_active = df_active[(df_active['Type'].str.lower() == hof_type[:-1].lower()) & (df_active['is_ff'] == False)]
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM']
@@ -178,7 +175,6 @@ elif full_df is not None:
                 entity = valid_active.loc[valid_active[col].idxmax()][ent_col]
                 g1[i].metric(f"{col}", f"{int(val)}", f"{entity}")
 
-        # All-Time Totals
         st.divider()
         st.subheader("📜 All-Time Stat Leaders")
         hof_cat = st.selectbox("Stat", ['PTS', 'REB', 'AST', 'FGM', 'FGA', '3PM', '3PA', 'DD', 'TD', 'STL', 'BLK', 'TO', 'Win'])
@@ -190,7 +186,6 @@ elif full_df is not None:
         st.header("🔐 THE VAULT")
         if st.text_input("Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
-            # Streaks
             streaks = []
             for p in p_stats.index:
                 p_games = full_df[(full_df['Player/Team'] == p) & (full_df['is_ff'] == False)].sort_values(['Season', 'Game_ID'], ascending=False)
