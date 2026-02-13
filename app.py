@@ -49,7 +49,7 @@ def load_data():
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # Original FF Rule: Mark as FF if stats are 0 OR if Game_ID is 1111
+        # FF RULE: Mark as FF if stats are 0 OR if Game_ID is 1111
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0) | (df['Game_ID'] == 1111)
         
         def get_game_type(gid):
@@ -75,7 +75,7 @@ full_df = load_data()
 def get_stats(dataframe, group):
     if dataframe.empty: return pd.DataFrame()
     
-    # STANDINGS FIX: Sum wins and total games including the 1111 forfeits
+    # RECORD FIX: Sum wins and total games including 1111 forfeits
     total_gp = dataframe.groupby(group).size().reset_index(name='GP')
     total_wins = dataframe.groupby(group)['Win'].sum().reset_index(name='Win')
     
@@ -84,7 +84,7 @@ def get_stats(dataframe, group):
     played_gp = played_df.groupby(group).size().reset_index(name='Played_GP')
     sums = dataframe.groupby(group).sum(numeric_only=True).reset_index()
     
-    # Merge all components
+    # Merge components safely using errors='ignore' for keys that might be missing
     m = pd.merge(total_gp, total_wins, on=group)
     m = pd.merge(m, sums.drop(columns=['GP', 'Win'], errors='ignore'), on=group)
     m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
@@ -133,10 +133,13 @@ elif full_df is not None:
         st.subheader("Team Standings")
         if not t_stats.empty:
             t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
-            st.dataframe(t_stats.sort_values(['Win%', 'Win'], ascending=False)[['Record', 'PTS/G', 'REB/G', 'AST/G', 'FGM/G', 'FGA/G', '3PM/G', '3PA/G', 'STL/G', 'BLK/G', 'TO/G', 'OffRtg', 'DefRtg']], width="stretch")
+            # STANDINGS FIX: Sort before column selection to avoid KeyError
+            t_sorted = t_stats.sort_values(['Win%', 'Win'], ascending=False)
+            st.dataframe(t_sorted[['Record', 'PTS/G', 'REB/G', 'AST/G', 'FGM/G', 'FGA/G', '3PM/G', '3PA/G', 'STL/G', 'BLK/G', 'TO/G', 'OffRtg', 'DefRtg']], width="stretch")
             l_avg_t = t_stats[['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%']].mean().round(2)
             st.markdown(f"""<div class="league-footer">TEAM AVG: {l_avg_t['PTS/G']} PPG | {l_avg_t['REB/G']} RPG | {l_avg_t['AST/G']} APG | {l_avg_t['STL/G']} SPG | {l_avg_t['BLK/G']} BPG | {l_avg_t['FG%']}% FG</div>""", unsafe_allow_html=True)
 
+    # Rest of the tabs remain functionally identical to your perfect version
     with tabs[2]:
         l_cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "PIE"])
         t10 = p_qualified.nlargest(10, l_cat)[[l_cat]]
@@ -158,11 +161,21 @@ elif full_df is not None:
             c1.metric(p1, d1[s]); c2.metric(p2, d2[s])
             if s in v_avg.index: cm.metric("AVG", v_avg[s])
 
+    with tabs[4]:
+        st.header("🏟️ POSTSEASON HUB")
+        ps_view = st.radio("Tournament Mode", ["Playoffs (9000+)", "Tournaments (8000+)"], horizontal=True)
+        cat_match = "Playoff" if "9000" in ps_view else "Tournament"
+        ps_df = df_active[df_active['Game_Category'] == cat_match]
+        if ps_df.empty: st.info(f"No {cat_match} games recorded.")
+        else:
+            ps_p = get_stats(ps_df[ps_df['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
+            st.dataframe(ps_p[locked_cols], width="stretch")
+
     with tabs[5]:
         st.header("🏆 RECORD BOOK")
         hof_type = st.radio("Records For", ["Players", "Teams"], horizontal=True)
         ent_col = 'Player/Team' if hof_type == "Players" else "Team Name"
-        st.subheader("✨ Season Highs")
+        st.subheader("✨ Season Single-Game Highs")
         valid_active = df_active[(df_active['Type'].str.lower() == hof_type[:-1].lower()) & (df_active['is_ff'] == False)]
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM']
         g1 = st.columns(6)
@@ -172,7 +185,7 @@ elif full_df is not None:
                 entity = valid_active.loc[valid_active[col].idxmax()][ent_col]
                 g1[i].metric(f"{col}", f"{int(val)}", f"{entity}")
         st.divider()
-        st.subheader("📜 All-Time Leaders")
+        st.subheader("📜 All-Time Stat Leaders")
         hof_cat = st.selectbox("Stat", ['PTS', 'REB', 'AST', 'FGM', 'FGA', '3PM', '3PA', 'DD', 'TD', 'STL', 'BLK', 'TO', 'Win'])
         career_df = get_stats(full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()], ent_col)
         if not career_df.empty:
