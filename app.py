@@ -49,7 +49,7 @@ def load_data():
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # AUTHENTIC FF RULE: Mark as FF if PTS, FGA, and REB are all 0
+        # Original FF Rule: PTS, FGA, and REB are all 0
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
         
         def get_game_type(gid):
@@ -77,20 +77,18 @@ def get_stats(dataframe, group):
     total_gp = dataframe.groupby(group).size().reset_index(name='GP')
     played_df = dataframe[dataframe['is_ff'] == False]
     played_gp = played_df.groupby(group).size().reset_index(name='Played_GP')
-    
     sums = dataframe.groupby(group).sum(numeric_only=True).reset_index()
     m = pd.merge(sums, total_gp, on=group)
     m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
     
-    # Use Played_GP for per-game averages to exclude forfeits
     divisor = m['Played_GP'].replace(0, 1)
-    
     stat_list = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FGM', 'FGA', '3PM', '3PA', 'FTM', 'FTA', 'DD', 'TD']
     for col in stat_list:
         m[f'{col}/G'] = (m[col] / divisor).round(2)
         
     m['FG%'] = (m['FGM'] / m['FGA'].replace(0,1) * 100).round(1)
     m['Win%'] = (m['Win'] / m['GP']).round(3)
+    m['PPS'] = (m['PTS'] / m['FGA'].replace(0, 1)).round(2)
     m['Poss/G'] = (m['FGA'] + 0.44 * m['FTA'] + m['TO']) / divisor
     m['PIE'] = ((m['PTS'] + m['REB'] + m['AST'] + m['STL'] + m['BLK']) - (m['FGA'] * 0.5) - m['TO']) / divisor
     m['OffRtg'] = (m['PTS'] / (m['Poss/G'] * divisor).replace(0,1) * 100).round(1)
@@ -107,6 +105,7 @@ elif full_df is not None:
     p_stats = get_stats(df_active[df_active['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
     t_stats = get_stats(df_active[df_active['Type'].str.lower() == 'team'], 'Team Name').set_index('Team Name')
     
+    # 7-Game Min for Leaders/Ticker
     GAME_MIN = 7
     p_qualified = p_stats[p_stats['GP'] >= GAME_MIN] if not p_stats.empty else p_stats
     
@@ -116,6 +115,7 @@ elif full_df is not None:
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "🏟️ POSTSEASON", "📖 RECORD BOOK", "🔐 THE VAULT"])
 
+    # Locked-in Column View
     locked_cols = ['GP', 'PTS/G', 'REB/G', 'AST/G', 'FGM/G', 'FGA/G', '3PM/G', '3PA/G', 'STL/G', 'BLK/G', 'TO/G', 'DD', 'TD']
 
     with tabs[0]:
@@ -133,6 +133,7 @@ elif full_df is not None:
             st.markdown(f"""<div class="league-footer">TEAM AVG: {l_avg_t['PTS/G']} PPG | {l_avg_t['REB/G']} RPG | {l_avg_t['AST/G']} APG | {l_avg_t['STL/G']} SPG | {l_avg_t['BLK/G']} BPG | {l_avg_t['FG%']}% FG</div>""", unsafe_allow_html=True)
 
     with tabs[2]:
+        st.subheader(f"Stat Leaders (Min {GAME_MIN} Games)")
         l_cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "PIE"])
         t10 = p_qualified.nlargest(10, l_cat)[[l_cat]]
         st.dataframe(t10, width="stretch")
@@ -155,7 +156,7 @@ elif full_df is not None:
 
     with tabs[4]:
         st.header("🏟️ POSTSEASON HUB")
-        ps_view = st.radio("Tournament Mode", ["Playoffs (9000+)", "Tournaments (8000+)"], horizontal=True)
+        ps_view = st.radio("Mode", ["Playoffs (9000+)", "Tournaments (8000+)"], horizontal=True)
         cat_match = "Playoff" if "9000" in ps_view else "Tournament"
         ps_df = df_active[df_active['Game_Category'] == cat_match]
         if ps_df.empty: st.info(f"No {cat_match} games recorded.")
@@ -167,7 +168,8 @@ elif full_df is not None:
         st.header("🏆 RECORD BOOK")
         hof_type = st.radio("Records For", ["Players", "Teams"], horizontal=True)
         ent_col = 'Player/Team' if hof_type == "Players" else "Team Name"
-        st.subheader("✨ Season Highs")
+        
+        st.subheader("✨ Season Single-Game Highs")
         valid_active = df_active[(df_active['Type'].str.lower() == hof_type[:-1].lower()) & (df_active['is_ff'] == False)]
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM']
         g1 = st.columns(6)
@@ -176,8 +178,9 @@ elif full_df is not None:
                 val = valid_active[col].max()
                 entity = valid_active.loc[valid_active[col].idxmax()][ent_col]
                 g1[i].metric(f"{col}", f"{int(val)}", f"{entity}")
+
         st.divider()
-        st.subheader("📜 All-Time Leaders")
+        st.subheader("📜 All-Time Stat Leaders")
         hof_cat = st.selectbox("Stat", ['PTS', 'REB', 'AST', 'FGM', 'FGA', '3PM', '3PA', 'DD', 'TD', 'STL', 'BLK', 'TO', 'Win'])
         career_df = get_stats(full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()], ent_col)
         if not career_df.empty:
@@ -194,8 +197,16 @@ elif full_df is not None:
                     avg_p, l3 = p_stats.loc[p, 'PTS/G'], p_games.head(3)['PTS'].mean()
                     if l3 > avg_p * 1.25: streaks.append({"Player": p, "Status": "🔥 ON FIRE", "Trend": f"+{round(l3 - avg_p, 1)} PPG"})
                     elif l3 < avg_p * 0.75: streaks.append({"Player": p, "Status": "❄️ COLD", "Trend": f"{round(l3 - avg_p, 1)} PPG"})
-            if streaks: st.write("**Momentum Tracker**"); st.table(pd.DataFrame(streaks))
+            if streaks: st.table(pd.DataFrame(streaks))
+            
             st.divider(); st.subheader("📊 Advanced Analytics")
-            st.dataframe(p_stats[['Poss/G', 'OffRtg', 'DefRtg', 'PIE']].sort_values('PIE', ascending=False), width="stretch")
+            st.dataframe(p_stats[['Poss/G', 'PPS', 'OffRtg', 'DefRtg', 'PIE']].sort_values('PIE', ascending=False), width="stretch")
+            
+            v_view = st.selectbox("Lab", ["Usage vs Error", "Inside vs Outside", "Impact Chart"])
+            ap = p_stats.rename(columns={'FGM/G': 'FGM_G', '3PM/G': '3PM_G', 'Poss/G': 'Poss_G', 'TO/G': 'TO_G'})
+            if v_view == "Usage vs Error": fig = px.scatter(ap, x='Poss_G', y='TO_G', size='AST/G', color=ap.index, template="plotly_dark")
+            elif v_view == "Inside vs Outside": fig = px.scatter(ap, x='FGM_G', y='3PM_G', size='PTS/G', color=ap.index, template="plotly_dark")
+            elif v_view == "Impact Chart": fig = px.scatter(ap, x='OffRtg', y='DefRtg', size='PIE', color=ap.index, template="plotly_dark"); fig.update_yaxes(autorange="reversed")
+            st.plotly_chart(fig, use_container_width=True)
 
     st.markdown('<div style="text-align: center; color: #444; padding: 70px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
