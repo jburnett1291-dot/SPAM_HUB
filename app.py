@@ -49,7 +49,7 @@ def load_data():
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # FF Rule: ID 1111 OR All-Zero stats
+        # Original FF Rule: Mark as FF if stats are 0 OR if Game_ID is 1111
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0) | (df['Game_ID'] == 1111)
         
         def get_game_type(gid):
@@ -58,11 +58,11 @@ def load_data():
             if gid < 400: return "Regular" 
             return "Excluded"
         df['Game_Category'] = df['Game_ID'].apply(get_game_type)
-
+        
         def calc_multis(row):
             if row['is_ff']: return pd.Series([0, 0])
-            s = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
-            tens = sum(1 for x in s if x >= 10)
+            stats = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
+            tens = sum(1 for x in stats if x >= 10)
             return pd.Series([1 if tens >= 2 else 0, 1 if tens >= 3 else 0])
         df[['DD', 'TD']] = df.apply(calc_multis, axis=1)
         
@@ -75,16 +75,18 @@ full_df = load_data()
 def get_stats(dataframe, group):
     if dataframe.empty: return pd.DataFrame()
     
+    # STANDINGS FIX: Sum wins and total games including the 1111 forfeits
     total_gp = dataframe.groupby(group).size().reset_index(name='GP')
-    total_wins = dataframe.groupby(group)['Win'].sum().reset_index()
+    total_wins = dataframe.groupby(group)['Win'].sum().reset_index(name='Win')
     
+    # AVERAGES FIX: Use Played_GP divisor to keep per-game stats accurate
     played_df = dataframe[dataframe['is_ff'] == False]
     played_gp = played_df.groupby(group).size().reset_index(name='Played_GP')
     sums = dataframe.groupby(group).sum(numeric_only=True).reset_index()
     
+    # Merge all components
     m = pd.merge(total_gp, total_wins, on=group)
-    # FIX: Use errors='ignore' so it doesn't crash if GP/Win aren't in the sums columns
-    m = pd.merge(m, sums.drop(columns=['GP', 'Win'], errors='ignore'), on=group) 
+    m = pd.merge(m, sums.drop(columns=['GP', 'Win'], errors='ignore'), on=group)
     m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
     
     divisor = m['Played_GP'].replace(0, 1)
@@ -113,7 +115,6 @@ elif full_df is not None:
     GAME_MIN = 7
     p_qualified = p_stats[p_stats['GP'] >= GAME_MIN] if not p_stats.empty else p_stats
     
-    l_avg_p = p_stats[['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%']].mean().round(2)
     leads_raw = [f"🔥 {c}: {p_qualified.nlargest(1, f'{c}/G').index[0]} ({p_qualified.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK'] if not p_qualified.empty]
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads_raw)}</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {sel_box.upper()}</div>', unsafe_allow_html=True)
@@ -125,6 +126,7 @@ elif full_df is not None:
     with tabs[0]:
         st.subheader("Player Stats")
         st.dataframe(p_stats[locked_cols], width="stretch")
+        l_avg_p = p_stats[['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%']].mean().round(2)
         st.markdown(f"""<div class="league-footer">PLAYER AVG: {l_avg_p['PTS/G']} PPG | {l_avg_p['REB/G']} RPG | {l_avg_p['AST/G']} APG | {l_avg_p['STL/G']} SPG | {l_avg_p['BLK/G']} BPG | {l_avg_p['FG%']}% FG</div>""", unsafe_allow_html=True)
 
     with tabs[1]:
@@ -189,6 +191,6 @@ elif full_df is not None:
                     elif l3 < avg_p * 0.75: streaks.append({"Player": p, "Status": "❄️ COLD", "Trend": f"{round(l3 - avg_p, 1)} PPG"})
             if streaks: st.write("**Momentum Tracker**"); st.table(pd.DataFrame(streaks))
             st.divider(); st.subheader("📊 Advanced Analytics")
-            st.dataframe(p_stats[['Poss/G', 'OffRtg', 'DefRtg', 'PIE']].sort_values('PIE', ascending=False), width="stretch")
+            st.dataframe(p_stats[['Poss/G', 'PPS', 'OffRtg', 'DefRtg', 'PIE']].sort_values('PIE', ascending=False), width="stretch")
 
     st.markdown('<div style="text-align: center; color: #444; padding: 70px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
