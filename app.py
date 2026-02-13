@@ -64,62 +64,36 @@ def load_data():
 
 full_df = load_data()
 
-# 3. STATS LOGIC (THE FIXED VERSION)
+# 3. STATS LOGIC
 def get_stats(dataframe, group):
     if dataframe.empty: return pd.DataFrame()
     
-    # 1. STANDINGS (The "Look at everything" track)
-    # We drop duplicates by Game_ID to ensure we don't double-count games
-    standings_base = dataframe.drop_duplicates(subset=[group, 'Game_ID'])
-    total_gp = standings_base.groupby(group).size().reset_index(name='GP')
-    total_wins = standings_base.groupby(group)['Win'].sum().reset_index(name='Win')
+    # Track 1: STANDINGS (Looks at every row)
+    total_gp = dataframe.groupby(group).size().reset_index(name='GP')
+    total_wins = dataframe.groupby(group)['Win'].sum().reset_index(name='W')
     
-    # 2. STATS (The "Filter out Forfeits" track)
+    # Track 2: STATS (Filters out Forfeits)
     played_df = dataframe[dataframe['is_ff'] == False]
     played_gp = played_df.groupby(group).size().reset_index(name='Played_GP')
     sums = played_df.groupby(group).sum(numeric_only=True).reset_index()
     
-    # 3. MERGE
+    # Merge Tracks
     m = pd.merge(total_gp, total_wins, on=group)
     m = pd.merge(m, sums.drop(columns=['Win'], errors='ignore'), on=group, how='left').fillna(0)
     m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
     
-    # 4. CALCULATIONS
-    m['W'] = m['Win'].astype(int)
+    # Final Standings Math
     m['L'] = (m['GP'] - m['W']).astype(int)
+    m['W'] = m['W'].astype(int)
     m['Win%'] = (m['W'] / m['GP']).round(3)
     
-    # Use Played_GP for per-game averages so forfeits don't hurt stats
-    div = m['Played_GP'].replace(0, 1)
-    for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM']:
-        m[f'{col}/G'] = (m[col] / div).round(2)
-    
-    # Advanced Stats
+    # Per Game Math
+    divisor = m['Played_GP'].replace(0, 1)
+    for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FGM', 'FGA']:
+        m[f'{col}/G'] = (m[col] / divisor).round(2)
+        
     m['FG%'] = (m['FGM'] / m['FGA'].replace(0,1) * 100).round(1)
-    m['PPS'] = (m['PTS'] / m['FGA'].replace(0, 1)).round(2)
-    m['Poss/G'] = (m['FGA'] + 0.44 * m['FTA'] + m['TO']) / div
-    m['OffRtg'] = (m['PTS/G'] / m['Poss/G'].replace(0,1) * 100).round(1)
-    
-    # PIE Logic
-    m['PIE'] = ((m['PTS'] + m['REB'] + m['AST'] + m['STL'] + m['BLK']) - (m['FGA'] * 0.5) - m['TO']) / div
-    
     return m
-
-# 4. DIALOG CARDS
-@st.dialog("🏀 SCOUTING REPORT", width="large")
-def show_card(name, stats_df, raw_df, is_player=True):
-    row = stats_df.loc[name]
-    st.title(f"{'👤' if is_player else '🏘️'} {name}")
-    c = st.columns(5); c[0].metric("PPG", row['PTS/G']); c[1].metric("RPG", row['REB/G']); c[2].metric("APG", row['AST/G']); c[3].metric("SPG", row['STL/G']); c[4].metric("BPG", row['BLK/G'])
-    st.markdown("---")
-    st.subheader("🕒 Recent Games")
-    personal = raw_df[raw_df['Player/Team' if is_player else 'Team Name'] == name]
-    recent = personal.sort_values(['Season', 'Game_ID'], ascending=False).head(3)
-    for _, g in recent.iterrows():
-        res = "✅ W" if g['Win'] == 1 else "❌ L"
-        if g['is_ff']: st.warning(f"Game {int(g['Game_ID'])} | {res} (FORFEIT)")
-        else: st.info(f"Game {int(g['Game_ID'])} | {res} | {int(g['PTS'])} PTS")
-    if st.button("Close", use_container_width=True): st.rerun()
 
 # 5. APP CONTENT
 if isinstance(full_df, str): st.error(f"⚠️ DATA ERROR: {full_df}")
@@ -138,21 +112,22 @@ elif full_df is not None:
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "🏟️ POSTSEASON", "🔐 THE VAULT"])
 
     with tabs[0]:
-        st.dataframe(p_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'FG%', 'PIE']].sort_values('PTS/G', ascending=False), width="stretch")
+        st.dataframe(p_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'FG%']].sort_values('PTS/G', ascending=False), width="stretch")
 
     with tabs[1]:
         if not t_stats.empty:
-            t_disp = t_stats.sort_values(['Win%', 'W'], ascending=False)[['W', 'L', 'Win%', 'PTS/G', 'REB/G', 'AST/G', 'OffRtg']]
+            t_disp = t_stats.sort_values(['Win%', 'W'], ascending=False)[['W', 'L', 'Win%', 'PTS/G', 'REB/G', 'AST/G']]
             st.dataframe(t_disp, width="stretch")
 
     with tabs[2]:
-        cat = st.selectbox("Stat", ["PTS/G", "REB/G", "AST/G", "PIE"])
+        cat = st.selectbox("Stat", ["PTS/G", "REB/G", "AST/G"])
         st.plotly_chart(px.bar(p_stats.nlargest(10, cat), x=cat, template="plotly_dark", color_discrete_sequence=['#d4af37']), use_container_width=True)
 
     with tabs[3]:
         v1, v2 = st.columns(2)
-        p1 = v1.selectbox("Choice A", p_stats.index); p2 = v2.selectbox("Choice B", p_stats.index)
-        st.table(pd.concat([p_stats.loc[[p1]], p_stats.loc[[p2]]])[['PTS/G', 'REB/G', 'AST/G', 'FG%']])
+        if not p_stats.empty:
+            p1 = v1.selectbox("Choice A", p_stats.index); p2 = v2.selectbox("Choice B", p_stats.index)
+            st.table(pd.concat([p_stats.loc[[p1]], p_stats.loc[[p2]]])[['PTS/G', 'REB/G', 'AST/G', 'FG%']])
 
     with tabs[4]:
         ps_df = df_active[df_active['Game_Category'].isin(['Playoff', 'Tournament'])]
@@ -162,6 +137,7 @@ elif full_df is not None:
 
     with tabs[5]:
         if st.text_input("Passcode", type="password") == "SPAM2026":
-            st.dataframe(p_stats[['Poss/G', 'OffRtg', 'PIE']].sort_values('PIE', ascending=False), width="stretch")
+            st.success("Access Granted.")
+            st.dataframe(p_stats[['W', 'L', 'GP']], width="stretch")
 
     st.markdown('<div style="text-align: center; color: #444; padding: 70px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
