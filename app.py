@@ -49,8 +49,8 @@ def load_data():
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # FF RULE: Mark as FF if stats are 0 OR if Game_ID is 1111
-        df['is_ff'] = ((df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)) | (df['Game_ID'] == 1111)
+        # FF RULE: If ID is 1111 OR stats are all 0, it's a forfeit
+        df['is_ff'] = (df['Game_ID'] == 1111) | ((df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0))
         
         def get_game_type(gid):
             if gid >= 9000: return "Playoff"
@@ -75,28 +75,30 @@ def load_data():
 
 full_df = load_data()
 
-# 3. STATS LOGIC
+# 3. STATS LOGIC (THE CORE FIX)
 def get_stats(dataframe, group):
     if dataframe.empty: return pd.DataFrame()
     
-    # STANDINGS: Full DF used for GP, Wins, and Losses
+    # TRACK 1: STANDINGS (Looks at every single row, including Forfeits)
     total_gp = dataframe.groupby(group).size().reset_index(name='GP')
     total_wins = dataframe.groupby(group)['Win'].sum().reset_index(name='Win')
     
-    # AVERAGES: divisor excludes FF games
+    # TRACK 2: AVERAGES (Only looks at games where they actually played)
     played_df = dataframe[dataframe['is_ff'] == False]
     played_gp = played_df.groupby(group).size().reset_index(name='Played_GP')
-    sums = dataframe.groupby(group).sum(numeric_only=True).reset_index()
+    sums = played_df.groupby(group).sum(numeric_only=True).reset_index()
     
+    # MERGE BOTH TRACKS
     m = pd.merge(total_gp, total_wins, on=group)
-    m = pd.merge(m, sums.drop(columns=['GP', 'Win'], errors='ignore'), on=group)
+    m = pd.merge(m, sums.drop(columns=['Win'], errors='ignore'), on=group, how='left').fillna(0)
     m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
     
-    # Records
+    # CALCULATE STANDINGS
     m['L'] = (m['GP'] - m['Win']).astype(int)
     m['Win'] = m['Win'].astype(int)
     m['Win%'] = (m['Win'] / m['GP']).round(3)
     
+    # CALCULATE AVERAGES (Divided ONLY by games actually played)
     divisor = m['Played_GP'].replace(0, 1)
     stat_list = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FGM', 'FGA', '3PM', '3PA', 'FTM', 'FTA', 'DD', 'TD', 'Poss_Raw', 'PIE_Raw']
     for col in stat_list:
@@ -153,7 +155,7 @@ elif full_df is not None:
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "🏟️ POSTSEASON", "📖 RECORD BOOK", "🔐 THE VAULT"])
 
-    locked_cols = ['GP', 'PTS/G', 'REB/G', 'AST/G', 'FGM/G', 'FGA/G', '3PM/G', 'STL/G', 'BLK/G', 'TO/G', 'DD', 'TD']
+    locked_cols = ['GP', 'PTS/G', 'REB/G', 'AST/G', 'FGM/G', 'FGA/G', '3PM/G', '3PA/G', 'STL/G', 'BLK/G', 'TO/G', 'DD', 'TD']
 
     with tabs[0]:
         p_disp = p_stats[locked_cols].sort_values('PTS/G', ascending=False)
