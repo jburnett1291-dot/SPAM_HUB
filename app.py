@@ -26,6 +26,14 @@ st.markdown("""
     .ticker-wrap { width: 100%; overflow: hidden; background: #000; color: #d4af37; padding: 12px 0; border-bottom: 1px solid #333; }
     .ticker-content { display: inline-block; white-space: nowrap; animation: ticker 45s linear infinite; }
     .ticker-item { display: inline-block; margin-right: 100px; font-weight: bold; font-size: 16px; }
+    .league-avg-box {
+        background: rgba(212, 175, 55, 0.1);
+        border: 1px solid #d4af37;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        margin: 10px 0;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -105,7 +113,6 @@ elif full_df is not None:
     with st.sidebar: sel_box = st.selectbox("Scope", opts, index=1)
     df_active = full_df if sel_box == "CAREER STATS" else full_df[full_df['Season'] == int(sel_box.replace("Season ", ""))]
 
-    # Exclude Tournament (8k) and Playoff (9k) from Regular Season tabs
     df_reg = df_active[~df_active['Game_ID'].between(8000, 9999)]
     
     p_stats = get_stats(df_reg[df_reg['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
@@ -135,26 +142,31 @@ elif full_df is not None:
 
     with tabs[3]:
         v_mode = st.radio("Comparison Mode", ["Player vs Player", "Team vs Team"], horizontal=True)
-        v1, v2 = st.columns(2)
+        v1, mid, v2 = st.columns([2, 1, 2])
         if v_mode == "Player vs Player":
-            p1 = v1.selectbox("P1", p_stats.index, index=0); p2 = v2.selectbox("P2", p_stats.index, index=1); d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
+            p1 = v1.selectbox("P1", p_stats.index, index=0); p2 = v2.selectbox("P2", p_stats.index, index=min(1, len(p_stats)-1)); d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
             metrics = ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', 'FG%', 'PIE']
+            avg_data = p_stats[metrics].mean()
         else:
-            p1 = v1.selectbox("T1", t_stats.index, index=0); p2 = v2.selectbox("T2", t_stats.index, index=1); d1, d2 = t_stats.loc[p1], t_stats.loc[p2]
+            p1 = v1.selectbox("T1", t_stats.index, index=0); p2 = v2.selectbox("T2", t_stats.index, index=min(1, len(t_stats)-1)); d1, d2 = t_stats.loc[p1], t_stats.loc[p2]
             metrics = ['Record', 'PTS/G', 'REB/G', 'AST/G', 'TO/G', 'FG%', 'OffRtg', 'DefRtg']
+            avg_data = t_stats[[m for m in metrics if m != 'Record']].mean()
+            
         for s in metrics:
-            c1, c2 = st.columns(2)
-            if s == 'Record': c1.metric(f"{p1} {s}", d1[s]); c2.metric(f"{p2} {s}", d2[s])
-            else: c1.metric(f"{p1} {s}", d1[s], round(d1[s]-d2[s], 2)); c2.metric(f"{p2} {s}", d2[s], round(d2[s]-d1[s], 2))
+            c1, cm, c2 = st.columns([2, 1, 2])
+            if s == 'Record': 
+                c1.metric(f"{p1}", d1[s]); cm.write(f"**{s}**"); c2.metric(f"{p2}", d2[s])
+            else: 
+                c1.metric(f"{p1}", d1[s], round(d1[s]-d2[s], 2))
+                cm.markdown(f"<div style='text-align:center; color:#d4af37;'>{avg_data[s]:.1f}<br><small>AVG</small></div>", unsafe_allow_html=True)
+                c2.metric(f"{p2}", d2[s], round(d2[s]-d1[s], 2))
 
     with tabs[4]:
         st.header("🏆 POSTSEASON BRACKETOLOGY")
         mode = st.radio("Mode", ["Playoffs (9k)", "Tournament (8k)"], horizontal=True)
         target_id = 9000 if "Playoffs" in mode else 8000
         post_df = df_active[df_active['Game_ID'] >= target_id]
-        
-        if post_df.empty:
-            st.info(f"No {mode} data found for the selected scope.")
+        if post_df.empty: st.info(f"No {mode} data found.")
         else:
             ps_type = st.radio("Postseason View", ["Players", "Teams"], horizontal=True)
             col_id = 'Player/Team' if ps_type == "Players" else 'Team Name'
@@ -165,31 +177,21 @@ elif full_df is not None:
         st.header("📖 RECORD BOOK")
         hof_type = st.radio("Type", ["Players", "Teams"], key="hof_type_radio", horizontal=True)
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO']
-        
-        # ALL-TIME HIGHS
         st.subheader("🌟 All-Time Highs (Single Game)")
         valid_games_all = full_df[(full_df['Type'].str.lower() == hof_type[:-1].lower()) & (full_df['is_ff'] == False)]
         grid_all = st.columns(4)
         for i, col in enumerate(h_cols):
             if not valid_games_all.empty:
-                val = valid_games_all[col].max()
-                best_row = valid_games_all.loc[valid_games_all[col].idxmax()]
+                val = valid_games_all[col].max(); best_row = valid_games_all.loc[valid_games_all[col].idxmax()]
                 grid_all[i%4].metric(f"All-Time: {col}", f"{int(val)}", f"by {best_row['Player/Team' if hof_type == 'Players' else 'Team Name']}")
-        
-        st.divider()
-        
-        # SEASON HIGHS (Based on selection)
-        st.subheader(f"📅 {sel_box} Highs (Single Game)")
+        st.divider(); st.subheader(f"📅 {sel_box} Highs (Single Game)")
         valid_games_season = df_active[(df_active['Type'].str.lower() == hof_type[:-1].lower()) & (df_active['is_ff'] == False)]
         grid_sea = st.columns(4)
         for i, col in enumerate(h_cols):
             if not valid_games_season.empty:
-                val = valid_games_season[col].max()
-                best_row = valid_games_season.loc[valid_games_season[col].idxmax()]
+                val = valid_games_season[col].max(); best_row = valid_games_season.loc[valid_games_season[col].idxmax()]
                 grid_sea[i%4].metric(f"{sel_box}: {col}", f"{int(val)}", f"by {best_row['Player/Team' if hof_type == 'Players' else 'Team Name']}")
-
-        st.divider(); 
-        st.subheader("📈 All-Time Leaderboards")
+        st.divider(); st.subheader("📈 All-Time Leaderboards")
         cat_hof = st.selectbox("Category", ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', 'DD', 'TD', 'GP', 'Win'])
         career_df = get_stats(full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()], 'Player/Team' if hof_type == "Players" else "Team Name")
         st.table(career_df.nlargest(10, cat_hof).reset_index(drop=True)[[career_df.columns[0], 'GP', cat_hof]])
@@ -202,7 +204,6 @@ elif full_df is not None:
             if not adv.empty:
                 st.markdown("### 📊 Advanced Analytics")
                 st.dataframe(adv[['Player/Team', 'Poss/G', 'PPS', 'TS%', 'FGM/G', 'FGA/G', '3PM/G', '3PA/G', 'OffRtg', 'DefRtg', 'PIE']].sort_values('OffRtg', ascending=False), width="stretch", hide_index=True)
-                st.markdown("---"); st.markdown("### 🧪 Analysis Visualizer")
                 v_view = st.selectbox("View", ["Vol vs Eff", "Eff Hub", "Poss Control", "Splits", "Off vs Def"])
                 ap = adv.rename(columns={'FGA/G': 'FGA_G', 'PTS/G': 'PTS_G', 'Poss/G': 'Poss_G', 'TO/G': 'TO_G', 'FGM/G': 'FGM_G', '3PM/G': '3PM_G'})
                 if v_view == "Vol vs Eff": fig = px.scatter(ap, x='FGA_G', y='PTS_G', size='PIE', color='Player/Team', template="plotly_dark")
@@ -219,5 +220,19 @@ elif full_df is not None:
                     if l3_avg > avg_pts * 1.20: streaks.append({"Entity": player, "Status": "🔥 HOT", "Trend": f"+{round(l3_avg - avg_pts, 1)} PPG"})
                     elif l3_avg < avg_pts * 0.80: streaks.append({"Entity": player, "Status": "❄️ COLD", "Trend": f"{round(l3_avg - avg_pts, 1)} PPG"})
             if streaks: st.table(pd.DataFrame(streaks))
+
+    # LEAGUE AVERAGES FOOTER
+    st.markdown("---")
+    st.subheader(f"📊 LEAGUE AVERAGES ({sel_box})")
+    la1, la2 = st.columns(2)
+    p_avg = p_stats[['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%']].mean()
+    t_avg = t_stats[['PTS/G', 'REB/G', 'AST/G', 'OffRtg', 'DefRtg']].mean()
+    
+    with la1:
+        st.markdown("**👤 Player Averages**")
+        st.write(f"PPG: {p_avg['PTS/G']:.1f} | RPG: {p_avg['REB/G']:.1f} | APG: {p_avg['AST/G']:.1f} | FG%: {p_avg['FG%']:.1f}%")
+    with la2:
+        st.markdown("**🏘️ Team Averages**")
+        st.write(f"PPG: {t_avg['PTS/G']:.1f} | OffRtg: {t_avg['OffRtg']:.1f} | DefRtg: {t_avg['DefRtg']:.1f}")
 
     st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
