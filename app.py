@@ -26,14 +26,6 @@ st.markdown("""
     .ticker-wrap { width: 100%; overflow: hidden; background: #000; color: #d4af37; padding: 12px 0; border-bottom: 1px solid #333; }
     .ticker-content { display: inline-block; white-space: nowrap; animation: ticker 45s linear infinite; }
     .ticker-item { display: inline-block; margin-right: 100px; font-weight: bold; font-size: 16px; }
-    .league-avg-box {
-        background: rgba(212, 175, 55, 0.1);
-        border: 1px solid #d4af37;
-        border-radius: 10px;
-        padding: 15px;
-        text-align: center;
-        margin: 10px 0;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -74,7 +66,7 @@ def get_stats(dataframe, group):
     m = pd.merge(sums, total_gp, on=group)
     m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
     divisor = m['Played_GP'].replace(0, 1)
-    for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Poss_Raw', 'FGA', 'FGM', 'PIE_Raw']:
+    for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Poss_Raw', 'FGA', 'FGM', 'PIE_Raw', 'DD', 'TD']:
         m[f'{col}/G'] = (m[col] / divisor).round(2)
     m['FG%'] = (m['FGM'] / m['FGA'].replace(0,1) * 100).round(2)
     m['TS%'] = (m['PTS'] / (2 * (m['FGA'] + 0.44 * m['FTA']).replace(0, 1)) * 100).round(2)
@@ -143,23 +135,42 @@ elif full_df is not None:
     with tabs[3]:
         v_mode = st.radio("Comparison Mode", ["Player vs Player", "Team vs Team"], horizontal=True)
         v1, mid, v2 = st.columns([2, 1, 2])
+        
         if v_mode == "Player vs Player":
-            p1 = v1.selectbox("P1", p_stats.index, index=0); p2 = v2.selectbox("P2", p_stats.index, index=min(1, len(p_stats)-1)); d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
-            metrics = ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', 'FG%', 'PIE']
-            avg_data = p_stats[metrics].mean()
+            p1 = v1.selectbox("P1", p_stats.index, index=0)
+            p2 = v2.selectbox("P2", p_stats.index, index=min(1, len(p_stats)-1))
+            d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
+            # Specified Player Metrics
+            metrics = [
+                ('PPG', 'PTS/G'), ('APG', 'AST/G'), ('RPG', 'REB/G'), 
+                ('3PM/G', '3PM/G'), ('3PA/G', '3PA/G'), ('FGM/G', 'FGM/G'), 
+                ('FGA/G', 'FGA/G'), ('TO/G', 'TO/G'), ('PIE', 'PIE'), 
+                ('FG%', 'FG%'), ('DD/G', 'DD/G'), ('TD/G', 'TD/G')
+            ]
+            avg_df = p_stats[[m[1] for m in metrics]].mean()
         else:
-            p1 = v1.selectbox("T1", t_stats.index, index=0); p2 = v2.selectbox("T2", t_stats.index, index=min(1, len(t_stats)-1)); d1, d2 = t_stats.loc[p1], t_stats.loc[p2]
-            metrics = ['Record', 'PTS/G', 'REB/G', 'AST/G', 'TO/G', 'FG%', 'OffRtg', 'DefRtg']
-            avg_data = t_stats[[m for m in metrics if m != 'Record']].mean()
+            p1 = v1.selectbox("T1", t_stats.index, index=0)
+            p2 = v2.selectbox("T2", t_stats.index, index=min(1, len(t_stats)-1))
+            d1, d2 = t_stats.loc[p1], t_stats.loc[p2]
+            # Specified Team Metrics
+            metrics = [
+                ('PPG', 'PTS/G'), ('APG', 'AST/G'), ('RPG', 'REB/G'), 
+                ('3PM/G', '3PM/G'), ('3PA/G', '3PA/G'), ('FGM/G', 'FGM/G'), 
+                ('FGA/G', 'FGA/G'), ('TO/G', 'TO/G'), ('PIE', 'PIE'), 
+                ('FG%', 'FG%'), ('DefRtg', 'DefRtg'), ('OffRtg', 'OffRtg')
+            ]
+            avg_df = t_stats[[m[1] for m in metrics]].mean()
             
-        for s in metrics:
+        for label, col in metrics:
             c1, cm, c2 = st.columns([2, 1, 2])
-            if s == 'Record': 
-                c1.metric(f"{p1}", d1[s]); cm.write(f"**{s}**"); c2.metric(f"{p2}", d2[s])
-            else: 
-                c1.metric(f"{p1}", d1[s], round(d1[s]-d2[s], 2))
-                cm.markdown(f"<div style='text-align:center; color:#d4af37;'>{avg_data[s]:.1f}<br><small>AVG</small></div>", unsafe_allow_html=True)
-                c2.metric(f"{p2}", d2[s], round(d2[s]-d1[s], 2))
+            val1, val2 = d1[col], d2[col]
+            
+            # Left side
+            c1.metric(f"{p1}", val1, round(val1-val2, 2))
+            # Center Average Anchor
+            cm.markdown(f"<div style='text-align:center; color:#d4af37; border-bottom: 1px solid #333;'><strong>{label}</strong><br>{avg_df[col]:.1f}<br><small style='color:#666'>AVG</small></div>", unsafe_allow_html=True)
+            # Right side
+            c2.metric(f"{p2}", val2, round(val2-val1, 2))
 
     with tabs[4]:
         st.header("🏆 POSTSEASON BRACKETOLOGY")
