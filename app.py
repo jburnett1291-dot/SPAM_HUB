@@ -43,12 +43,15 @@ def load_data():
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
+        
+        # Calculate DD and TD as 1 or 0 per game
         def calc_multis(row):
             if row['is_ff']: return pd.Series([0, 0])
             s = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
             tens = sum(1 for x in s if x >= 10)
             return pd.Series([1 if tens >= 2 else 0, 1 if tens >= 3 else 0])
         df[['DD', 'TD']] = df.apply(calc_multis, axis=1)
+        
         df['PIE_Raw'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss_Raw'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
         df['FG%_Raw'] = (df['FGM'] / df['FGA'].replace(0,1) * 100).round(1)
@@ -62,9 +65,16 @@ def get_stats(dataframe, group):
     total_gp = dataframe.groupby(group).size().reset_index(name='GP')
     played_df = dataframe[dataframe['is_ff'] == False]
     played_gp = played_df.groupby(group).size().reset_index(name='Played_GP')
+    
+    # Use sum() to get total career/season DD and TD counts
     sums = dataframe.groupby(group).sum(numeric_only=True).reset_index()
     m = pd.merge(sums, total_gp, on=group)
     m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
+    
+    # Store the total counts before calculating averages
+    m['Total_DD'] = m['DD'].astype(int)
+    m['Total_TD'] = m['TD'].astype(int)
+    
     divisor = m['Played_GP'].replace(0, 1)
     for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Poss_Raw', 'FGA', 'FGM', 'PIE_Raw', 'DD', 'TD']:
         m[f'{col}/G'] = (m[col] / divisor).round(2)
@@ -117,13 +127,12 @@ elif full_df is not None:
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "🏆 POSTSEASON", "📖 HALL OF FAME", "🔐 THE VAULT"])
 
     with tabs[0]:
-        # FULL PLAYER DATA ON HOME PAGE
-        p_disp = p_stats[['GP', 'PTS/G', 'AST/G', 'REB/G', '3PM/G', '3PA/G', 'FGM/G', 'FGA/G', 'TO/G', 'PIE', 'FG%', 'DD/G', 'TD/G']].sort_values('PIE', ascending=False)
+        # ADDED Total_DD and Total_TD to player home page
+        p_disp = p_stats[['GP', 'PTS/G', 'AST/G', 'REB/G', '3PM/G', '3PA/G', 'FGM/G', 'FGA/G', 'TO/G', 'PIE', 'FG%', 'Total_DD', 'Total_TD']].sort_values('PIE', ascending=False)
         sel_p = st.dataframe(p_disp, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_p.selection.rows) > 0: show_card(p_disp.index[sel_p.selection.rows[0]], p_stats, df_reg, True)
 
     with tabs[1]:
-        # FULL TEAM DATA ON STANDINGS PAGE
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
         t_disp = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'AST/G', 'REB/G', '3PM/G', '3PA/G', 'FGM/G', 'FGA/G', 'TO/G', 'PIE', 'FG%', 'DefRtg', 'OffRtg']]
         sel_t = st.dataframe(t_disp, width="stretch", on_select="rerun", selection_mode="single-row")
@@ -139,7 +148,7 @@ elif full_df is not None:
         v1, mid, v2 = st.columns([2, 1, 2])
         if v_mode == "Player vs Player":
             p1 = v1.selectbox("P1", p_stats.index, index=0); p2 = v2.selectbox("P2", p_stats.index, index=min(1, len(p_stats)-1)); d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
-            metrics = [('PPG', 'PTS/G'), ('APG', 'AST/G'), ('RPG', 'REB/G'), ('3PM/G', '3PM/G'), ('3PA/G', '3PA/G'), ('FGM/G', 'FGM/G'), ('FGA/G', 'FGA/G'), ('TO/G', 'TO/G'), ('PIE', 'PIE'), ('FG%', 'FG%'), ('DD/G', 'DD/G'), ('TD/G', 'TD/G')]
+            metrics = [('PPG', 'PTS/G'), ('APG', 'AST/G'), ('RPG', 'REB/G'), ('3PM/G', '3PM/G'), ('3PA/G', '3PA/G'), ('FGM/G', 'FGM/G'), ('FGA/G', 'FGA/G'), ('TO/G', 'TO/G'), ('PIE', 'PIE'), ('FG%', 'FG%'), ('Total DD', 'Total_DD'), ('Total TD', 'Total_TD')]
             avg_df = p_stats[[m[1] for m in metrics]].mean()
         else:
             p1 = v1.selectbox("T1", t_stats.index, index=0); p2 = v2.selectbox("T2", t_stats.index, index=min(1, len(t_stats)-1)); d1, d2 = t_stats.loc[p1], t_stats.loc[p2]
@@ -166,7 +175,7 @@ elif full_df is not None:
             st.dataframe(ps_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%']].sort_values('PTS/G', ascending=False), width="stretch")
 
     with tabs[5]:
-        st.header("📖 RECORD BOOK")
+        st.header("📖 HALL OF FAME")
         hof_type = st.radio("Type", ["Players", "Teams"], key="hof_type_radio", horizontal=True)
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO']
         st.subheader("🌟 All-Time Highs (Single Game)")
