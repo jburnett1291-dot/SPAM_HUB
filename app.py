@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 
 # 1. UI & SLEEK CSS
-st.set_page_config(page_title="OTG STAT HUB", page_icon="🏀", layout="wide")
+st.set_page_config(page_title="SPAM LEAGUE CENTRAL", page_icon="🏀", layout="wide")
 
 st.markdown("""
     <style>
@@ -11,27 +11,26 @@ st.markdown("""
     div[data-testid="stToolbar"] {visibility: hidden;} [data-testid="stStatusWidget"] {display: none;}
     .block-container { padding: 0rem !important; margin: 0rem !important; }
     .stApp { background: radial-gradient(circle at top, #1f1f1f 0%, #050505 100%); color: #e0e0e0; }
-    
     div[data-testid="stMetric"] { 
         background: rgba(255, 255, 255, 0.05) !important; 
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 75, 75, 0.2) !important; 
+        border: 1px solid rgba(212, 175, 55, 0.2) !important; 
         border-radius: 20px !important; padding: 20px !important;
     }
     .header-banner { 
         padding: 25px; text-align: center; 
-        background: linear-gradient(90deg, #ff4b4b 0%, #ff7676 50%, #ff4b4b 100%);
-        color: white; font-family: 'Arial Black'; font-size: 28px;
+        background: linear-gradient(90deg, #d4af37 0%, #f7e08a 50%, #d4af37 100%);
+        color: #000; font-family: 'Arial Black'; font-size: 28px;
     }
     @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-    .ticker-wrap { width: 100%; overflow: hidden; background: #000; color: #ff4b4b; padding: 12px 0; border-bottom: 1px solid #333; }
+    .ticker-wrap { width: 100%; overflow: hidden; background: #000; color: #d4af37; padding: 12px 0; border-bottom: 1px solid #333; }
     .ticker-content { display: inline-block; white-space: nowrap; animation: ticker 45s linear infinite; }
     .ticker-item { display: inline-block; margin-right: 100px; font-weight: bold; font-size: 16px; }
     </style>
     """, unsafe_allow_html=True)
 
 # 2. DATA ENGINE
-SHEET_ID = "1-CMiwe8UV0bHE1IR_z8zvg_kE2JfMnsfwB_lBc0rsk0"
+SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
 @st.cache_data(ttl=60)
@@ -43,22 +42,18 @@ def load_data():
         for c in req_cols:
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
-        
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
-        
         def calc_multis(row):
             if row['is_ff']: return pd.Series([0, 0])
             s = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
             tens = sum(1 for x in s if x >= 10)
             return pd.Series([1 if tens >= 2 else 0, 1 if tens >= 3 else 0])
         df[['DD', 'TD']] = df.apply(calc_multis, axis=1)
-        
         df['PIE_Raw'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss_Raw'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
         df['FG%_Raw'] = (df['FGM'] / df['FGA'].replace(0,1) * 100).round(1)
         return df
-    except Exception as e:
-        return str(e)
+    except Exception as e: return str(e)
 
 full_df = load_data()
 
@@ -82,8 +77,8 @@ def get_stats(dataframe, group):
     m['Poss/G'] = m['Poss_Raw/G']
     return m
 
-# 4. DIALOG CARDS (UNCHANGED)
-@st.dialog("🏀 OTG SCOUTING REPORT", width="large")
+# 4. DIALOG CARDS
+@st.dialog("🏀 SCOUTING REPORT", width="large")
 def show_card(name, stats_df, raw_df, is_player=True):
     row = stats_df.loc[name]
     st.title(f"{'👤' if is_player else '🏘️'} {name}")
@@ -100,14 +95,14 @@ def show_card(name, stats_df, raw_df, is_player=True):
         if g['is_ff']: st.info(f"{label} - FORFEIT")
         else:
             f = st.columns(6); f[0].metric(f"{label}", f"{int(g['PTS'])} PTS"); f[1].metric("REB", int(g['REB'])); f[2].metric("AST", int(g['AST'])); f[3].metric("STL", int(g['STL'])); f[4].metric("BLK", int(g['BLK'])); f[5].metric("FG%", f"{g['FG%_Raw']}%")
-    if st.button("Close Terminal & Clear Selection", use_container_width=True): st.rerun()
+    if st.button("Close Card & Clear Selection", use_container_width=True): st.rerun()
 
 # 5. APP CONTENT
 if isinstance(full_df, str): st.error(f"⚠️ DATA ERROR: {full_df}")
 elif full_df is not None:
     seasons = sorted(full_df['Season'].unique(), reverse=True)
     opts = ["CAREER STATS"] + [f"Season {int(s)}" for s in seasons]
-    with st.sidebar: sel_box = st.selectbox("Broadcast Scope", opts, index=1)
+    with st.sidebar: sel_box = st.selectbox("Scope", opts, index=1)
     df_active = full_df if sel_box == "CAREER STATS" else full_df[full_df['Season'] == int(sel_box.replace("Season ", ""))]
 
     df_reg = df_active[~df_active['Game_ID'].between(8000, 9999)]
@@ -117,28 +112,27 @@ elif full_df is not None:
 
     leads = [f"🔥 {c}: {p_stats.nlargest(1, f'{c}/G').index[0]} ({p_stats.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']]
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
-    st.markdown('<div class="header-banner">🏀 OTG STAT HUB | BROADCAST TERMINAL</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {sel_box.upper()}</div>', unsafe_allow_html=True)
 
-    tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "🏆 POSTSEASON", "📖 RECORDS", "🔐 THE VAULT"])
+    tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "🏆 POSTSEASON", "📖 HALL OF FAME", "🔐 THE VAULT"])
 
     with tabs[0]:
-        # EXPANDED PLAYER HOME PAGE STATS
+        # FULL PLAYER DATA ON HOME PAGE
         p_disp = p_stats[['GP', 'PTS/G', 'AST/G', 'REB/G', '3PM/G', '3PA/G', 'FGM/G', 'FGA/G', 'TO/G', 'PIE', 'FG%', 'DD/G', 'TD/G']].sort_values('PIE', ascending=False)
         sel_p = st.dataframe(p_disp, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_p.selection.rows) > 0: show_card(p_disp.index[sel_p.selection.rows[0]], p_stats, df_reg, True)
 
     with tabs[1]:
-        # EXPANDED TEAM HOME PAGE STATS
+        # FULL TEAM DATA ON STANDINGS PAGE
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
         t_disp = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'AST/G', 'REB/G', '3PM/G', '3PA/G', 'FGM/G', 'FGA/G', 'TO/G', 'PIE', 'FG%', 'DefRtg', 'OffRtg']]
         sel_t = st.dataframe(t_disp, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_t.selection.rows) > 0: show_card(t_disp.index[sel_t.selection.rows[0]], t_stats, df_reg, False)
 
-    # Rest of the tabs (Leaders, Versus, Postseason, Records, Vault, Footer) remain exactly as previously updated
     with tabs[2]:
         l_cat = st.selectbox("Category", ["PTS/G", "REB/G", "AST/G", "STL/G", "BLK/G", "TO/G", "PIE"])
         t10 = p_stats.nlargest(10, l_cat)[[l_cat]]
-        st.dataframe(t10, width="stretch"); st.plotly_chart(px.bar(t10, x=l_cat, y=t10.index, orientation='h', template="plotly_dark", color_discrete_sequence=['#ff4b4b']), width="stretch")
+        st.dataframe(t10, width="stretch"); st.plotly_chart(px.bar(t10, x=l_cat, y=t10.index, orientation='h', template="plotly_dark", color_discrete_sequence=['#d4af37']), width="stretch")
 
     with tabs[3]:
         v_mode = st.radio("Comparison Mode", ["Player vs Player", "Team vs Team"], horizontal=True)
@@ -156,7 +150,7 @@ elif full_df is not None:
             c1, cm, c2 = st.columns([2, 1, 2])
             val1, val2 = d1[col], d2[col]
             c1.metric(f"{p1}", val1, round(val1-val2, 2))
-            cm.markdown(f"<div style='text-align:center; color:#ff4b4b; border-bottom: 1px solid #333;'><strong>{label}</strong><br>{avg_df[col]:.1f}<br><small style='color:#666'>AVG</small></div>", unsafe_allow_html=True)
+            cm.markdown(f"<div style='text-align:center; color:#d4af37; border-bottom: 1px solid #333;'><strong>{label}</strong><br>{avg_df[col]:.1f}<br><small style='color:#666'>AVG</small></div>", unsafe_allow_html=True)
             c2.metric(f"{p2}", val2, round(val2-val1, 2))
 
     with tabs[4]:
@@ -172,7 +166,7 @@ elif full_df is not None:
             st.dataframe(ps_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%']].sort_values('PTS/G', ascending=False), width="stretch")
 
     with tabs[5]:
-        st.header("📖 OTG RECORD BOOK")
+        st.header("📖 RECORD BOOK")
         hof_type = st.radio("Type", ["Players", "Teams"], key="hof_type_radio", horizontal=True)
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO']
         st.subheader("🌟 All-Time Highs (Single Game)")
@@ -195,12 +189,12 @@ elif full_df is not None:
         st.table(career_df.nlargest(10, cat_hof).reset_index(drop=True)[[career_df.columns[0], 'GP', cat_hof]])
 
     with tabs[6]:
-        st.header("🔐 THE OTG VAULT")
-        if st.text_input("Enter Passcode", type="password") == "OTG2026":
+        st.header("🔐 THE VAULT")
+        if st.text_input("Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
             adv = p_stats[p_stats['Played_GP'] > 0].reset_index().copy()
             if not adv.empty:
-                st.markdown("### 📊 Broadcast Analytics")
+                st.markdown("### 📊 Advanced Analytics")
                 st.dataframe(adv[['Player/Team', 'Poss/G', 'PPS', 'TS%', 'FGM/G', 'FGA/G', '3PM/G', '3PA/G', 'OffRtg', 'DefRtg', 'PIE']].sort_values('OffRtg', ascending=False), width="stretch", hide_index=True)
                 v_view = st.selectbox("View", ["Vol vs Eff", "Eff Hub", "Poss Control", "Splits", "Off vs Def"])
                 ap = adv.rename(columns={'FGA/G': 'FGA_G', 'PTS/G': 'PTS_G', 'Poss/G': 'Poss_G', 'TO/G': 'TO_G', 'FGM/G': 'FGM_G', '3PM/G': '3PM_G'})
@@ -221,7 +215,7 @@ elif full_df is not None:
 
     # LEAGUE AVERAGES FOOTER
     st.markdown("---")
-    st.subheader(f"📊 OTG LEAGUE AVERAGES ({sel_box})")
+    st.subheader(f"📊 LEAGUE AVERAGES ({sel_box})")
     la1, la2 = st.columns(2)
     p_avg = p_stats[['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%']].mean()
     t_avg = t_stats[['PTS/G', 'REB/G', 'AST/G', 'OffRtg', 'DefRtg']].mean()
@@ -233,4 +227,4 @@ elif full_df is not None:
         st.markdown("**🏘️ Team Averages**")
         st.write(f"PPG: {t_avg['PTS/G']:.1f} | OffRtg: {t_avg['OffRtg']:.1f} | DefRtg: {t_avg['DefRtg']:.1f}")
 
-    st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 OTG STAT HUB</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
