@@ -1,6 +1,3 @@
-
-Conversation with Gemini
-You said
 import streamlit as st
 
 import pandas as pd
