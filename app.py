@@ -37,18 +37,22 @@ def load_data():
     try:
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
-        req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win', 'Season']
-        for c in req_cols:
+        # Ensure numeric columns are initialized
+        numeric_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win', 'Season', 'DD', 'TD']
+        for c in numeric_cols:
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # Prevent "TOTAL" rows from skewing individual analytics
+        # Filter out generic "TOTAL" rows from raw data
         df = df[~df['Player/Team'].astype(str).str.upper().str.contains('TOTAL')]
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
         
+        # Column aliases for scatter plots
+        df['PTS_G'] = df['PTS'] 
+        df['FGA_G'] = df['FGA']
+
         df['PIE_Raw'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss_Raw'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
-        df['FG%_Raw'] = (df['FGM'] / df['FGA'].replace(0,1) * 100).round(1)
         return df
     except Exception as e: return str(e)
 
@@ -65,11 +69,12 @@ def get_stats(dataframe, group):
     m = pd.merge(sums, total_gp, on=group)
     m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
     
-    # Initialize all mandatory columns with 0 to prevent KeyErrors
+    # Initialize all totals to prevent KeyError
     mandatory_totals = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', 'FGM', 'Win', 'DD', 'TD']
     for s in mandatory_totals:
         m[f'Total_{s}'] = m[s].astype(int) if s in m.columns else 0
 
+    # Initialize averages
     divisor = m['Played_GP'].replace(0, 1)
     avg_list = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Poss_Raw', 'FGA', 'FGM', 'PIE_Raw']
     for a in avg_list:
@@ -82,7 +87,6 @@ def get_stats(dataframe, group):
     m['DefRtg'] = (100 * (1 - ((m['STL'] + m['BLK'] + (m['REB'] * 0.7)) / m['Poss_Raw'].replace(0,1)))).round(1)
     m['PIE'] = m['PIE_Raw/G']
     m['Poss/G'] = m['Poss_Raw/G']
-    
     m['Record'] = m['Total_Win'].astype(str) + "-" + (m['GP'] - m['Total_Win']).astype(str)
     return m
 
@@ -100,35 +104,30 @@ elif full_df is not None:
 
     # Ticker
     if not p_stats.empty:
-        t_df = p_stats[p_stats['GP'] >= (p_stats['GP'].max() * 0.4)]
-        leads = [f"🔥 {c}: {t_df.nlargest(1, f'{c}/G').index[0]} ({t_df.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK'] if not t_df.empty]
+        ticker_df = p_stats[p_stats['GP'] >= (p_stats['GP'].max() * 0.4)]
+        leads = [f"🔥 {c}: {ticker_df.nlargest(1, f'{c}/G').index[0]} ({ticker_df.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK'] if not ticker_df.empty]
         st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
     
     st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {sel_box.upper()}</div>', unsafe_allow_html=True)
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "🏆 POSTSEASON", "📖 HALL OF FAME", "🔐 THE VAULT"])
 
-    with tabs[1]: # STANDINGS
+    with tabs[1]: # STANDINGS (FIXED KeyError)
         if not t_stats.empty:
             cols = ['Record', 'GP', 'PTS/G', 'AST/G', 'REB/G', 'Total_PTS', 'Total_AST', 'Total_REB', 'OffRtg', 'DefRtg', 'PIE']
-            # Re-ensure columns exist just in case
-            display_cols = [c for c in cols if c in t_stats.columns]
-            st.dataframe(t_stats[display_cols].sort_values('Total_Win', ascending=False), width="stretch")
+            st.dataframe(t_stats[cols].sort_values('Total_Win', ascending=False), width="stretch")
 
     with tabs[4]: # POSTSEASON
         p_mode = st.radio("Bracket", ["Playoffs (9000s)", "Tournament (8000s)"], horizontal=True)
         p_start = 9000 if "Playoffs" in p_mode else 8000
         p_data = df_active[(df_active['Game_ID'] >= p_start) & (df_active['Game_ID'] < p_start + 1000)]
-        if p_data.empty: st.info("No Postseason data found.")
+        if p_data.empty: st.info("No data found.")
         else:
             ps_p = get_stats(p_data[p_data['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
-            # Custom column selection per user images
-            target_cols = ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', '3PM/G', '3PA/G', 'FTM/G', 'FTA/G', 'Poss_Raw/G', 'FGA/G', 'FGM/G', 'PIE_Raw/G', 'FG%', 'TS%', 'PPS', 'OffRtg', 'DefRtg', 'PIE', 'Poss/G']
-            # Ensure only existing columns are selected
-            final_cols = [c for c in target_cols if c in ps_p.columns]
-            st.dataframe(ps_p[final_cols].sort_values('PIE', ascending=False), width="stretch")
+            cols = ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', '3PM/G', '3PA/G', 'FTM/G', 'FTA/G', 'Poss_Raw/G', 'FGA/G', 'FGM/G', 'PIE_Raw/G', 'FG%', 'TS%', 'PPS', 'OffRtg', 'DefRtg', 'PIE', 'Poss/G']
+            st.dataframe(ps_p[[c for c in cols if c in ps_p.columns]].sort_values('PIE', ascending=False), width="stretch")
 
-    with tabs[5]: # HALL OF FAME
+    with tabs[5]: # HALL OF FAME (FIXED ValueError)
         st.header("📖 HALL OF FAME")
         hof_type = st.radio("Highs For:", ["Players", "Teams"], horizontal=True)
         type_key = hof_type[:-1].lower()
@@ -138,8 +137,9 @@ elif full_df is not None:
             h_grid = st.columns(4)
             for i, col in enumerate(['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO', 'FGM']):
                 val = valid_hof[col].max()
-                if not pd.isna(val):
-                    row = valid_hof.loc[valid_hof[col].idxmax()]
+                if not pd.isna(val) and val > 0:
+                    idx = valid_hof[col].idxmax()
+                    row = valid_hof.loc[idx]
                     h_grid[i%4].metric(f"{col} Record", f"{int(val)}", f"by {row['Player/Team' if hof_type == 'Players' else 'Team Name']}")
         else: st.warning("No data found for records.")
 
@@ -148,9 +148,8 @@ elif full_df is not None:
             st.success("Access Granted.")
             adv = p_stats[p_stats['Played_GP'] > 0].reset_index().copy()
             if not adv.empty:
-                v_view = st.selectbox("Analytics View", ["Vol vs Eff", "Eff Hub", "Poss Control", "Off vs Def"])
-                # Map columns specifically for scatter plots based on images
-                ap = adv.rename(columns={'FGA/G': 'FGA_G', 'PTS/G': 'PTS_G', 'Poss/G': 'Poss_G', 'TO/G': 'TO_G'})
+                v_view = st.selectbox("View", ["Vol vs Eff", "Eff Hub", "Off vs Def"])
+                ap = adv.rename(columns={'FGA/G': 'FGA_G', 'PTS/G': 'PTS_G'})
                 if v_view == "Vol vs Eff": fig = px.scatter(ap, x='FGA_G', y='PTS_G', size='PIE', color='Player/Team', template="plotly_dark")
                 elif v_view == "Eff Hub": fig = px.scatter(ap, x='PPS', y='TS%', size='PTS_G', color='Player/Team', template="plotly_dark")
                 elif v_view == "Off vs Def": fig = px.scatter(ap, x='OffRtg', y='DefRtg', size='PIE', color='Player/Team', template="plotly_dark"); fig.update_yaxes(autorange="reversed")
