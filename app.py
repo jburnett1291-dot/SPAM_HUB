@@ -37,16 +37,16 @@ def load_data():
     try:
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
-        # Initialize all potential numeric columns to prevent KeyError
         req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win', 'Season']
         for c in req_cols:
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # Remove any "Total" rows that aggregate data in the source sheet
+        # Clean out generic aggregate rows from source
         df = df[~df['Player/Team'].astype(str).str.upper().str.contains('TOTAL')]
-        
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
+        
+        # Pre-calc game level metrics
         df['PIE_Raw'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss_Raw'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
         df['FG%_Raw'] = (df['FGM'] / df['FGA'].replace(0,1) * 100).round(1)
@@ -66,16 +66,15 @@ def get_stats(dataframe, group):
     m = pd.merge(sums, total_gp, on=group)
     m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
     
-    # Career Totals
-    stat_list = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', 'FGM', 'Win']
-    for s in stat_list:
+    # Initialize all mandatory columns with 0 to prevent KeyErrors
+    mandatory_totals = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', 'FGM', 'Win', 'DD', 'TD']
+    for s in mandatory_totals:
         m[f'Total_{s}'] = m[s].astype(int) if s in m.columns else 0
 
-    # Per Game Averages
     divisor = m['Played_GP'].replace(0, 1)
     avg_list = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Poss_Raw', 'FGA', 'FGM', 'PIE_Raw']
     for a in avg_list:
-        m[f'{a}/G'] = (m[a] / divisor).round(2)
+        m[f'{a}/G'] = (m[a] / divisor).round(2) if a in m.columns else 0.0
 
     m['FG%'] = (m['FGM'] / m['FGA'].replace(0,1) * 100).round(2)
     m['TS%'] = (m['PTS'] / (2 * (m['FGA'] + 0.44 * m['FTA']).replace(0, 1)) * 100).round(2)
@@ -84,6 +83,9 @@ def get_stats(dataframe, group):
     m['DefRtg'] = (100 * (1 - ((m['STL'] + m['BLK'] + (m['REB'] * 0.7)) / m['Poss_Raw'].replace(0,1)))).round(1)
     m['PIE'] = m['PIE_Raw/G']
     m['Poss/G'] = m['Poss_Raw/G']
+    
+    if 'Total_Win' in m.columns:
+        m['Record'] = m['Total_Win'].astype(str) + "-" + (m['GP'] - m['Total_Win']).astype(str)
     return m
 
 # 5. APP CONTENT
@@ -98,7 +100,7 @@ elif full_df is not None:
     p_stats = get_stats(df_reg[df_reg['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
     t_stats = get_stats(df_reg[df_reg['Type'].str.lower() == 'team'], 'Team Name').set_index('Team Name')
 
-    # Ticker Qualification Filter
+    # Ticker qualification
     if not p_stats.empty:
         t_df = p_stats[p_stats['GP'] >= (p_stats['GP'].max() * 0.4)]
         leads = [f"🔥 {c}: {t_df.nlargest(1, f'{c}/G').index[0]} ({t_df.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK'] if not t_df.empty]
@@ -108,36 +110,35 @@ elif full_df is not None:
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "🏆 POSTSEASON", "📖 HALL OF FAME", "🔐 THE VAULT"])
 
-    with tabs[1]: # STANDINGS
+    with tabs[1]: # STANDINGS (FIXED ERROR)
         if not t_stats.empty:
-            t_stats['Record'] = t_stats['Total_Win'].astype(str) + "-" + (t_stats['GP'] - t_stats['Total_Win']).astype(str)
             st.dataframe(t_stats[['Record', 'GP', 'PTS/G', 'AST/G', 'REB/G', 'Total_PTS', 'Total_AST', 'Total_REB', 'OffRtg', 'DefRtg', 'PIE']].sort_values('Total_Win', ascending=False), width="stretch")
 
-    with tabs[4]: # POSTSEASON BRACKETOLOGY
+    with tabs[4]: # POSTSEASON (COLUMNS MATCHED TO IMAGES)
         p_mode = st.radio("Bracket", ["Playoffs (9000s)", "Tournament (8000s)"], horizontal=True)
         p_start = 9000 if "Playoffs" in p_mode else 8000
         p_data = df_active[(df_active['Game_ID'] >= p_start) & (df_active['Game_ID'] < p_start + 1000)]
         if p_data.empty: st.info("No Postseason data found.")
         else:
             ps_p = get_stats(p_data[p_data['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
-            st.dataframe(ps_p[['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', 'TS%', 'PIE']].sort_values('PIE', ascending=False), width="stretch")
+            # Custom columns for postseason per image requests
+            cols = ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', '3PM/G', '3PA/G', 'FTM/G', 'FTA/G', 'Poss_Raw/G', 'FGA/G', 'FGM/G', 'PIE_Raw/G', 'FG%', 'TS%', 'PPS', 'OffRtg', 'DefRtg', 'PIE', 'Poss/G']
+            st.dataframe(ps_p[cols].sort_values('PIE', ascending=False), width="stretch")
 
-    with tabs[5]: # HALL OF FAME (PLAYER & TEAM TOGGLE)
+    with tabs[5]: # HALL OF FAME (RESTORED TEAM VIEW)
         st.header("📖 HALL OF FAME")
-        hof_type = st.radio("View Highs For", ["Players", "Teams"], horizontal=True)
+        hof_type = st.radio("Highs For:", ["Players", "Teams"], horizontal=True)
         type_key = hof_type[:-1].lower()
         valid_hof = full_df[(full_df['Type'].str.lower() == type_key) & (full_df['is_ff'] == False)]
         
         if not valid_hof.empty:
             h_grid = st.columns(4)
-            cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO', 'FGM']
-            for i, col in enumerate(cols):
+            for i, col in enumerate(['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO', 'FGM']):
                 val = valid_hof[col].max()
                 row = valid_hof.loc[valid_hof[col].idxmax()]
                 h_grid[i%4].metric(f"{col} Record", f"{int(val)}", f"by {row['Player/Team' if hof_type == 'Players' else 'Team Name']}")
-        else: st.warning("No record data found for selected category.")
 
-    with tabs[6]: # THE VAULT (ADVANCED ANALYTICS RESTORED)
+    with tabs[6]: # THE VAULT (RESTORED ADVANCED)
         if st.text_input("Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
             adv = p_stats[p_stats['Played_GP'] > 0].reset_index().copy()
