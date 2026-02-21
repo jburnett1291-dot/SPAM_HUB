@@ -77,9 +77,9 @@ def get_stats(dataframe, group):
     m['Total_STL'] = m['STL'].astype(int)
     m['Total_BLK'] = m['BLK'].astype(int)
     m['Total_Win'] = m['Win'].astype(int)
+    m['Total_3PM'] = m['3PM'].astype(int)
     m['Total_TO'] = m['TO'].astype(int)
     m['Total_FGM'] = m['FGM'].astype(int)
-    m['Total_3PM'] = m['3PM'].astype(int)
     m['Total_Poss'] = m['Poss_Raw'].astype(int)
     
     divisor = m['Played_GP'].replace(0, 1)
@@ -94,16 +94,23 @@ def get_stats(dataframe, group):
     m['Poss/G'] = m['Poss_Raw/G']
     return m
 
-# 4. DIALOG CARDS (No changes)
+# 4. DIALOG CARDS
 @st.dialog("🏀 SCOUTING REPORT", width="large")
 def show_card(name, stats_df, raw_df, is_player=True):
     row = stats_df.loc[name]
     st.title(f"{'👤' if is_player else '🏘️'} {name}")
+    
+    st.subheader("📈 Per Game Averages")
     c = st.columns(5); c[0].metric("PPG", row['PTS/G']); c[1].metric("RPG", row['REB/G']); c[2].metric("APG", row['AST/G']); c[3].metric("SPG", row['STL/G']); c[4].metric("BPG", row['BLK/G'])
+    
+    st.subheader("📊 Season Totals")
+    t = st.columns(5); t[0].metric("Total PTS", row['Total_PTS']); t[1].metric("Total REB", row['Total_REB']); t[2].metric("Total AST", row['Total_AST']); t[3].metric("Total STL", row['Total_STL']); t[4].metric("Total BLK", row['Total_BLK'])
+    
     st.markdown("---"); st.subheader("🏆 Season Highs")
     s_col = 'Player/Team' if is_player else 'Team Name'
     personal = raw_df[(raw_df[s_col] == name) & (raw_df['Type'].str.lower() == ('player' if is_player else 'team'))]
     h = st.columns(5); h[0].metric("Max PTS", int(personal['PTS'].max() if not personal.empty else 0)); h[1].metric("Max REB", int(personal['REB'].max() if not personal.empty else 0)); h[2].metric("Max AST", int(personal['AST'].max() if not personal.empty else 0)); h[3].metric("Max STL", int(personal['STL'].max() if not personal.empty else 0)); h[4].metric("Max BLK", int(personal['BLK'].max() if not personal.empty else 0))
+    
     st.markdown("---"); st.subheader("🕒 Recent Form")
     recent = personal.sort_values(['Season', 'Game_ID'], ascending=False).head(3)
     for _, g in recent.iterrows():
@@ -191,7 +198,6 @@ elif full_df is not None:
         st.header("📖 HALL OF FAME")
         hof_type = st.radio("Type", ["Players", "Teams"], key="hof_type_radio", horizontal=True)
         
-        # FEATURE: DETAILED MILESTONE ENGINE (Added proximity detection)
         st.subheader("🎯 Season Milestone Tracker")
         career_p = get_stats(df_reg[df_reg['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
         
@@ -221,7 +227,8 @@ elif full_df is not None:
         if ms_data:
             ms_df = pd.DataFrame(ms_data).sort_values(["Goal", "Current"], ascending=[False, False])
             st.dataframe(ms_df, use_container_width=True, hide_index=True)
-        else: st.info("No players near milestones yet.")
+        else:
+            st.info("No players near milestones yet.")
         
         st.divider()
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO']
@@ -250,8 +257,9 @@ elif full_df is not None:
         st.header("🔐 THE VAULT")
         if st.text_input("Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
-            # FEATURE: EXPANDED SEASON TOTALS (As requested)
-            st.subheader("📊 Complete Season Totals")
+            
+            # SEAMLESS FEATURE INTEGRATION: Season Totals table with requested columns
+            st.subheader("📊 Season Totals")
             vault_cols = ['Total_PTS', 'Total_REB', 'Total_AST', 'Total_STL', 'Total_BLK', 'Total_3PM', 'Total_Win', 'Total_DD', 'Total_TD', 'Total_TO', 'Total_FGM', 'Total_Poss']
             st.dataframe(p_stats[vault_cols].sort_values('Total_PTS', ascending=False), width="stretch")
             
@@ -277,5 +285,18 @@ elif full_df is not None:
                     if l3_avg > avg_pts * 1.20: streaks.append({"Entity": player, "Status": "🔥 HOT", "Trend": f"+{round(l3_avg - avg_pts, 1)} PPG"})
                     elif l3_avg < avg_pts * 0.80: streaks.append({"Entity": player, "Status": "❄️ COLD", "Trend": f"{round(l3_avg - avg_pts, 1)} PPG"})
             if streaks: st.table(pd.DataFrame(streaks))
+
+    # FOOTER
+    st.markdown("---")
+    st.subheader(f"📊 LEAGUE AVERAGES ({sel_box})")
+    la1, la2 = st.columns(2)
+    p_avg = p_stats[['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%']].mean()
+    t_avg = t_stats[['PTS/G', 'REB/G', 'AST/G', 'OffRtg', 'DefRtg']].mean()
+    with la1:
+        st.markdown("**👤 Player Averages**")
+        st.write(f"PPG: {p_avg['PTS/G']:.1f} | RPG: {p_avg['REB/G']:.1f} | APG: {p_avg['AST/G']:.1f} | FG%: {p_avg['FG%']:.1f}%")
+    with la2:
+        st.markdown("**🏘️ Team Averages**")
+        st.write(f"PPG: {t_avg['PTS/G']:.1f} | OffRtg: {t_avg['OffRtg']:.1f} | DefRtg: {t_avg['DefRtg']:.1f}")
 
     st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
