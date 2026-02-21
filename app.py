@@ -67,8 +67,6 @@ full_df = load_data()
 # 3. STATS LOGIC
 def get_stats(dataframe, group):
     if dataframe.empty: return pd.DataFrame()
-    
-    # EXTRA SAFETY: Remove "TOTAL" name rows
     dataframe = dataframe[dataframe[group].astype(str).str.upper() != 'TOTAL']
     
     total_gp = dataframe.groupby(group).size().reset_index(name='GP')
@@ -135,9 +133,8 @@ elif full_df is not None:
     if not p_stats.empty:
         t_min = p_stats['GP'].max() * 0.4
         t_df = p_stats[p_stats['GP'] >= t_min]
-        if not t_df.empty:
-            leads = [f"🔥 {c}: {t_df.nlargest(1, f'{c}/G').index[0]} ({t_df.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK']]
-            st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
+        leads = [f"🔥 {c}: {t_df.nlargest(1, f'{c}/G').index[0]} ({t_df.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK'] if not t_df.empty]
+        st.markdown(f'<div class="ticker-wrap"><div class="ticker-content"><span class="ticker-item">{" • ".join(leads)}</span></div></div>', unsafe_allow_html=True)
     
     st.markdown(f'<div class="header-banner">🏀 SPAM HUB - {sel_box.upper()}</div>', unsafe_allow_html=True)
 
@@ -148,7 +145,7 @@ elif full_df is not None:
         sel_p = st.dataframe(p_disp, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_p.selection.rows) > 0: show_card(p_disp.index[sel_p.selection.rows[0]], p_stats, df_reg, True)
 
-    with tabs[1]: 
+    with tabs[1]: # RESTORED STANDINGS
         if not t_stats.empty:
             t_stats['Record'] = t_stats['Total_Win'].astype(str) + "-" + (t_stats['GP'] - t_stats['Total_Win']).astype(str)
             t_disp = t_stats.sort_values('Total_Win', ascending=False)[['Record', 'GP', 'PTS/G', 'AST/G', 'REB/G', 'Total_PTS', 'Total_AST', 'Total_REB', 'OffRtg', 'DefRtg', 'PIE']]
@@ -161,54 +158,55 @@ elif full_df is not None:
             t10 = p_stats[p_stats['GP'] >= (p_stats['GP'].max() * 0.4)].nlargest(10, l_cat)
             st.dataframe(t10[[l_cat, 'GP', 'FG%', 'TS%', 'FGA/G', '3PA/G', 'TO/G']], width="stretch")
 
+    with tabs[3]: # RESTORED VERSUS TAB
+        v_mode = st.radio("Comparison Mode", ["Player vs Player", "Team vs Team"], horizontal=True)
+        v1, mid, v2 = st.columns([2, 1, 2])
+        if v_mode == "Player vs Player" and not p_stats.empty:
+            p1 = v1.selectbox("P1", p_stats.index, index=0); p2 = v2.selectbox("P2", p_stats.index, index=min(1, len(p_stats)-1))
+            d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
+            metrics = [('PPG', 'PTS/G'), ('RPG', 'REB/G'), ('APG', 'AST/G'), ('SPG', 'STL/G'), ('BPG', 'BLK/G'), ('PIE', 'PIE'), ('FG%', 'FG%'), ('TS%', 'TS%'), ('DD', 'Total_DD'), ('TD', 'Total_TD')]
+            avg_df = p_stats[[m[1] for m in metrics]].mean()
+        elif not t_stats.empty:
+            p1 = v1.selectbox("T1", t_stats.index, index=0); p2 = v2.selectbox("T2", t_stats.index, index=min(1, len(t_stats)-1))
+            d1, d2 = t_stats.loc[p1], t_stats.loc[p2]
+            metrics = [('PPG', 'PTS/G'), ('RPG', 'REB/G'), ('APG', 'AST/G'), ('OffRtg', 'OffRtg'), ('DefRtg', 'DefRtg'), ('PIE', 'PIE')]
+            avg_df = t_stats[[m[1] for m in metrics]].mean()
+            
+        for label, col in metrics:
+            c1, cm, c2 = st.columns([2, 1, 2])
+            c1.metric(f"{p1}", d1[col], round(d1[col]-d2[col], 2))
+            cm.markdown(f"<div style='text-align:center; color:#d4af37; border-bottom: 1px solid #333;'><strong>{label}</strong><br>{avg_df[col]:.1f}</div>", unsafe_allow_html=True)
+            c2.metric(f"{p2}", d2[col], round(d2[col]-d1[col], 2))
+
     with tabs[4]: 
         st.header("🏆 POSTSEASON BRACKETOLOGY")
         p_mode = st.radio("Bracket", ["Playoffs (9000s)", "Tournament (8000s)"], horizontal=True)
         p_start = 9000 if "Playoffs" in p_mode else 8000
         p_data = df_active[(df_active['Game_ID'] >= p_start) & (df_active['Game_ID'] < p_start + 1000)]
-        
-        if p_data.empty: st.info(f"No {p_mode} data found.")
+        if p_data.empty: st.info("No data found.")
         else:
             ps_stats = get_stats(p_data[p_data['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
-            st.subheader(f"{p_mode} Player Analytics")
-            st.dataframe(ps_stats[[
-                'PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', '3PM/G', '3PA/G', 
-                'FTM/G', 'FTA/G', 'Poss_Raw/G', 'FGA/G', 'FGM/G', 'PIE_Raw/G',
-                'FG%', 'TS%', 'PPS', 'OffRtg', 'DefRtg', 'PIE', 'Poss/G'
-            ]].sort_values('PIE', ascending=False), width="stretch")
-            
-            st.divider()
-            st.subheader(f"🔥 {p_mode} All-Time Highs")
-            ph_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK']
-            ph_grid = st.columns(5)
-            for i, col in enumerate(ph_cols):
-                val = p_data[col].max(); row = p_data.loc[p_data[col].idxmax()]
-                ph_grid[i].metric(f"Record {col}", f"{int(val)}", f"by {row['Player/Team']}")
+            st.dataframe(ps_stats[['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%', 'TS%', 'PIE']].sort_values('PIE', ascending=False), width="stretch")
 
-    with tabs[5]: 
+    with tabs[5]: # RESTORED HALL OF FAME TEAM TAB
         st.header("📖 HALL OF FAME")
-        st.subheader("🌟 All-Time Highs (Single Game)")
+        hof_sel = st.radio("Highs View", ["Players", "Teams"], horizontal=True)
+        type_str = hof_sel[:-1].lower()
+        valid_hof = full_df[(full_df['Type'].str.lower() == type_str) & (full_df['is_ff'] == False)]
+        
+        st.subheader(f"🌟 All-Time {hof_sel} Highs (Single Game)")
         h_grid = st.columns(4)
         for i, col in enumerate(['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO', 'FGM']):
-            val = full_df[col].max(); row = full_df.loc[full_df[col].idxmax()]
-            h_grid[i%4].metric(f"All-Time {col}", f"{int(val)}", f"by {row['Player/Team']}")
+            val = valid_hof[col].max(); row = valid_hof.loc[valid_hof[col].idxmax()]
+            h_grid[i%4].metric(f"Record {col}", f"{int(val)}", f"by {row['Player/Team' if hof_sel=='Players' else 'Team Name']}")
         
-        st.divider()
-        st.subheader(f"📅 {sel_box} Highs (Single Game)")
-        # Filter for the currently active scope (Season X or Career)
-        s_grid = st.columns(4)
-        for i, col in enumerate(['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO', 'FGM']):
-            val_s = df_active[col].max(); row_s = df_active.loc[df_active[col].idxmax()]
-            s_grid[i%4].metric(f"{sel_box} {col}", f"{int(val_s)}", f"by {row_s['Player/Team']}")
-
-        st.divider(); st.subheader("🎯 Milestone Tracker")
-        inc = {"Total_PTS": 250, "Total_AST": 100, "Total_REB": 150, "Total_STL": 25, "Total_BLK": 10, "Total_Win": 100, "Total_DD": 10, "Total_TD": 10, "Total_3PM": 50}
+        st.divider(); st.subheader("🎯 Career Milestone Tracker")
+        inc = {"Total_PTS": 250, "Total_AST": 100, "Total_REB": 150, "Total_STL": 25, "Total_BLK": 10, "Total_Win": 100}
         m_sel = st.selectbox("Category", list(inc.keys()))
         career_p_ms = get_stats(full_df[full_df['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
-        ms_view = career_p_ms[career_p_ms[m_sel] >= inc[m_sel]].sort_values(m_sel, ascending=False)
-        st.table(ms_view[[m_sel]])
+        st.table(career_p_ms[career_p_ms[m_sel] >= inc[m_sel]].sort_values(m_sel, ascending=False)[[m_sel]])
 
-    with tabs[6]: 
+    with tabs[6]: # RESTORED ADV ANALYTICS
         if st.text_input("Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
             adv = p_stats[p_stats['Played_GP'] > 0].reset_index().copy()
