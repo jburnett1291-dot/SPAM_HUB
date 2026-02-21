@@ -28,7 +28,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. BULLETPROOF DATA ENGINE
+# 2. DATA ENGINE
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
@@ -42,11 +42,10 @@ def load_data():
             if c not in df.columns: df[c] = 0
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         
-        # Clean out generic aggregate rows from source
+        # Prevent "TOTAL" rows from skewing individual analytics
         df = df[~df['Player/Team'].astype(str).str.upper().str.contains('TOTAL')]
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
         
-        # Pre-calc game level metrics
         df['PIE_Raw'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss_Raw'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
         df['FG%_Raw'] = (df['FGM'] / df['FGA'].replace(0,1) * 100).round(1)
@@ -84,8 +83,7 @@ def get_stats(dataframe, group):
     m['PIE'] = m['PIE_Raw/G']
     m['Poss/G'] = m['Poss_Raw/G']
     
-    if 'Total_Win' in m.columns:
-        m['Record'] = m['Total_Win'].astype(str) + "-" + (m['GP'] - m['Total_Win']).astype(str)
+    m['Record'] = m['Total_Win'].astype(str) + "-" + (m['GP'] - m['Total_Win']).astype(str)
     return m
 
 # 5. APP CONTENT
@@ -100,7 +98,7 @@ elif full_df is not None:
     p_stats = get_stats(df_reg[df_reg['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
     t_stats = get_stats(df_reg[df_reg['Type'].str.lower() == 'team'], 'Team Name').set_index('Team Name')
 
-    # Ticker qualification
+    # Ticker
     if not p_stats.empty:
         t_df = p_stats[p_stats['GP'] >= (p_stats['GP'].max() * 0.4)]
         leads = [f"🔥 {c}: {t_df.nlargest(1, f'{c}/G').index[0]} ({t_df.nlargest(1, f'{c}/G').iloc[0][f'{c}/G']})" for c in ['PTS', 'AST', 'REB', 'STL', 'BLK'] if not t_df.empty]
@@ -110,22 +108,27 @@ elif full_df is not None:
 
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "🏆 POSTSEASON", "📖 HALL OF FAME", "🔐 THE VAULT"])
 
-    with tabs[1]: # STANDINGS (FIXED ERROR)
+    with tabs[1]: # STANDINGS
         if not t_stats.empty:
-            st.dataframe(t_stats[['Record', 'GP', 'PTS/G', 'AST/G', 'REB/G', 'Total_PTS', 'Total_AST', 'Total_REB', 'OffRtg', 'DefRtg', 'PIE']].sort_values('Total_Win', ascending=False), width="stretch")
+            cols = ['Record', 'GP', 'PTS/G', 'AST/G', 'REB/G', 'Total_PTS', 'Total_AST', 'Total_REB', 'OffRtg', 'DefRtg', 'PIE']
+            # Re-ensure columns exist just in case
+            display_cols = [c for c in cols if c in t_stats.columns]
+            st.dataframe(t_stats[display_cols].sort_values('Total_Win', ascending=False), width="stretch")
 
-    with tabs[4]: # POSTSEASON (COLUMNS MATCHED TO IMAGES)
+    with tabs[4]: # POSTSEASON
         p_mode = st.radio("Bracket", ["Playoffs (9000s)", "Tournament (8000s)"], horizontal=True)
         p_start = 9000 if "Playoffs" in p_mode else 8000
         p_data = df_active[(df_active['Game_ID'] >= p_start) & (df_active['Game_ID'] < p_start + 1000)]
         if p_data.empty: st.info("No Postseason data found.")
         else:
             ps_p = get_stats(p_data[p_data['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
-            # Custom columns for postseason per image requests
-            cols = ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', '3PM/G', '3PA/G', 'FTM/G', 'FTA/G', 'Poss_Raw/G', 'FGA/G', 'FGM/G', 'PIE_Raw/G', 'FG%', 'TS%', 'PPS', 'OffRtg', 'DefRtg', 'PIE', 'Poss/G']
-            st.dataframe(ps_p[cols].sort_values('PIE', ascending=False), width="stretch")
+            # Custom column selection per user images
+            target_cols = ['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', '3PM/G', '3PA/G', 'FTM/G', 'FTA/G', 'Poss_Raw/G', 'FGA/G', 'FGM/G', 'PIE_Raw/G', 'FG%', 'TS%', 'PPS', 'OffRtg', 'DefRtg', 'PIE', 'Poss/G']
+            # Ensure only existing columns are selected
+            final_cols = [c for c in target_cols if c in ps_p.columns]
+            st.dataframe(ps_p[final_cols].sort_values('PIE', ascending=False), width="stretch")
 
-    with tabs[5]: # HALL OF FAME (RESTORED TEAM VIEW)
+    with tabs[5]: # HALL OF FAME
         st.header("📖 HALL OF FAME")
         hof_type = st.radio("Highs For:", ["Players", "Teams"], horizontal=True)
         type_key = hof_type[:-1].lower()
@@ -135,15 +138,18 @@ elif full_df is not None:
             h_grid = st.columns(4)
             for i, col in enumerate(['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO', 'FGM']):
                 val = valid_hof[col].max()
-                row = valid_hof.loc[valid_hof[col].idxmax()]
-                h_grid[i%4].metric(f"{col} Record", f"{int(val)}", f"by {row['Player/Team' if hof_type == 'Players' else 'Team Name']}")
+                if not pd.isna(val):
+                    row = valid_hof.loc[valid_hof[col].idxmax()]
+                    h_grid[i%4].metric(f"{col} Record", f"{int(val)}", f"by {row['Player/Team' if hof_type == 'Players' else 'Team Name']}")
+        else: st.warning("No data found for records.")
 
-    with tabs[6]: # THE VAULT (RESTORED ADVANCED)
+    with tabs[6]: # THE VAULT
         if st.text_input("Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
             adv = p_stats[p_stats['Played_GP'] > 0].reset_index().copy()
             if not adv.empty:
                 v_view = st.selectbox("Analytics View", ["Vol vs Eff", "Eff Hub", "Poss Control", "Off vs Def"])
+                # Map columns specifically for scatter plots based on images
                 ap = adv.rename(columns={'FGA/G': 'FGA_G', 'PTS/G': 'PTS_G', 'Poss/G': 'Poss_G', 'TO/G': 'TO_G'})
                 if v_view == "Vol vs Eff": fig = px.scatter(ap, x='FGA_G', y='PTS_G', size='PIE', color='Player/Team', template="plotly_dark")
                 elif v_view == "Eff Hub": fig = px.scatter(ap, x='PPS', y='TS%', size='PTS_G', color='Player/Team', template="plotly_dark")
