@@ -69,15 +69,15 @@ def get_stats(dataframe, group):
     m = pd.merge(sums, total_gp, on=group)
     m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
     
-    # Career/Season Totals (Performance Enhancement)
+    # Store the total counts (Kept for enhancements)
+    m['Total_DD'] = m['DD'].astype(int)
+    m['Total_TD'] = m['TD'].astype(int)
     m['Total_PTS'] = m['PTS'].astype(int)
     m['Total_REB'] = m['REB'].astype(int)
     m['Total_AST'] = m['AST'].astype(int)
     m['Total_STL'] = m['STL'].astype(int)
     m['Total_BLK'] = m['BLK'].astype(int)
     m['Total_Win'] = m['Win'].astype(int)
-    m['Total_DD'] = m['DD'].astype(int)
-    m['Total_TD'] = m['TD'].astype(int)
     
     divisor = m['Played_GP'].replace(0, 1)
     for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Poss_Raw', 'FGA', 'FGM', 'PIE_Raw', 'DD', 'TD']:
@@ -91,28 +91,22 @@ def get_stats(dataframe, group):
     m['Poss/G'] = m['Poss_Raw/G']
     return m
 
-# 4. DIALOG CARDS (ENHANCED)
+# 4. DIALOG CARDS (ENHANCED WITH TOTALS)
 @st.dialog("🏀 SCOUTING REPORT", width="large")
 def show_card(name, stats_df, raw_df, is_player=True):
     row = stats_df.loc[name]
     st.title(f"{'👤' if is_player else '🏘️'} {name}")
     
+    # PER GAME ROW
     st.subheader("📈 Per Game Averages")
     c = st.columns(5)
     c[0].metric("PPG", row['PTS/G']); c[1].metric("RPG", row['REB/G']); c[2].metric("APG", row['AST/G']); c[3].metric("SPG", row['STL/G']); c[4].metric("BPG", row['BLK/G'])
     
-    st.markdown("---")
-    st.subheader("📊 Cumulative Totals")
+    # TOTALS ROW (ENHANCEMENT)
+    st.subheader("📊 Career/Season Totals")
     t = st.columns(5)
     t[0].metric("Total PTS", row['Total_PTS']); t[1].metric("Total REB", row['Total_REB']); t[2].metric("Total AST", row['Total_AST']); t[3].metric("Total STL", row['Total_STL']); t[4].metric("Total BLK", row['Total_BLK'])
     
-    st.write("")
-    xtra = st.columns(3)
-    xtra[0].metric("Wins", row['Total_Win'])
-    if is_player:
-        xtra[1].metric("Double-Doubles", row['Total_DD'])
-        xtra[2].metric("Triple-Doubles", row['Total_TD'])
-
     st.markdown("---"); st.subheader("🏆 Season Highs")
     s_col = 'Player/Team' if is_player else 'Team Name'
     personal = raw_df[(raw_df[s_col] == name) & (raw_df['Type'].str.lower() == ('player' if is_player else 'team'))]
@@ -150,7 +144,7 @@ elif full_df is not None:
     tabs = st.tabs(["👤 PLAYERS", "🏘️ STANDINGS", "🔝 LEADERS", "⚔️ VERSUS", "🏆 POSTSEASON", "📖 HALL OF FAME", "🔐 THE VAULT"])
 
     with tabs[0]:
-        p_disp = p_stats[['GP', 'PTS/G', 'AST/G', 'REB/G', 'PIE', 'FG%', 'Total_DD', 'Total_TD', 'Total_PTS', 'Total_REB', 'Total_AST']].sort_values('PIE', ascending=False)
+        p_disp = p_stats[['GP', 'PTS/G', 'AST/G', 'REB/G', '3PM/G', 'FG%', 'PIE', 'Total_DD', 'Total_TD', 'Total_PTS', 'Total_REB', 'Total_AST']].sort_values('PIE', ascending=False)
         sel_p = st.dataframe(p_disp, width="stretch", on_select="rerun", selection_mode="single-row")
         if len(sel_p.selection.rows) > 0: show_card(p_disp.index[sel_p.selection.rows[0]], p_stats, df_reg, True)
 
@@ -170,11 +164,11 @@ elif full_df is not None:
         v1, mid, v2 = st.columns([2, 1, 2])
         if v_mode == "Player vs Player":
             p1 = v1.selectbox("P1", p_stats.index, index=0); p2 = v2.selectbox("P2", p_stats.index, index=min(1, len(p_stats)-1)); d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
-            metrics = [('PPG', 'PTS/G'), ('APG', 'AST/G'), ('RPG', 'REB/G'), ('PIE', 'PIE'), ('FG%', 'FG%'), ('Total DD', 'Total_DD'), ('Total TD', 'Total_TD')]
+            metrics = [('PPG', 'PTS/G'), ('APG', 'AST/G'), ('RPG', 'REB/G'), ('3PM/G', '3PM/G'), ('3PA/G', '3PA/G'), ('FGM/G', 'FGM/G'), ('FGA/G', 'FGA/G'), ('TO/G', 'TO/G'), ('PIE', 'PIE'), ('FG%', 'FG%'), ('Total DD', 'Total_DD'), ('Total TD', 'Total_TD')]
             avg_df = p_stats[[m[1] for m in metrics]].mean()
         else:
             p1 = v1.selectbox("T1", t_stats.index, index=0); p2 = v2.selectbox("T2", t_stats.index, index=min(1, len(t_stats)-1)); d1, d2 = t_stats.loc[p1], t_stats.loc[p2]
-            metrics = [('PPG', 'PTS/G'), ('APG', 'AST/G'), ('RPG', 'REB/G'), ('OffRtg', 'OffRtg'), ('DefRtg', 'DefRtg'), ('PIE', 'PIE')]
+            metrics = [('PPG', 'PTS/G'), ('APG', 'AST/G'), ('RPG', 'REB/G'), ('3PM/G', '3PM/G'), ('3PA/G', '3PA/G'), ('FGM/G', 'FGM/G'), ('FGA/G', 'FGA/G'), ('TO/G', 'TO/G'), ('PIE', 'PIE'), ('FG%', 'FG%'), ('DefRtg', 'DefRtg'), ('OffRtg', 'OffRtg')]
             avg_df = t_stats[[m[1] for m in metrics]].mean()
             
         for label, col in metrics:
@@ -243,17 +237,5 @@ elif full_df is not None:
                     if l3_avg > avg_pts * 1.20: streaks.append({"Entity": player, "Status": "🔥 HOT", "Trend": f"+{round(l3_avg - avg_pts, 1)} PPG"})
                     elif l3_avg < avg_pts * 0.80: streaks.append({"Entity": player, "Status": "❄️ COLD", "Trend": f"{round(l3_avg - avg_pts, 1)} PPG"})
             if streaks: st.table(pd.DataFrame(streaks))
-
-    st.markdown("---")
-    st.subheader(f"📊 LEAGUE AVERAGES ({sel_box})")
-    la1, la2 = st.columns(2)
-    p_avg = p_stats[['PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'FG%']].mean()
-    t_avg = t_stats[['PTS/G', 'REB/G', 'AST/G', 'OffRtg', 'DefRtg']].mean()
-    with la1:
-        st.markdown("**👤 Player Averages**")
-        st.write(f"PPG: {p_avg['PTS/G']:.1f} | RPG: {p_avg['REB/G']:.1f} | APG: {p_avg['AST/G']:.1f} | FG%: {p_avg['FG%']:.1f}%")
-    with la2:
-        st.markdown("**🏘️ Team Averages**")
-        st.write(f"PPG: {t_avg['PTS/G']:.1f} | OffRtg: {t_avg['OffRtg']:.1f} | DefRtg: {t_avg['DefRtg']:.1f}")
 
     st.markdown('<div style="text-align: center; color: #444; padding: 30px;">© 2026 SPAM LEAGUE HUB</div>', unsafe_allow_html=True)
