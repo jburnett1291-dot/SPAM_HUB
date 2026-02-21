@@ -62,6 +62,9 @@ full_df = load_data()
 # 3. STATS LOGIC
 def get_stats(dataframe, group):
     if dataframe.empty: return pd.DataFrame()
+    # FIX: Filter out "Total" rows so they don't appear as leaders
+    dataframe = dataframe[~dataframe[group].astype(str).str.lower().str.contains('total')]
+    
     total_gp = dataframe.groupby(group).size().reset_index(name='GP')
     played_df = dataframe[dataframe['is_ff'] == False]
     played_gp = played_df.groupby(group).size().reset_index(name='Played_GP')
@@ -70,7 +73,7 @@ def get_stats(dataframe, group):
     m = pd.merge(sums, total_gp, on=group)
     m = pd.merge(m, played_gp, on=group, how='left').fillna(0)
     
-    # Store the total counts before calculating averages
+    # Totals for Milestones & Vault
     m['Total_PTS'] = m['PTS'].astype(int)
     m['Total_REB'] = m['REB'].astype(int)
     m['Total_AST'] = m['AST'].astype(int)
@@ -153,7 +156,6 @@ elif full_df is not None:
         if len(sel_t.selection.rows) > 0: show_card(t_disp.index[sel_t.selection.rows[0]], t_stats, df_reg, False)
 
     with tabs[2]:
-        # LEADERS FILTER: 40% of GP Leader
         gp_max = p_stats['GP'].max()
         min_gp = gp_max * 0.4
         st.caption(f"Note: Leaders must have played at least {min_gp:.1f} games (40% of {gp_max})")
@@ -163,25 +165,6 @@ elif full_df is not None:
         t10 = filtered_p.nlargest(10, l_cat)[[l_cat, 'GP', 'FG%', 'TS%', 'FGA/G', '3PA/G', 'TO/G']]
         st.dataframe(t10, width="stretch"); st.plotly_chart(px.bar(t10, x=l_cat, y=t10.index, orientation='h', template="plotly_dark", color_discrete_sequence=['#d4af37']), width="stretch")
 
-    with tabs[3]:
-        v_mode = st.radio("Comparison Mode", ["Player vs Player", "Team vs Team"], horizontal=True)
-        v1, mid, v2 = st.columns([2, 1, 2])
-        if v_mode == "Player vs Player":
-            p1 = v1.selectbox("P1", p_stats.index, index=0); p2 = v2.selectbox("P2", p_stats.index, index=min(1, len(p_stats)-1)); d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
-            metrics = [('PPG', 'PTS/G'), ('APG', 'AST/G'), ('RPG', 'REB/G'), ('PIE', 'PIE'), ('FG%', 'FG%'), ('Season Pts', 'Total_PTS')]
-            avg_df = p_stats[[m[1] for m in metrics]].mean()
-        else:
-            p1 = v1.selectbox("T1", t_stats.index, index=0); p2 = v2.selectbox("T2", t_stats.index, index=min(1, len(t_stats)-1)); d1, d2 = t_stats.loc[p1], t_stats.loc[p2]
-            metrics = [('PPG', 'PTS/G'), ('APG', 'AST/G'), ('OffRtg', 'OffRtg'), ('DefRtg', 'DefRtg'), ('PIE', 'PIE')]
-            avg_df = t_stats[[m[1] for m in metrics]].mean()
-            
-        for label, col in metrics:
-            c1, cm, c2 = st.columns([2, 1, 2])
-            val1, val2 = d1[col], d2[col]
-            c1.metric(f"{p1}", val1, round(val1-val2, 2))
-            cm.markdown(f"<div style='text-align:center; color:#d4af37; border-bottom: 1px solid #333;'><strong>{label}</strong><br>{avg_df[col]:.1f}<br><small style='color:#666'>AVG</small></div>", unsafe_allow_html=True)
-            c2.metric(f"{p2}", val2, round(val2-val1, 2))
-
     with tabs[4]:
         st.header("🏆 POSTSEASON BRACKETOLOGY")
         post_mode = st.radio("Mode", ["Playoffs (9k)", "Tournament (8k)"], horizontal=True)
@@ -190,10 +173,16 @@ elif full_df is not None:
         
         if post_df.empty: st.info(f"No {post_mode} data found.")
         else:
-            # ALL STATS in Playoff Tab
             ps_stats = get_stats(post_df[post_df['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
             st.subheader(f"{post_mode} Player Analytics")
-            st.dataframe(ps_stats.sort_values('PIE', ascending=False), width="stretch")
+            
+            # Postseason columns adjusted to match attached requirements
+            ps_disp = ps_stats[[
+                'PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'TO/G', '3PM/G', '3PA/G', 
+                'FTM/G', 'FTA/G', 'Poss_Raw/G', 'FGA/G', 'FGM/G', 'PIE_Raw/G',
+                'FG%', 'TS%', 'PPS', 'OffRtg', 'DefRtg', 'PIE', 'Poss/G'
+            ]].sort_values('PIE', ascending=False)
+            st.dataframe(ps_disp, width="stretch")
             
             st.divider()
             st.subheader("🔥 Postseason All-Time Highs")
@@ -214,13 +203,11 @@ elif full_df is not None:
                 grid_all[i%4].metric(f"All-Time {col}", f"{int(val)}", f"by {row['Player/Team']}")
         
         st.divider()
-        st.subheader("🎯 Milestone Tracker (Increments)")
+        st.subheader("🎯 Milestone Tracker")
         inc = {"Total_PTS": 250, "Total_AST": 100, "Total_REB": 150, "Total_STL": 25, "Total_BLK": 10, "Total_Win": 100, "Total_TD": 10, "Total_DD": 10, "Total_3PM": 50, "Total_FGM": 100}
-        
         career_p_ms = get_stats(full_df[full_df['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
-        m_sel = st.selectbox("Milestone Category", list(inc.keys()))
+        m_sel = st.selectbox("Category", list(inc.keys()))
         val_inc = inc[m_sel]
-        
         career_p_ms['Level'] = (career_p_ms[m_sel] // val_inc) * val_inc
         ms_view = career_p_ms[career_p_ms[m_sel] >= val_inc].sort_values(m_sel, ascending=False)
         st.table(ms_view[[m_sel, 'Level']])
@@ -229,14 +216,13 @@ elif full_df is not None:
         st.header("🔐 THE VAULT")
         if st.text_input("Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
-            # Added Season Total Stats to Vault
-            st.markdown("### 📊 Season Total Leaderboard")
-            st.dataframe(p_stats[['Total_PTS', 'Total_REB', 'Total_AST', 'Total_STL', 'Total_BLK', 'Total_3PM', 'Total_FGM', 'Total_Win', 'Total_DD', 'Total_TD']].sort_values('Total_PTS', ascending=False), width="stretch")
             
-            st.divider()
+            # ADVANCED SEASON METRICS RESTORED
             adv = p_stats[p_stats['Played_GP'] > 0].reset_index().copy()
             if not adv.empty:
                 st.markdown("### 📊 Advanced Analytics Scatter")
+                st.dataframe(adv[['Player/Team', 'Poss/G', 'PPS', 'TS%', 'FGM/G', 'FGA/G', '3PM/G', '3PA/G', 'OffRtg', 'DefRtg', 'PIE']].sort_values('OffRtg', ascending=False), width="stretch", hide_index=True)
+                
                 v_view = st.selectbox("View", ["Vol vs Eff", "Eff Hub", "Poss Control", "Splits", "Off vs Def"])
                 ap = adv.rename(columns={'FGA/G': 'FGA_G', 'PTS/G': 'PTS_G', 'Poss/G': 'Poss_G', 'TO/G': 'TO_G', 'FGM/G': 'FGM_G', '3PM/G': '3PM_G'})
                 if v_view == "Vol vs Eff": fig = px.scatter(ap, x='FGA_G', y='PTS_G', size='PIE', color='Player/Team', template="plotly_dark")
@@ -245,7 +231,7 @@ elif full_df is not None:
                 elif v_view == "Splits": fig = px.scatter(ap, x='FGM_G', y='3PM_G', size='PTS_G', color='Player/Team', template="plotly_dark")
                 elif v_view == "Off vs Def": fig = px.scatter(ap, x='OffRtg', y='DefRtg', size='PIE', color='Player/Team', template="plotly_dark"); fig.update_yaxes(autorange="reversed")
                 st.plotly_chart(fig, use_container_width=True)
-            
+
             st.divider()
             st.subheader("🔥/❄️ Momentum Tracker")
             streaks = []
