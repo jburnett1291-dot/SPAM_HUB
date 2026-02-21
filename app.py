@@ -77,6 +77,7 @@ def get_stats(dataframe, group):
     m['Total_STL'] = m['STL'].astype(int)
     m['Total_BLK'] = m['BLK'].astype(int)
     m['Total_Win'] = m['Win'].astype(int)
+    m['Total_3PM'] = m['3PM'].astype(int)
     
     divisor = m['Played_GP'].replace(0, 1)
     for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FTM', 'FTA', 'Poss_Raw', 'FGA', 'FGM', 'PIE_Raw', 'DD', 'TD']:
@@ -96,11 +97,9 @@ def show_card(name, stats_df, raw_df, is_player=True):
     row = stats_df.loc[name]
     st.title(f"{'👤' if is_player else '🏘️'} {name}")
     
-    # PER GAME STATS
     st.subheader("📈 Per Game Averages")
     c = st.columns(5); c[0].metric("PPG", row['PTS/G']); c[1].metric("RPG", row['REB/G']); c[2].metric("APG", row['AST/G']); c[3].metric("SPG", row['STL/G']); c[4].metric("BPG", row['BLK/G'])
     
-    # CUMULATIVE TOTALS
     st.subheader("📊 Season Totals")
     t = st.columns(5); t[0].metric("Total PTS", row['Total_PTS']); t[1].metric("Total REB", row['Total_REB']); t[2].metric("Total AST", row['Total_AST']); t[3].metric("Total STL", row['Total_STL']); t[4].metric("Total BLK", row['Total_BLK'])
     
@@ -195,12 +194,39 @@ elif full_df is not None:
     with tabs[5]:
         st.header("📖 HALL OF FAME")
         hof_type = st.radio("Type", ["Players", "Teams"], key="hof_type_radio", horizontal=True)
-        st.subheader("🎯 Milestone Tracker")
-        career_p = get_stats(full_df[full_df['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
-        m1, m2, m3 = st.columns(3)
-        m1.metric("1000 PT Club", len(career_p[career_p['Total_PTS'] >= 1000]))
-        m2.metric("300 REB Club", len(career_p[career_p['Total_REB'] >= 300]))
-        m3.metric("200 AST Club", len(career_p[career_p['Total_AST'] >= 200]))
+        
+        # FEATURE: NEW MILESTONE TRACKER
+        st.subheader("🎯 Season Milestone Tracker")
+        career_p = get_stats(df_reg[df_reg['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
+        
+        milestones = {
+            "Total_PTS": [125, 275, 400, 650],
+            "Total_REB": [60, 100, 200],
+            "Total_AST": [50, 125, 300],
+            "Total_STL": [10, 30, 50],
+            "Total_BLK": [5, 10, 30],
+            "Total_3PM": [75, 150, 300]
+        }
+        
+        m_col = st.selectbox("Select Stat Category", list(milestones.keys()), format_func=lambda x: x.replace("Total_", ""))
+        thresholds = milestones[m_col]
+        
+        ms_data = []
+        for player, row in career_p.iterrows():
+            current_val = row[m_col]
+            for goal in thresholds:
+                if current_val >= goal:
+                    status = "✅ COMPLETED"
+                    ms_data.append({"Player": player, "Goal": goal, "Current": int(current_val), "Status": status})
+                elif current_val >= (goal * 0.85):
+                    status = "👀 CLOSE"
+                    ms_data.append({"Player": player, "Goal": goal, "Current": int(current_val), "Status": status})
+        
+        if ms_data:
+            ms_df = pd.DataFrame(ms_data).sort_values(["Goal", "Current"], ascending=[False, False])
+            st.dataframe(ms_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No players near milestones yet.")
         
         st.divider()
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO']
