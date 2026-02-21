@@ -103,7 +103,7 @@ def show_card(name, stats_df, raw_df, is_player=True):
     st.subheader("📈 Per Game Averages")
     c = st.columns(5); c[0].metric("PPG", row['PTS/G']); c[1].metric("RPG", row['REB/G']); c[2].metric("APG", row['AST/G']); c[3].metric("SPG", row['STL/G']); c[4].metric("BPG", row['BLK/G'])
     
-    st.subheader("📊 Season Totals")
+    st.subheader("📊 Totals (Selected View)")
     t = st.columns(5); t[0].metric("Total PTS", row['Total_PTS']); t[1].metric("Total REB", row['Total_REB']); t[2].metric("Total AST", row['Total_AST']); t[3].metric("Total STL", row['Total_STL']); t[4].metric("Total BLK", row['Total_BLK'])
     
     st.markdown("---"); st.subheader("🏆 Season Highs")
@@ -192,15 +192,16 @@ elif full_df is not None:
             ps_type = st.radio("Postseason View", ["Players", "Teams"], horizontal=True)
             col_id = 'Player/Team' if ps_type == "Players" else 'Team Name'
             ps_stats = get_stats(post_df[post_df['Type'].str.lower() == ps_type[:-1].lower()], col_id).set_index(col_id)
-            st.dataframe(ps_stats[['GP', 'PTS/G', 'REB/G', 'AST/G', 'STL/G', 'BLK/G', 'PIE', 'FG%', 'TS%']].sort_values('PIE', ascending=False), width="stretch")
+            # MIRRORED FORMAT: Added full stat format and row selection for cards
+            ps_disp = ps_stats[['GP', 'PTS/G', 'AST/G', 'REB/G', '3PM/G', '3PA/G', 'FGM/G', 'FGA/G', 'TO/G', 'PIE', 'FG%', 'Total_DD', 'Total_TD']].sort_values('PIE', ascending=False)
+            sel_ps = st.dataframe(ps_disp, width="stretch", on_select="rerun", selection_mode="single-row")
+            if len(sel_ps.selection.rows) > 0: show_card(ps_disp.index[sel_ps.selection.rows[0]], ps_stats, post_df, True if ps_type == "Players" else False)
 
     with tabs[5]:
         st.header("📖 HALL OF FAME")
         hof_type = st.radio("Type", ["Players", "Teams"], key="hof_type_radio", horizontal=True)
-        
         st.subheader("🎯 Season Milestone Tracker")
         career_p = get_stats(df_reg[df_reg['Type'].str.lower() == 'player'], 'Player/Team').set_index('Player/Team')
-        
         milestones = {
             "Total_PTS": [125, 275, 400, 650],
             "Total_REB": [60, 100, 200],
@@ -209,10 +210,8 @@ elif full_df is not None:
             "Total_BLK": [5, 10, 30],
             "Total_3PM": [75, 150, 300]
         }
-        
         m_col = st.selectbox("Select Stat Category", list(milestones.keys()), format_func=lambda x: x.replace("Total_", ""))
         thresholds = milestones[m_col]
-        
         ms_data = []
         for player, row in career_p.iterrows():
             current_val = row[m_col]
@@ -223,13 +222,10 @@ elif full_df is not None:
                 elif current_val >= (goal * 0.85):
                     status = "👀 CLOSE"
                     ms_data.append({"Player": player, "Goal": goal, "Current": int(current_val), "Status": status})
-        
         if ms_data:
             ms_df = pd.DataFrame(ms_data).sort_values(["Goal", "Current"], ascending=[False, False])
             st.dataframe(ms_df, use_container_width=True, hide_index=True)
-        else:
-            st.info("No players near milestones yet.")
-        
+        else: st.info("No players near milestones yet.")
         st.divider()
         h_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO']
         st.subheader("🌟 All-Time Highs (Single Game)")
@@ -239,7 +235,6 @@ elif full_df is not None:
             if not valid_games_all.empty:
                 val = valid_games_all[col].max(); best_row = valid_games_all.loc[valid_games_all[col].idxmax()]
                 grid_all[i%4].metric(f"All-Time: {col}", f"{int(val)}", f"by {best_row['Player/Team' if hof_type == 'Players' else 'Team Name']}")
-        
         st.divider(); st.subheader(f"📅 {sel_box} Highs (Single Game)")
         valid_games_season = df_active[(df_active['Type'].str.lower() == hof_type[:-1].lower()) & (df_active['is_ff'] == False)]
         grid_sea = st.columns(4)
@@ -247,7 +242,6 @@ elif full_df is not None:
             if not valid_games_season.empty:
                 val = valid_games_season[col].max(); best_row = valid_games_season.loc[valid_games_season[col].idxmax()]
                 grid_sea[i%4].metric(f"{sel_box}: {col}", f"{int(val)}", f"by {best_row['Player/Team' if hof_type == 'Players' else 'Team Name']}")
-        
         st.divider(); st.subheader("📈 All-Time Leaderboards")
         cat_hof = st.selectbox("Category", ['Total_PTS', 'Total_REB', 'Total_AST', 'Total_Win', 'Total_DD', 'Total_TD', 'GP'])
         career_df = get_stats(full_df[full_df['Type'].str.lower() == hof_type[:-1].lower()], 'Player/Team' if hof_type == "Players" else "Team Name")
@@ -257,12 +251,9 @@ elif full_df is not None:
         st.header("🔐 THE VAULT")
         if st.text_input("Passcode", type="password") == "SPAM2026":
             st.success("Access Granted.")
-            
-            # SEAMLESS FEATURE INTEGRATION: Season Totals table with requested columns
             st.subheader("📊 Season Totals")
             vault_cols = ['Total_PTS', 'Total_REB', 'Total_AST', 'Total_STL', 'Total_BLK', 'Total_3PM', 'Total_Win', 'Total_DD', 'Total_TD', 'Total_TO', 'Total_FGM', 'Total_Poss']
             st.dataframe(p_stats[vault_cols].sort_values('Total_PTS', ascending=False), width="stretch")
-            
             st.divider()
             adv = p_stats[p_stats['Played_GP'] > 0].reset_index().copy()
             if not adv.empty:
@@ -276,7 +267,6 @@ elif full_df is not None:
                 elif v_view == "Splits": fig = px.scatter(ap, x='FGM_G', y='3PM_G', size='PTS_G', color='Player/Team', template="plotly_dark")
                 elif v_view == "Off vs Def": fig = px.scatter(ap, x='OffRtg', y='DefRtg', size='PIE', color='Player/Team', template="plotly_dark"); fig.update_yaxes(autorange="reversed")
                 st.plotly_chart(fig, use_container_width=True)
-            
             st.divider(); streaks = []
             for player in p_stats.index:
                 p_games = df_reg[(df_reg['Player/Team'] == player) & (df_reg['is_ff'] == False)]
@@ -286,7 +276,6 @@ elif full_df is not None:
                     elif l3_avg < avg_pts * 0.80: streaks.append({"Entity": player, "Status": "❄️ COLD", "Trend": f"{round(l3_avg - avg_pts, 1)} PPG"})
             if streaks: st.table(pd.DataFrame(streaks))
 
-    # FOOTER
     st.markdown("---")
     st.subheader(f"📊 LEAGUE AVERAGES ({sel_box})")
     la1, la2 = st.columns(2)
