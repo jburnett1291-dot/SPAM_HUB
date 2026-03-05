@@ -148,14 +148,12 @@ elif full_df is not None:
 
     with tabs[0]:
         p_disp = p_stats[['GP', 'PTS/G', 'AST/G', 'REB/G', '3PM/G', '3PA/G', 'FGM/G', 'FGA/G', 'TO/G', 'PIE', 'FG%', 'Total_DD', 'Total_TD']].sort_values('PIE', ascending=False)
-        # FIX: Added unique key
         sel_p = st.dataframe(p_disp, width="stretch", on_select="rerun", selection_mode="single-row", key="main_player_df")
         if len(sel_p.selection.rows) > 0: show_card(p_disp.index[sel_p.selection.rows[0]], p_stats, df_reg, True)
 
     with tabs[1]:
         t_stats['Record'] = t_stats['Win'].astype(int).astype(str) + "-" + (t_stats['GP'] - t_stats['Win']).astype(int).astype(str)
         t_disp = t_stats.sort_values('Win', ascending=False)[['Record', 'PTS/G', 'AST/G', 'REB/G', '3PM/G', '3PA/G', 'FGM/G', 'FGA/G', 'TO/G', 'PIE', 'FG%', 'DefRtg', 'OffRtg']]
-        # FIX: Added unique key
         sel_t = st.dataframe(t_disp, width="stretch", on_select="rerun", selection_mode="single-row", key="main_team_df")
         if len(sel_t.selection.rows) > 0: show_card(t_disp.index[sel_t.selection.rows[0]], t_stats, df_reg, False)
 
@@ -172,7 +170,6 @@ elif full_df is not None:
         v_mode = st.radio("Comparison Mode", ["Player vs Player", "Team vs Team"], horizontal=True)
         v1, mid, v2 = st.columns([2, 1, 2])
         if v_mode == "Player vs Player" and not p_stats.empty:
-            # FIX: Added empty check before selectbox access
             p1 = v1.selectbox("P1", p_stats.index, index=0)
             p2 = v2.selectbox("P2", p_stats.index, index=min(1, len(p_stats)-1))
             d1, d2 = p_stats.loc[p1], p_stats.loc[p2]
@@ -207,7 +204,6 @@ elif full_df is not None:
             ps_stats = get_stats(post_df[post_df['Type'].str.lower() == ps_type[:-1].lower()], col_id).set_index(col_id)
             if not ps_stats.empty:
                 ps_disp = ps_stats[['GP', 'PTS/G', 'AST/G', 'REB/G', '3PM/G', '3PA/G', 'FGM/G', 'FGA/G', 'TO/G', 'PIE', 'FG%', 'Total_DD', 'Total_TD']].sort_values('PIE', ascending=False)
-                # FIX: Added unique key
                 sel_ps = st.dataframe(ps_disp, width="stretch", on_select="rerun", selection_mode="single-row", key="postseason_df")
                 if len(sel_ps.selection.rows) > 0: show_card(ps_disp.index[sel_ps.selection.rows[0]], ps_stats, post_df, True if ps_type == "Players" else False)
 
@@ -277,7 +273,21 @@ elif full_df is not None:
                     st.markdown("### 📊 Advanced Analytics")
                     st.dataframe(adv[['Player/Team', 'Poss/G', 'PPS', 'TS%', 'FGM/G', 'FGA/G', '3PM/G', '3PA/G', 'OffRtg', 'DefRtg', 'PIE']].sort_values('OffRtg', ascending=False), width="stretch", hide_index=True)
                     v_view = st.selectbox("View", ["Vol vs Eff", "Eff Hub", "Poss Control", "Splits", "Off vs Def"])
+                    
+                    # --- DATA FIX FOR PLOTLY START ---
                     ap = adv.rename(columns={'FGA/G': 'FGA_G', 'PTS/G': 'PTS_G', 'Poss/G': 'Poss_G', 'TO/G': 'TO_G', 'FGM/G': 'FGM_G', '3PM/G': '3PM_G'})
+                    
+                    # Convert to numeric and clean sizes/axes
+                    plot_cols = ['FGA_G', 'PTS_G', 'PIE', 'PPS', 'TS%', 'Poss_G', 'TO_G', 'FGM_G', '3PM_G', 'OffRtg', 'DefRtg']
+                    for col in plot_cols:
+                        if col in ap.columns:
+                            ap[col] = pd.to_numeric(ap[col], errors='coerce').fillna(0)
+                    
+                    # Size columns cannot be negative for px.scatter
+                    ap['PIE'] = ap['PIE'].clip(lower=0)
+                    ap['PTS_G'] = ap['PTS_G'].clip(lower=0)
+                    # --- DATA FIX FOR PLOTLY END ---
+
                     if v_view == "Vol vs Eff": fig = px.scatter(ap, x='FGA_G', y='PTS_G', size='PIE', color='Player/Team', template="plotly_dark")
                     elif v_view == "Eff Hub": fig = px.scatter(ap, x='PPS', y='TS%', size='PTS_G', color='Player/Team', template="plotly_dark")
                     elif v_view == "Poss Control": fig = px.scatter(ap, x='Poss_G', y='TO_G', size='AST/G', color='Player/Team', template="plotly_dark")
