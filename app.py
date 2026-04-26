@@ -85,11 +85,11 @@ def generate_2k_player_card(player_name, stats, rank=""):
 </div>
 <div class="flip-card-back">
 <h4 style="color: #d4af37; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 0;">Season Averages</h4>
+<div class="stat-row"><span class="stat-label">GP</span> <span class="stat-val">{int(stats.get('GP', 0))}</span></div>
 <div class="stat-row"><span class="stat-label">PPG</span> <span class="stat-val">{stats.get('PTS/G', 0):.1f}</span></div>
 <div class="stat-row"><span class="stat-label">RPG</span> <span class="stat-val">{stats.get('REB/G', 0):.1f}</span></div>
 <div class="stat-row"><span class="stat-label">APG</span> <span class="stat-val">{stats.get('AST/G', 0):.1f}</span></div>
 <div class="stat-row"><span class="stat-label">SPG | BPG</span> <span class="stat-val">{stats.get('STL/G', 0):.1f} | {stats.get('BLK/G', 0):.1f}</span></div>
-<div class="stat-row"><span class="stat-label">FG%</span> <span class="stat-val">{stats.get('FG%', 0)}%</span></div>
 <div class="stat-row"><span class="stat-label">TS%</span> <span class="stat-val">{stats.get('TS%', 0):.1f}%</span></div>
 </div>
 </div>
@@ -149,7 +149,6 @@ elif full_df is not None and not full_df.empty:
     seasons = sorted([int(s) for s in full_df['Season'].unique() if pd.notna(s) and int(s) > 0], reverse=True)
     
     st.sidebar.title("⚙️ Hub Controls")
-    # Added "Standings" to the navigation menu
     view_mode = st.sidebar.radio("Navigation", ["🏠 League Home", "🏆 Standings", "🏢 Team Pages", "🔬 Advanced Analytics", "⚔️ Head-to-Head Radar"])
     
     st.sidebar.divider()
@@ -172,9 +171,16 @@ elif full_df is not None and not full_df.empty:
         df_reg = df_active
 
     if not df_reg.empty:
+        # Calculate Games Played (Excluding Forfeits)
+        valid_games = df_reg[~df_reg['is_ff']]
+        gp_counts = valid_games.groupby('Player/Team').size().reset_index(name='GP')
+
         latest_teams = df_reg.sort_values('Season', ascending=False).groupby('Player/Team')['Team Name'].first().reset_index()
         p_stats = df_reg.groupby('Player/Team').mean(numeric_only=True).reset_index()
+        
+        # Merge GP and Teams
         p_stats = p_stats.merge(latest_teams, on='Player/Team', how='left')
+        p_stats = p_stats.merge(gp_counts, on='Player/Team', how='left').fillna({'GP': 0})
 
         for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO', 'FGA', 'FGM', 'FTA', 'Poss_Raw']: 
             p_stats[f'{col}/G'] = p_stats[col].round(1)
@@ -185,15 +191,23 @@ elif full_df is not None and not full_df.empty:
         p_stats['PPP'] = (p_stats['PTS'] / p_stats['Poss_Raw'].replace(0, 1)).round(2) 
         p_stats = p_stats.sort_values('PIE', ascending=False).reset_index(drop=True)
 
+        # --- QUALIFICATION ENGINE (60% OF MAX GAMES PLAYED) ---
+        max_gp = p_stats['GP'].max() if not p_stats.empty else 0
+        qual_threshold = max_gp * 0.60
+        qual_p_stats = p_stats[p_stats['GP'] >= qual_threshold].copy()
+
         # --- ROUTING ENGINE ---
         if view_mode == "🏠 League Home":
             st.subheader("👑 Official League Leaders (5-Tool)")
+            st.caption(f"ℹ️ Minimum Games Required to Qualify: {int(qual_threshold)} GP (League Max: {int(max_gp)} GP)")
+            
             c1, c2, c3, c4, c5 = st.columns(5)
-            with c1: st.markdown(generate_mini_leaderboard("Points", p_stats.sort_values('PTS/G', ascending=False), 'PTS/G', color="#cc0000"), unsafe_allow_html=True)
-            with c2: st.markdown(generate_mini_leaderboard("Assists", p_stats.sort_values('AST/G', ascending=False), 'AST/G', color="#00bfff"), unsafe_allow_html=True)
-            with c3: st.markdown(generate_mini_leaderboard("Rebounds", p_stats.sort_values('REB/G', ascending=False), 'REB/G', color="#32cd32"), unsafe_allow_html=True)
-            with c4: st.markdown(generate_mini_leaderboard("Steals", p_stats.sort_values('STL/G', ascending=False), 'STL/G', color="#ff8c00"), unsafe_allow_html=True)
-            with c5: st.markdown(generate_mini_leaderboard("Blocks", p_stats.sort_values('BLK/G', ascending=False), 'BLK/G', color="#8a2be2"), unsafe_allow_html=True)
+            # Use qual_p_stats strictly for leaderboards
+            with c1: st.markdown(generate_mini_leaderboard("Points", qual_p_stats.sort_values('PTS/G', ascending=False), 'PTS/G', color="#cc0000"), unsafe_allow_html=True)
+            with c2: st.markdown(generate_mini_leaderboard("Assists", qual_p_stats.sort_values('AST/G', ascending=False), 'AST/G', color="#00bfff"), unsafe_allow_html=True)
+            with c3: st.markdown(generate_mini_leaderboard("Rebounds", qual_p_stats.sort_values('REB/G', ascending=False), 'REB/G', color="#32cd32"), unsafe_allow_html=True)
+            with c4: st.markdown(generate_mini_leaderboard("Steals", qual_p_stats.sort_values('STL/G', ascending=False), 'STL/G', color="#ff8c00"), unsafe_allow_html=True)
+            with c5: st.markdown(generate_mini_leaderboard("Blocks", qual_p_stats.sort_values('BLK/G', ascending=False), 'BLK/G', color="#8a2be2"), unsafe_allow_html=True)
 
         elif view_mode == "🏆 Standings":
             st.subheader(f"🏆 {banner_text} Power Rankings")
@@ -202,7 +216,6 @@ elif full_df is not None and not full_df.empty:
                 team_df = df_active[df_active['Type'].astype(str).str.lower() == 'team']
                 
                 if not team_df.empty:
-                    # Filter out any blank teams
                     team_df = team_df[(team_df['Team Name'].astype(str) != '0') & (team_df['Team Name'].notna())]
                     
                     t_stats = team_df.groupby('Team Name').agg({
@@ -222,7 +235,6 @@ elif full_df is not None and not full_df.empty:
                     t_stats['APG'] = t_stats['AST'] / t_stats['GP'].replace(0, 1)
                     t_stats['OffRtg'] = (t_stats['PTS'] / t_stats['Poss_Raw'].replace(0, 1)) * 100
                     
-                    # Sort by Wins first, then Win %, then Offensive Rating
                     t_stats = t_stats.sort_values(by=['Wins', 'Win %', 'OffRtg'], ascending=[False, False, False]).reset_index(drop=True)
                     
                     for idx, row in t_stats.iterrows():
@@ -247,6 +259,7 @@ elif full_df is not None and not full_df.empty:
             if available_teams:
                 selected_team = st.selectbox("Select Team Roster", available_teams)
                 st.subheader(f"📋 {selected_team} Roster Binder")
+                # Use standard p_stats here so bench players and mid-season acquisitions still show up on their team page
                 team_p_stats = p_stats[p_stats['Team Name'] == selected_team].reset_index(drop=True)
                 
                 cols = st.columns(4)
@@ -258,9 +271,11 @@ elif full_df is not None and not full_df.empty:
 
         elif view_mode == "🔬 Advanced Analytics":
             st.subheader("🧪 Sabermetrics & Efficiency Lab")
+            st.caption(f"ℹ️ Filtering for Qualified Players Only ({int(qual_threshold)}+ Games Played)")
             lens = st.selectbox("Analytics Lens", ["Efficiency (TS% vs PIE)", "Volume (Possessions vs Usage)", "Stats by Possession (PPP)"])
             
-            plot_df = p_stats[p_stats['PTS/G'] > 0].copy()
+            # Use qual_p_stats to keep outliers from breaking the graphs
+            plot_df = qual_p_stats[qual_p_stats['PTS/G'] > 0].copy()
             
             if lens == "Efficiency (TS% vs PIE)":
                 fig = px.scatter(plot_df, x='TS%', y='PIE', size='PTS/G', color='Team Name', hover_name='Player/Team', template="plotly_dark", title="Efficiency Matrix: True Shooting vs. Overall Impact (PIE)")
@@ -273,18 +288,21 @@ elif full_df is not None and not full_df.empty:
 
         elif view_mode == "⚔️ Head-to-Head Radar":
             st.subheader("🕸️ Attribute Web Comparison")
+            st.caption("ℹ️ Select from Qualified League Leaders")
             c1, c2 = st.columns(2)
-            player_list = p_stats['Player/Team'].tolist()
+            
+            # Use qual_p_stats for Head-to-Head to ensure fair comparisons
+            player_list = qual_p_stats['Player/Team'].tolist()
             if len(player_list) >= 2:
                 with c1: p1_sel = st.selectbox("Player 1 (Gold)", player_list)
                 with c2: p2_sel = st.selectbox("Player 2 (Red)", player_list, index=1)
                 
                 if p1_sel and p2_sel:
-                    p1_data = p_stats[p_stats['Player/Team'] == p1_sel].iloc[0]
-                    p2_data = p_stats[p_stats['Player/Team'] == p2_sel].iloc[0]
-                    league_maxes = {'PTS': p_stats['PTS/G'].max(), 'AST': p_stats['AST/G'].max(), 'REB': p_stats['REB/G'].max(), 'DEF': (p_stats['STL/G'] + p_stats['BLK/G']).max()}
+                    p1_data = qual_p_stats[qual_p_stats['Player/Team'] == p1_sel].iloc[0]
+                    p2_data = qual_p_stats[qual_p_stats['Player/Team'] == p2_sel].iloc[0]
+                    league_maxes = {'PTS': qual_p_stats['PTS/G'].max(), 'AST': qual_p_stats['AST/G'].max(), 'REB': qual_p_stats['REB/G'].max(), 'DEF': (qual_p_stats['STL/G'] + qual_p_stats['BLK/G']).max()}
                     st.plotly_chart(draw_2k_comparison_radar(p1_sel, p1_data, p2_sel, p2_data, league_maxes), use_container_width=True)
             else:
-                st.info("Need more player data to run Head-to-Head comparisons.")
+                st.info("Need more qualified player data to run Head-to-Head comparisons.")
     else:
         st.warning(f"No player data found for {selected_scope}.")
