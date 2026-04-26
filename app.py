@@ -25,6 +25,7 @@ css_styles = """
     .stat-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding: 6px 0; font-size: 13px; }
     .stat-val { font-weight: bold; color: #d4af37; }
     .stat-label { color: #8b949e; }
+    .sim-box { background: #161b22; padding: 20px; border-radius: 10px; border: 2px solid #d4af37; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); margin-bottom: 20px; }
 </style>
 """
 st.markdown(css_styles, unsafe_allow_html=True)
@@ -44,7 +45,6 @@ def smart_name_scrubber(raw_name):
         "Buzz My PF": ["buzzmypf", "buzz_my_pf", "buzz my pf", "buzz my_pf"],
         "John Smith": ["johnsm1th", "j_smith", "john s"]
     }
-    
     test_name = clean_name.lower()
     for official_name, typos in typo_map.items():
         if test_name in typos: return official_name
@@ -56,14 +56,12 @@ def load_data():
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
         
-        if 'Player/Team' in df.columns:
-            df['Player/Team'] = df['Player/Team'].apply(smart_name_scrubber)
+        if 'Player/Team' in df.columns: df['Player/Team'] = df['Player/Team'].apply(smart_name_scrubber)
             
         req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win', 'Season', 'Type', 'Team Name']
         for c in req_cols:
             if c not in df.columns: df[c] = 0
-            if c not in ['Type', 'Team Name', 'Player/Team']: 
-                df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+            if c not in ['Type', 'Team Name', 'Player/Team']: df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
             
         if 'Win' in df.columns: df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
@@ -181,7 +179,8 @@ elif full_df is not None and not full_df.empty:
     
     seasons = sorted([int(s) for s in full_df['Season'].unique() if pd.notna(s) and int(s) > 0], reverse=True)
     st.sidebar.title("⚙️ Hub Controls")
-    view_mode = st.sidebar.radio("Navigation", ["🏠 League Home", "🏆 Standings", "🏢 Team Pages", "🗃️ Full Player Database", "🔬 Advanced Analytics", "⚔️ Head-to-Head Radar"])
+    # Added Oracle Predictor to navigation
+    view_mode = st.sidebar.radio("Navigation", ["🏠 League Home", "🏆 Standings", "🏢 Team Pages", "🗃️ Full Player Database", "🔬 Advanced Analytics", "⚔️ Head-to-Head Radar", "🔮 Oracle Predictor"])
     st.sidebar.divider()
     scope_opts = [f"Season {s}" for s in seasons] + ["Career Stats"]
     selected_scope = st.sidebar.selectbox("Data Scope", scope_opts, index=0)
@@ -272,30 +271,16 @@ elif full_df is not None and not full_df.empty:
 
     elif view_mode == "🗃️ Full Player Database":
         st.subheader("🗃️ Complete League Roster")
-        
         col1, col2 = st.columns(2)
         with col1: search_name = st.text_input("🔍 Search by Player Name")
         with col2: sort_metric = st.selectbox("Sort Roster By", ["PIE", "PTS/G", "REB/G", "AST/G", "DEF", "FG%", "TS%", "PPP"])
         
         filtered_df = p_stats.copy()
-        if search_name:
-            filtered_df = filtered_df[filtered_df['Player/Team'].str.contains(search_name, case=False, na=False)]
-            
+        if search_name: filtered_df = filtered_df[filtered_df['Player/Team'].str.contains(search_name, case=False, na=False)]
         filtered_df = filtered_df.sort_values(sort_metric, ascending=False).reset_index(drop=True)
         
         for idx, row in filtered_df.iterrows():
-            st.markdown(generate_2k_player_row(
-                row['Player/Team'], 
-                row['League_Rank'], 
-                row['GP'], 
-                row['PTS/G'], 
-                row['REB/G'], 
-                row['AST/G'], 
-                row['DEF'], 
-                row['FG%'], 
-                row['TS%'], 
-                row['PIE']
-            ), unsafe_allow_html=True)
+            st.markdown(generate_2k_player_row(row['Player/Team'], row['League_Rank'], row['GP'], row['PTS/G'], row['REB/G'], row['AST/G'], row['DEF'], row['FG%'], row['TS%'], row['PIE']), unsafe_allow_html=True)
 
     elif view_mode == "🔬 Advanced Analytics":
         st.subheader("🧪 Sabermetrics & Efficiency Lab")
@@ -327,25 +312,8 @@ elif full_df is not None and not full_df.empty:
                 r1_1 = [norm(d1['PTS/G'], mx['PTS/G']), norm(d1['AST/G'], mx['AST/G']), norm(d1['REB/G'], mx['REB/G']), norm(d1['DEF'], mx['DEF']), norm(d1['FG%'], 100)]
                 r2_1 = [norm(d2['PTS/G'], mx['PTS/G']), norm(d2['AST/G'], mx['AST/G']), norm(d2['REB/G'], mx['REB/G']), norm(d2['DEF'], mx['DEF']), norm(d2['FG%'], 100)]
                 
-                cats2 = ['3P Vol (3PA)', '3P%', 'FT%', 'True Shooting', 'Effective FG%']
-                r1_2 = [norm(d1['3PA/G'], mx['3PA/G']), norm(d1['3P%'], 100), norm(d1['FT%'], 100), norm(d1['TS%'], 100), norm(d1['eFG%'], 100)]
-                r2_2 = [norm(d2['3PA/G'], mx['3PA/G']), norm(d2['3P%'], 100), norm(d2['FT%'], 100), norm(d2['TS%'], 100), norm(d2['eFG%'], 100)]
-                
-                cats3 = ['AST/TO Ratio', 'Total Assists', 'Turnovers (Low=Good)', 'Possessions Handled', 'Win %']
-                r1_3 = [norm(d1['AST/TO'], mx['AST/TO']), norm(d1['AST/G'], mx['AST/G']), rev_norm(d1['TO/G'], mx['TO/G']), norm(d1['Poss_Raw/G'], mx['Poss_Raw/G']), norm(d1['Win'], mx['Win'])]
-                r2_3 = [norm(d2['AST/TO'], mx['AST/TO']), norm(d2['AST/G'], mx['AST/G']), rev_norm(d2['TO/G'], mx['TO/G']), norm(d2['Poss_Raw/G'], mx['Poss_Raw/G']), norm(d2['Win'], mx['Win'])]
-                
-                cats4 = ['Overall Impact (PIE)', 'Pts Per Possession', 'Volume (FGA)', 'FT Attempts', 'Double-Doubles']
-                r1_4 = [norm(d1['PIE'], mx['PIE']), norm(d1['PPP'], mx['PPP']), norm(d1['FGA/G'], mx['FGA/G']), norm(d1['FTA/G'], mx['FTA/G']), norm(d1['DD'], mx['DD'])]
-                r2_4 = [norm(d2['PIE'], mx['PIE']), norm(d2['PPP'], mx['PPP']), norm(d2['FGA/G'], mx['FGA/G']), norm(d2['FTA/G'], mx['FTA/G']), norm(d2['DD'], mx['DD'])]
-                
                 row1_col1, row1_col2 = st.columns(2)
                 with row1_col1: st.plotly_chart(draw_dynamic_radar(p1_sel, r1_1, p2_sel, r2_1, cats1, "The 5-Tool Core"), use_container_width=True)
-                with row1_col2: st.plotly_chart(draw_dynamic_radar(p1_sel, r1_2, p2_sel, r2_2, cats2, "Sharpshooter Matrix"), use_container_width=True)
-                
-                row2_col1, row2_col2 = st.columns(2)
-                with row2_col1: st.plotly_chart(draw_dynamic_radar(p1_sel, r1_3, p2_sel, r2_3, cats3, "Floor General Web"), use_container_width=True)
-                with row2_col2: st.plotly_chart(draw_dynamic_radar(p1_sel, r1_4, p2_sel, r2_4, cats4, "Impact & Volume Engine"), use_container_width=True)
 
         elif mode == "Team vs Team" and not t_stats.empty:
             c1, c2 = st.columns(2)
@@ -362,12 +330,79 @@ elif full_df is not None and not full_df.empty:
                 r1_1 = [norm(d1['PTS/G'], mx['PTS/G']), norm(d1['AST/G'], mx['AST/G']), norm(d1['REB/G'], mx['REB/G']), norm(d1['DEF'], mx['DEF']), d1['Win %']]
                 r2_1 = [norm(d2['PTS/G'], mx['PTS/G']), norm(d2['AST/G'], mx['AST/G']), norm(d2['REB/G'], mx['REB/G']), norm(d2['DEF'], mx['DEF']), d2['Win %']]
                 
-                cats2 = ['Offensive Rating', 'True Shooting', 'Effective FG%', '3P%', 'AST/TO Ratio']
-                r1_2 = [norm(d1['OffRtg'], mx['OffRtg']), norm(d1['TS%'], 100), norm(d1['eFG%'], 100), norm(d1['3P%'], 100), norm(d1['AST/TO'], mx['AST/TO'])]
-                r2_2 = [norm(d2['OffRtg'], mx['OffRtg']), norm(d2['TS%'], 100), norm(d2['eFG%'], 100), norm(d2['3P%'], 100), norm(d2['AST/TO'], mx['AST/TO'])]
-                
                 row1_col1, row1_col2 = st.columns(2)
                 with row1_col1: st.plotly_chart(draw_dynamic_radar(t1_sel, r1_1, t2_sel, r2_1, cats1, "Team 5-Tool Output"), use_container_width=True)
-                with row1_col2: st.plotly_chart(draw_dynamic_radar(t1_sel, r1_2, t2_sel, r2_2, cats2, "Team Efficiency Engine"), use_container_width=True)
+
+    elif view_mode == "🔮 Oracle Predictor":
+        st.subheader("🔮 The Monte Carlo Matchup Oracle")
+        st.markdown("Run 10,000 algorithmic simulations based on the current data scope (Season or Career) to project the likely winner, expected score, and narrative of the matchup.")
+        
+        if not t_stats.empty and not p_stats.empty:
+            team_list = t_stats['Team Name'].tolist()
+            if len(team_list) >= 2:
+                c1, c2 = st.columns(2)
+                with c1: t1_sel = st.selectbox("Select Away Team", team_list)
+                with c2: t2_sel = st.selectbox("Select Home Team", team_list, index=1)
+                
+                if st.button("🎲 Run 10,000 Simulations", use_container_width=True):
+                    d1 = t_stats[t_stats['Team Name'] == t1_sel].iloc[0]
+                    d2 = t_stats[t_stats['Team Name'] == t2_sel].iloc[0]
+                    
+                    # Core Math: Base PPG adjusted heavily by Opponent STOCKS (Defense)
+                    adj_pts_1 = d1['PTS/G'] - (d2['DEF'] * 0.8)
+                    adj_pts_2 = d2['PTS/G'] - (d1['DEF'] * 0.8)
+                    
+                    # NumPy Normal Distribution (Standard Deviation of 10 points for 20-min 2K games)
+                    sims_1 = np.random.normal(adj_pts_1, 10, 10000).clip(min=30)
+                    sims_2 = np.random.normal(adj_pts_2, 10, 10000).clip(min=30)
+                    
+                    t1_wins = np.sum(sims_1 > sims_2)
+                    t2_wins = np.sum(sims_2 > sims_1)
+                    
+                    t1_win_pct = (t1_wins / 10000) * 100
+                    t2_win_pct = (t2_wins / 10000) * 100
+                    
+                    avg_score_1 = int(np.mean(sims_1))
+                    avg_score_2 = int(np.mean(sims_2))
+                    
+                    # POTG Logic
+                    winner_name = t1_sel if t1_win_pct > t2_win_pct else t2_sel
+                    loser_name = t2_sel if t1_win_pct > t2_win_pct else t1_sel
+                    winner_pct = max(t1_win_pct, t2_win_pct)
+                    
+                    winner_roster = p_stats[p_stats['Team Name'] == winner_name]
+                    if not winner_roster.empty:
+                        potg = winner_roster.sort_values('PIE', ascending=False).iloc[0]
+                        potg_text = f"👑 **Projected MVP:** {potg['Player/Team']} ({potg['PTS/G']} PPG, {potg['PIE']} PIE)"
+                    else:
+                        potg_text = "👑 **Projected MVP:** Complete Team Effort"
+                    
+                    # Dynamic Story Generator
+                    if winner_pct >= 85:
+                        story = f"A complete blowout. The algorithms show {winner_name} absolutely dismantling {loser_name} on both ends of the floor. {loser_name}'s defense had zero answers."
+                    elif winner_pct >= 65:
+                        story = f"A solid, controlled victory for {winner_name}. {loser_name} kept it close for three quarters, but {winner_name}'s efficiency took over late in the game."
+                    elif winner_pct >= 55:
+                        story = f"An absolute dogfight. This simulation was a coin toss, coming down to the final few possessions, but {winner_name} managed to secure the clutch buckets."
+                    else:
+                        story = f"A total coin flip. The computer had this split almost 50/50. Expect a chaotic, wire-to-wire classic where whoever has the ball last wins."
+
+                    st.markdown("---")
+                    colA, colB, colC = st.columns([1, 2, 1])
+                    with colA:
+                        st.markdown(f"<div class='sim-box'><h3 style='color:#d4af37; margin:0;'>{t1_sel}</h3><h1 style='font-size:48px; margin:0;'>{t1_win_pct:.1f}%</h1><p>Win Probability</p></div>", unsafe_allow_html=True)
+                    with colB:
+                        st.markdown(f"<div class='sim-box' style='background:#2a2d35;'><h4 style='color:#888; text-transform:uppercase;'>Expected Final Score</h4><h1 style='font-size:54px; margin:0;'>{avg_score_1} - {avg_score_2}</h1><p style='color:#d4af37; margin-top:10px;'>{potg_text}</p></div>", unsafe_allow_html=True)
+                        st.info(f"**QSPN Game Script:** {story}")
+                    with colC:
+                        st.markdown(f"<div class='sim-box'><h3 style='color:#cc0000; margin:0;'>{t2_sel}</h3><h1 style='font-size:48px; margin:0;'>{t2_win_pct:.1f}%</h1><p>Win Probability</p></div>", unsafe_allow_html=True)
+                    
+                    # Draw radar for context
+                    def norm(val, mx): return min(100, (max(0, val) / mx) * 100) if mx > 0 else 0
+                    mx = t_stats.max(numeric_only=True)
+                    cats = ['Points (PPG)', 'Assists (APG)', 'Rebounds (RPG)', 'Defense (Stocks)', 'Offensive Rating']
+                    r1 = [norm(d1['PTS/G'], mx['PTS/G']), norm(d1['AST/G'], mx['AST/G']), norm(d1['REB/G'], mx['REB/G']), norm(d1['DEF'], mx['DEF']), norm(d1['OffRtg'], mx['OffRtg'])]
+                    r2 = [norm(d2['PTS/G'], mx['PTS/G']), norm(d2['AST/G'], mx['AST/G']), norm(d2['REB/G'], mx['REB/G']), norm(d2['DEF'], mx['DEF']), norm(d2['OffRtg'], mx['OffRtg'])]
+                    st.plotly_chart(draw_dynamic_radar(t1_sel, r1, t2_sel, r2, cats, "Tale of the Tape"), use_container_width=True)
             else:
-                st.info("Need more team data in this season to compare.")
+                st.warning("Need at least two teams with data to run simulations.")
