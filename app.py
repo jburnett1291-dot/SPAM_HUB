@@ -179,7 +179,6 @@ elif full_df is not None and not full_df.empty:
     
     seasons = sorted([int(s) for s in full_df['Season'].unique() if pd.notna(s) and int(s) > 0], reverse=True)
     st.sidebar.title("⚙️ Hub Controls")
-    # Added Oracle Predictor to navigation
     view_mode = st.sidebar.radio("Navigation", ["🏠 League Home", "🏆 Standings", "🏢 Team Pages", "🗃️ Full Player Database", "🔬 Advanced Analytics", "⚔️ Head-to-Head Radar", "🔮 Oracle Predictor"])
     st.sidebar.divider()
     scope_opts = [f"Season {s}" for s in seasons] + ["Career Stats"]
@@ -312,8 +311,25 @@ elif full_df is not None and not full_df.empty:
                 r1_1 = [norm(d1['PTS/G'], mx['PTS/G']), norm(d1['AST/G'], mx['AST/G']), norm(d1['REB/G'], mx['REB/G']), norm(d1['DEF'], mx['DEF']), norm(d1['FG%'], 100)]
                 r2_1 = [norm(d2['PTS/G'], mx['PTS/G']), norm(d2['AST/G'], mx['AST/G']), norm(d2['REB/G'], mx['REB/G']), norm(d2['DEF'], mx['DEF']), norm(d2['FG%'], 100)]
                 
+                cats2 = ['3P Vol (3PA)', '3P%', 'FT%', 'True Shooting', 'Effective FG%']
+                r1_2 = [norm(d1['3PA/G'], mx['3PA/G']), norm(d1['3P%'], 100), norm(d1['FT%'], 100), norm(d1['TS%'], 100), norm(d1['eFG%'], 100)]
+                r2_2 = [norm(d2['3PA/G'], mx['3PA/G']), norm(d2['3P%'], 100), norm(d2['FT%'], 100), norm(d2['TS%'], 100), norm(d2['eFG%'], 100)]
+                
+                cats3 = ['AST/TO Ratio', 'Total Assists', 'Turnovers (Low=Good)', 'Possessions Handled', 'Win %']
+                r1_3 = [norm(d1['AST/TO'], mx['AST/TO']), norm(d1['AST/G'], mx['AST/G']), rev_norm(d1['TO/G'], mx['TO/G']), norm(d1['Poss_Raw/G'], mx['Poss_Raw/G']), norm(d1['Win'], mx['Win'])]
+                r2_3 = [norm(d2['AST/TO'], mx['AST/TO']), norm(d2['AST/G'], mx['AST/G']), rev_norm(d2['TO/G'], mx['TO/G']), norm(d2['Poss_Raw/G'], mx['Poss_Raw/G']), norm(d2['Win'], mx['Win'])]
+                
+                cats4 = ['Overall Impact (PIE)', 'Pts Per Possession', 'Volume (FGA)', 'FT Attempts', 'Double-Doubles']
+                r1_4 = [norm(d1['PIE'], mx['PIE']), norm(d1['PPP'], mx['PPP']), norm(d1['FGA/G'], mx['FGA/G']), norm(d1['FTA/G'], mx['FTA/G']), norm(d1['DD'], mx['DD'])]
+                r2_4 = [norm(d2['PIE'], mx['PIE']), norm(d2['PPP'], mx['PPP']), norm(d2['FGA/G'], mx['FGA/G']), norm(d2['FTA/G'], mx['FTA/G']), norm(d2['DD'], mx['DD'])]
+                
                 row1_col1, row1_col2 = st.columns(2)
                 with row1_col1: st.plotly_chart(draw_dynamic_radar(p1_sel, r1_1, p2_sel, r2_1, cats1, "The 5-Tool Core"), use_container_width=True)
+                with row1_col2: st.plotly_chart(draw_dynamic_radar(p1_sel, r1_2, p2_sel, r2_2, cats2, "Sharpshooter Matrix"), use_container_width=True)
+                
+                row2_col1, row2_col2 = st.columns(2)
+                with row2_col1: st.plotly_chart(draw_dynamic_radar(p1_sel, r1_3, p2_sel, r2_3, cats3, "Floor General Web"), use_container_width=True)
+                with row2_col2: st.plotly_chart(draw_dynamic_radar(p1_sel, r1_4, p2_sel, r2_4, cats4, "Impact & Volume Engine"), use_container_width=True)
 
         elif mode == "Team vs Team" and not t_stats.empty:
             c1, c2 = st.columns(2)
@@ -330,8 +346,15 @@ elif full_df is not None and not full_df.empty:
                 r1_1 = [norm(d1['PTS/G'], mx['PTS/G']), norm(d1['AST/G'], mx['AST/G']), norm(d1['REB/G'], mx['REB/G']), norm(d1['DEF'], mx['DEF']), d1['Win %']]
                 r2_1 = [norm(d2['PTS/G'], mx['PTS/G']), norm(d2['AST/G'], mx['AST/G']), norm(d2['REB/G'], mx['REB/G']), norm(d2['DEF'], mx['DEF']), d2['Win %']]
                 
+                cats2 = ['Offensive Rating', 'True Shooting', 'Effective FG%', '3P%', 'AST/TO Ratio']
+                r1_2 = [norm(d1['OffRtg'], mx['OffRtg']), norm(d1['TS%'], 100), norm(d1['eFG%'], 100), norm(d1['3P%'], 100), norm(d1['AST/TO'], mx['AST/TO'])]
+                r2_2 = [norm(d2['OffRtg'], mx['OffRtg']), norm(d2['TS%'], 100), norm(d2['eFG%'], 100), norm(d2['3P%'], 100), norm(d2['AST/TO'], mx['AST/TO'])]
+                
                 row1_col1, row1_col2 = st.columns(2)
                 with row1_col1: st.plotly_chart(draw_dynamic_radar(t1_sel, r1_1, t2_sel, r2_1, cats1, "Team 5-Tool Output"), use_container_width=True)
+                with row1_col2: st.plotly_chart(draw_dynamic_radar(t1_sel, r1_2, t2_sel, r2_2, cats2, "Team Efficiency Engine"), use_container_width=True)
+            else:
+                st.info("Need more team data in this season to compare.")
 
     elif view_mode == "🔮 Oracle Predictor":
         st.subheader("🔮 The Monte Carlo Matchup Oracle")
@@ -397,7 +420,6 @@ elif full_df is not None and not full_df.empty:
                     with colC:
                         st.markdown(f"<div class='sim-box'><h3 style='color:#cc0000; margin:0;'>{t2_sel}</h3><h1 style='font-size:48px; margin:0;'>{t2_win_pct:.1f}%</h1><p>Win Probability</p></div>", unsafe_allow_html=True)
                     
-                    # Draw radar for context
                     def norm(val, mx): return min(100, (max(0, val) / mx) * 100) if mx > 0 else 0
                     mx = t_stats.max(numeric_only=True)
                     cats = ['Points (PPG)', 'Assists (APG)', 'Rebounds (RPG)', 'Defense (Stocks)', 'Offensive Rating']
