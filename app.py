@@ -39,11 +39,8 @@ def smart_name_scrubber(raw_name):
     """Dynamically strips OCR garbage and clan tags without needing a dictionary."""
     if pd.isna(raw_name) or not isinstance(raw_name, str): 
         return raw_name
-    # Nuke the OCR vertical line artifacts at the START of the name
     clean_name = re.sub(r'^[|Il\s]+', '', raw_name)
-    # Nuke common bracketed clan tags at the start like [SPAM] Kay or (QSPN) Kay
     clean_name = re.sub(r'^\[.*?\]\s*|^\(.*?\)\s*', '', clean_name)
-    # Strip accidental trailing spaces and force standard Title Case
     return clean_name.strip().title()
 
 @st.cache_data(ttl=60)
@@ -52,17 +49,16 @@ def load_data():
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
         
-        # --- APPLY THE INVISIBLE SCRUBBER ---
         if 'Player/Team' in df.columns:
             df['Player/Team'] = df['Player/Team'].apply(smart_name_scrubber)
             
         req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win', 'Season', 'Type', 'Team Name']
         for c in req_cols:
             if c not in df.columns: df[c] = 0
-            if c not in ['Type', 'Team Name']: # Don't try to make text columns into numbers
+            if c not in ['Type', 'Team Name', 'Player/Team']: 
                 df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
             
-        # Hard binary win column
+        # Hard binary win column (1 for win, 0 for loss)
         if 'Win' in df.columns:
             df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
             
@@ -79,8 +75,6 @@ full_df = load_data()
 # --- 3. HTML GENERATORS ---
 def generate_2k_player_card(player_name, stats, rank=""):
     rank_badge = f'<div style="position:absolute; top:-10px; right:-10px; background:#d4af37; color:#000; font-weight:bold; padding:8px; border-radius:50%; border:2px solid #fff; z-index:10;">#{rank}</div>' if rank else ""
-    
-    # HTML must be flush left so Streamlit doesn't turn it into a code block
     return f'''<div class="flip-card" style="height: 320px;">
 {rank_badge}
 <div class="flip-card-inner">
@@ -101,15 +95,33 @@ def generate_2k_player_card(player_name, stats, rank=""):
 </div>
 </div>'''
 
+def generate_2k_standings_row(team, rank, wins, losses, win_pct, ppg, rpg, apg, off_rtg):
+    color = "#ffd700" if rank == 1 else "#c0c0c0" if rank == 2 else "#cd7f32" if rank == 3 else "#00bfff"
+    return f"""<div style="background: linear-gradient(145deg, #1c2128, #2a2d35); border-left: 6px solid {color}; border-radius: 8px; padding: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+<div style="display: flex; align-items: center; width: 30%;">
+<h2 style="margin:0; color:{color}; margin-right: 20px; font-size: 28px; font-family: 'Arial Black', sans-serif;">#{rank}</h2>
+<div>
+<h3 style="margin:0; color:white; font-size: 18px; text-transform: uppercase;">{team}</h3>
+<div style="font-size: 14px; color: #aaa; margin-top: 2px;">Record: <span style="color:#fff; font-weight:bold;">{int(wins)}-{int(losses)}</span></div>
+</div>
+</div>
+<div style="display: flex; width: 45%; justify-content: space-around; text-align: center;">
+<div><div style="font-size:11px; color:#888; text-transform:uppercase;">Win %</div><div style="font-size:16px; font-weight:bold; color:#fff;">{win_pct:.3f}</div></div>
+<div><div style="font-size:11px; color:#888; text-transform:uppercase;">PPG</div><div style="font-size:16px; font-weight:bold; color:#fff;">{ppg:.1f}</div></div>
+<div><div style="font-size:11px; color:#888; text-transform:uppercase;">RPG</div><div style="font-size:16px; font-weight:bold; color:#fff;">{rpg:.1f}</div></div>
+<div><div style="font-size:11px; color:#888; text-transform:uppercase;">APG</div><div style="font-size:16px; font-weight:bold; color:#fff;">{apg:.1f}</div></div>
+</div>
+<div style="text-align: right; width: 25%;">
+<div style="font-size: 11px; color: #888; text-transform: uppercase; font-weight: bold;">Offensive Rtg</div>
+<div style="font-size: 24px; font-weight: bold; color: #00ff00;">{off_rtg:.1f}</div>
+</div>
+</div>"""
+
 def draw_2k_comparison_radar(p1_name, p1_stats, p2_name, p2_stats, maxes):
-    # Normalize stats to a 0-100 scale for the radar based on league maximums
     def norm(val, max_val): return min(100, (val / max_val) * 100) if max_val > 0 else 0
-    
     categories = ['Scoring (PPG)', 'Playmaking (APG)', 'Rebounding (RPG)', 'Defense (Stocks)', 'Efficiency (FG%)', 'Scoring (PPG)']
-    
     r1 = [norm(p1_stats['PTS/G'], maxes['PTS']), norm(p1_stats['AST/G'], maxes['AST']), norm(p1_stats['REB/G'], maxes['REB']), norm(p1_stats['STL/G'] + p1_stats['BLK/G'], maxes['DEF']), norm(p1_stats['FG%'], 100), norm(p1_stats['PTS/G'], maxes['PTS'])]
     r2 = [norm(p2_stats['PTS/G'], maxes['PTS']), norm(p2_stats['AST/G'], maxes['AST']), norm(p2_stats['REB/G'], maxes['REB']), norm(p2_stats['STL/G'] + p2_stats['BLK/G'], maxes['DEF']), norm(p2_stats['FG%'], 100), norm(p2_stats['PTS/G'], maxes['PTS'])]
-
     fig = go.Figure()
     fig.add_trace(go.Scatterpolar(r=r1, theta=categories, fill='toself', name=p1_name, fillcolor='rgba(212, 175, 55, 0.4)', line=dict(color='#d4af37', width=2)))
     fig.add_trace(go.Scatterpolar(r=r2, theta=categories, fill='toself', name=p2_name, fillcolor='rgba(204, 0, 0, 0.4)', line=dict(color='#cc0000', width=2)))
@@ -129,25 +141,21 @@ def generate_mini_leaderboard(title, df, stat_col, color="#d4af37"):
     html += "</div>"
     return html
 
-
 # --- 4. APP LOGIC & NAVIGATION ROUTING ---
 if isinstance(full_df, str): 
     st.error(f"⚠️ DATA ERROR: {full_df}")
 elif full_df is not None and not full_df.empty:
     
-    # 1. Auto-detect all seasons in the Google Sheet
     seasons = sorted([int(s) for s in full_df['Season'].unique() if pd.notna(s) and int(s) > 0], reverse=True)
     
-    # 2. Build the Sidebar Navigation
     st.sidebar.title("⚙️ Hub Controls")
-    view_mode = st.sidebar.radio("Navigation", ["🏠 League Home", "🏢 Team Pages", "🔬 Advanced Analytics", "⚔️ Head-to-Head Radar"])
+    # Added "Standings" to the navigation menu
+    view_mode = st.sidebar.radio("Navigation", ["🏠 League Home", "🏆 Standings", "🏢 Team Pages", "🔬 Advanced Analytics", "⚔️ Head-to-Head Radar"])
     
     st.sidebar.divider()
     scope_opts = [f"Season {s}" for s in seasons] + ["Career Stats"]
-    # Defaults to the first item in the list (the newest season)
     selected_scope = st.sidebar.selectbox("Data Scope", scope_opts, index=0)
     
-    # 3. Apply the Filter and Update the Banner
     if selected_scope == "Career Stats":
         df_active = full_df
         banner_text = "CAREER TOTALS"
@@ -158,28 +166,23 @@ elif full_df is not None and not full_df.empty:
 
     st.markdown(f'<div class="header-banner">🏀 SPAM LEAGUE HUB - {banner_text}</div>', unsafe_allow_html=True)
 
-    # 4. Calculate global player stats for the current scope
     if 'Type' in df_active.columns:
         df_reg = df_active[df_active['Type'].astype(str).str.lower() == 'player']
     else:
         df_reg = df_active
 
     if not df_reg.empty:
-        # Map each player to their most recent team in this scope to handle trades/history
         latest_teams = df_reg.sort_values('Season', ascending=False).groupby('Player/Team')['Team Name'].first().reset_index()
-        
         p_stats = df_reg.groupby('Player/Team').mean(numeric_only=True).reset_index()
         p_stats = p_stats.merge(latest_teams, on='Player/Team', how='left')
 
-        # Volume and base averages
         for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO', 'FGA', 'FGM', 'FTA', 'Poss_Raw']: 
             p_stats[f'{col}/G'] = p_stats[col].round(1)
         
-        # Advanced Efficiency & Pace Math
         p_stats['FG%'] = (p_stats['FGM'] / p_stats['FGA'].replace(0,1) * 100).round(1)
         p_stats['PIE'] = p_stats['PIE_Raw'].round(1)
         p_stats['TS%'] = (p_stats['PTS'] / (2 * (p_stats['FGA'] + 0.44 * p_stats['FTA']).replace(0, 1)) * 100).round(1)
-        p_stats['PPP'] = (p_stats['PTS'] / p_stats['Poss_Raw'].replace(0, 1)).round(2) # Points Per Possession
+        p_stats['PPP'] = (p_stats['PTS'] / p_stats['Poss_Raw'].replace(0, 1)).round(2) 
         p_stats = p_stats.sort_values('PIE', ascending=False).reset_index(drop=True)
 
         # --- ROUTING ENGINE ---
@@ -191,6 +194,53 @@ elif full_df is not None and not full_df.empty:
             with c3: st.markdown(generate_mini_leaderboard("Rebounds", p_stats.sort_values('REB/G', ascending=False), 'REB/G', color="#32cd32"), unsafe_allow_html=True)
             with c4: st.markdown(generate_mini_leaderboard("Steals", p_stats.sort_values('STL/G', ascending=False), 'STL/G', color="#ff8c00"), unsafe_allow_html=True)
             with c5: st.markdown(generate_mini_leaderboard("Blocks", p_stats.sort_values('BLK/G', ascending=False), 'BLK/G', color="#8a2be2"), unsafe_allow_html=True)
+
+        elif view_mode == "🏆 Standings":
+            st.subheader(f"🏆 {banner_text} Power Rankings")
+            
+            if 'Type' in df_active.columns:
+                team_df = df_active[df_active['Type'].astype(str).str.lower() == 'team']
+                
+                if not team_df.empty:
+                    # Filter out any blank teams
+                    team_df = team_df[(team_df['Team Name'].astype(str) != '0') & (team_df['Team Name'].notna())]
+                    
+                    t_stats = team_df.groupby('Team Name').agg({
+                        'Game_ID': 'count',
+                        'Win': 'sum',
+                        'PTS': 'sum',
+                        'REB': 'sum',
+                        'AST': 'sum',
+                        'Poss_Raw': 'sum'
+                    }).reset_index()
+                    
+                    t_stats.rename(columns={'Game_ID': 'GP', 'Win': 'Wins'}, inplace=True)
+                    t_stats['Losses'] = t_stats['GP'] - t_stats['Wins']
+                    t_stats['Win %'] = t_stats['Wins'] / t_stats['GP'].replace(0, 1)
+                    t_stats['PPG'] = t_stats['PTS'] / t_stats['GP'].replace(0, 1)
+                    t_stats['RPG'] = t_stats['REB'] / t_stats['GP'].replace(0, 1)
+                    t_stats['APG'] = t_stats['AST'] / t_stats['GP'].replace(0, 1)
+                    t_stats['OffRtg'] = (t_stats['PTS'] / t_stats['Poss_Raw'].replace(0, 1)) * 100
+                    
+                    # Sort by Wins first, then Win %, then Offensive Rating
+                    t_stats = t_stats.sort_values(by=['Wins', 'Win %', 'OffRtg'], ascending=[False, False, False]).reset_index(drop=True)
+                    
+                    for idx, row in t_stats.iterrows():
+                        st.markdown(generate_2k_standings_row(
+                            row['Team Name'], 
+                            idx + 1, 
+                            row['Wins'], 
+                            row['Losses'], 
+                            row['Win %'], 
+                            row['PPG'], 
+                            row['RPG'], 
+                            row['APG'], 
+                            row['OffRtg']
+                        ), unsafe_allow_html=True)
+                else:
+                    st.info("No team totals found in the dataset for this scope. Ensure 'Type' is set to 'Team' in your Sheet for team rows.")
+            else:
+                st.warning("The 'Type' column is missing from the dataset.")
 
         elif view_mode == "🏢 Team Pages":
             available_teams = sorted([t for t in p_stats['Team Name'].unique() if str(t) != '0' and pd.notna(t)])
@@ -210,7 +260,6 @@ elif full_df is not None and not full_df.empty:
             st.subheader("🧪 Sabermetrics & Efficiency Lab")
             lens = st.selectbox("Analytics Lens", ["Efficiency (TS% vs PIE)", "Volume (Possessions vs Usage)", "Stats by Possession (PPP)"])
             
-            # Clean data for plotting
             plot_df = p_stats[p_stats['PTS/G'] > 0].copy()
             
             if lens == "Efficiency (TS% vs PIE)":
