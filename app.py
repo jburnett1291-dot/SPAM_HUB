@@ -65,7 +65,7 @@ def load_data():
             if c != 'Type': # Don't try to make the word "Player" into a number
                 df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
             
-        # Hard binary win column
+        # Hard binary win column (1 for win, 0 for loss)
         if 'Win' in df.columns:
             df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
             
@@ -130,19 +130,38 @@ def draw_2k_comparison_radar(p1_name, p1_stats, p2_name, p2_stats, maxes):
     fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100], showticklabels=False)), showlegend=True, template="plotly_dark", height=400, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
     return fig
 
-# --- 4. APP LOGIC ---
+# --- 4. APP LOGIC & SEASON FILTER ---
 if isinstance(full_df, str): 
     st.error(f"⚠️ DATA ERROR: {full_df}")
-elif full_df is not None:
-    st.markdown('<div class="header-banner">🏀 SPAM LEAGUE INTELLIGENCE HUB</div>', unsafe_allow_html=True)
-
-    # Filter out Teams so we only rank actual Players
-    if 'Type' in full_df.columns:
-        df_reg = full_df[full_df['Type'].astype(str).str.lower() == 'player']
+elif full_df is not None and not full_df.empty:
+    
+    # 1. Auto-detect all seasons in the Google Sheet
+    seasons = sorted([int(s) for s in full_df['Season'].unique() if pd.notna(s) and int(s) > 0], reverse=True)
+    
+    # 2. Build the Sidebar
+    st.sidebar.title("⚙️ Hub Controls")
+    scope_opts = [f"Season {s}" for s in seasons] + ["Career Stats"]
+    
+    # Defaults to the first item in the list (the newest season)
+    selected_scope = st.sidebar.selectbox("Select Scope", scope_opts, index=0)
+    
+    # 3. Apply the Filter and Update the Banner
+    if selected_scope == "Career Stats":
+        df_active = full_df
+        st.markdown('<div class="header-banner">🏀 SPAM LEAGUE HUB - CAREER TOTALS</div>', unsafe_allow_html=True)
     else:
-        df_reg = full_df
+        target_season = int(selected_scope.replace("Season ", ""))
+        df_active = full_df[full_df['Season'] == target_season]
+        st.markdown(f'<div class="header-banner">🏀 SPAM LEAGUE HUB - SEASON {target_season}</div>', unsafe_allow_html=True)
+
+    # 4. Filter out Teams so we only rank actual Players from the ACTIVE dataframe
+    if 'Type' in df_active.columns:
+        df_reg = df_active[df_active['Type'].astype(str).str.lower() == 'player']
+    else:
+        df_reg = df_active
 
     if not df_reg.empty:
+        # Calculate stats strictly for the selected scope
         p_stats = df_reg.groupby('Player/Team').mean(numeric_only=True).reset_index()
         for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM']: 
             p_stats[f'{col}/G'] = p_stats[col].round(1)
@@ -153,14 +172,14 @@ elif full_df is not None:
         tab1, tab2 = st.tabs(["📋 Roster Binder", "⚔️ Head-to-Head Radar"])
 
         with tab1:
-            st.subheader("Player Analytics Binder")
+            st.subheader(f"Player Analytics Binder ({selected_scope})")
             cols = st.columns(4)
             for idx, row in p_stats.head(12).iterrows():
                 with cols[idx % 4]:
                     st.markdown(generate_2k_player_card(row['Player/Team'], row, rank=idx+1), unsafe_allow_html=True)
 
         with tab2:
-            st.subheader("🕸️ Attribute Web Comparison")
+            st.subheader(f"🕸️ Attribute Web Comparison ({selected_scope})")
             c1, c2 = st.columns(2)
             
             player_list = p_stats['Player/Team'].tolist()
@@ -180,6 +199,6 @@ elif full_df is not None:
                     }
                     st.plotly_chart(draw_2k_comparison_radar(p1_sel, p1_data, p2_sel, p2_data, league_maxes), use_container_width=True)
             else:
-                st.info("Need more player data to run Head-to-Head comparisons.")
+                st.info("Need more player data in this season to run Head-to-Head comparisons.")
     else:
-        st.warning("No player data found to display.")
+        st.warning(f"No player data found for {selected_scope}.")
