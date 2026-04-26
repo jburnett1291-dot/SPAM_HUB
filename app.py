@@ -22,7 +22,7 @@ css_styles = """
     .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 12px; border: 3px solid #d4af37; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .flip-card-front { background: linear-gradient(145deg, #1c2128, #2a2d35); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;}
     .flip-card-back { background-color: #161b22; color: white; transform: rotateY(180deg); padding: 15px; overflow-y: auto; text-align: left; }
-    .stat-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding: 6px 0; font-size: 14px; }
+    .stat-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding: 6px 0; font-size: 13px; }
     .stat-val { font-weight: bold; color: #d4af37; }
     .stat-label { color: #8b949e; }
 </style>
@@ -68,7 +68,6 @@ def load_data():
         if 'Win' in df.columns: df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
         
-        # RE-INJECTED: Multiplier Logic (Double-Doubles / Triple-Doubles)
         def calc_multis(row):
             if row['is_ff']: return pd.Series([0, 0])
             s = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
@@ -86,22 +85,22 @@ full_df = load_data()
 # --- 3. HTML & CHART GENERATORS ---
 def generate_2k_player_card(player_name, stats, rank=""):
     rank_badge = f'<div style="position:absolute; top:-10px; right:-10px; background:#d4af37; color:#000; font-weight:bold; padding:8px; border-radius:50%; border:2px solid #fff; z-index:10;">#{rank}</div>' if rank else ""
-    return f'''<div class="flip-card" style="height: 320px;">
+    return f'''<div class="flip-card" style="height: 330px;">
 {rank_badge}
 <div class="flip-card-inner">
 <div class="flip-card-front">
-<img src="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png" style="width: 100px; border-radius: 50%; border: 2px solid #d4af37; margin-bottom: 15px;">
-<h3 style="margin: 0; color: white;">{player_name}</h3>
+<img src="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png" style="width: 90px; border-radius: 50%; border: 2px solid #d4af37; margin-bottom: 10px;">
+<h3 style="margin: 0; color: white; font-size: 18px;">{player_name}</h3>
 <h2 style="color: #d4af37; margin-top: 5px;">{stats.get('PIE', 0):.1f} PIE</h2>
 </div>
 <div class="flip-card-back">
-<h4 style="color: #d4af37; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 0;">Season Averages</h4>
-<div class="stat-row"><span class="stat-label">PPG</span> <span class="stat-val">{stats.get('PTS/G', 0):.1f}</span></div>
-<div class="stat-row"><span class="stat-label">RPG</span> <span class="stat-val">{stats.get('REB/G', 0):.1f}</span></div>
-<div class="stat-row"><span class="stat-label">APG</span> <span class="stat-val">{stats.get('AST/G', 0):.1f}</span></div>
-<div class="stat-row"><span class="stat-label">SPG | BPG</span> <span class="stat-val">{stats.get('STL/G', 0):.1f} | {stats.get('BLK/G', 0):.1f}</span></div>
-<div class="stat-row"><span class="stat-label">FG%</span> <span class="stat-val">{stats.get('FG%', 0)}%</span></div>
-<div class="stat-row"><span class="stat-label">TS%</span> <span class="stat-val">{stats.get('TS%', 0):.1f}%</span></div>
+<h4 style="color: #d4af37; border-bottom: 1px solid #333; padding-bottom: 3px; margin-top: 0; font-size: 14px;">Season Averages</h4>
+<div class="stat-row"><span class="stat-label">GP</span> <span class="stat-val">{int(stats.get('GP', 0))}</span></div>
+<div class="stat-row"><span class="stat-label">PPG | RPG | APG</span> <span class="stat-val">{stats.get('PTS/G', 0):.1f} | {stats.get('REB/G', 0):.1f} | {stats.get('AST/G', 0):.1f}</span></div>
+<div class="stat-row"><span class="stat-label">STOCKS (Def)</span> <span class="stat-val">{stats.get('DEF', 0):.1f}</span></div>
+<div class="stat-row"><span class="stat-label">FG% | 3P%</span> <span class="stat-val">{stats.get('FG%', 0):.1f}% | {stats.get('3P%', 0):.1f}%</span></div>
+<div class="stat-row"><span class="stat-label">TS% | eFG%</span> <span class="stat-val">{stats.get('TS%', 0):.1f}% | {stats.get('eFG%', 0):.1f}%</span></div>
+<div class="stat-row"><span class="stat-label">PPP | AST:TO</span> <span class="stat-val">{stats.get('PPP', 0):.2f} | {stats.get('AST/TO', 0):.2f}</span></div>
 </div>
 </div>
 </div>'''
@@ -142,20 +141,13 @@ def generate_mini_leaderboard(title, df, stat_col, color="#d4af37"):
     return html
 
 def draw_dynamic_radar(p1_name, r1_vals, p2_name, r2_vals, categories, title):
-    # Ensure the loop closes for the radar chart
     r1_vals = list(r1_vals) + [r1_vals[0]]
     r2_vals = list(r2_vals) + [r2_vals[0]]
     cats = list(categories) + [categories[0]]
-    
     fig = go.Figure()
     fig.add_trace(go.Scatterpolar(r=r1_vals, theta=cats, fill='toself', name=p1_name, fillcolor='rgba(212, 175, 55, 0.4)', line=dict(color='#d4af37', width=2)))
     fig.add_trace(go.Scatterpolar(r=r2_vals, theta=cats, fill='toself', name=p2_name, fillcolor='rgba(204, 0, 0, 0.4)', line=dict(color='#cc0000', width=2)))
-    fig.update_layout(
-        title=dict(text=title, font=dict(color='white', size=16)),
-        polar=dict(radialaxis=dict(visible=True, range=[0, 100], showticklabels=False, gridcolor='#444')),
-        showlegend=True, template="plotly_dark", height=380, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=40, r=40, t=60, b=40)
-    )
+    fig.update_layout(title=dict(text=title, font=dict(color='white', size=16)), polar=dict(radialaxis=dict(visible=True, range=[0, 100], showticklabels=False, gridcolor='#444')), showlegend=True, template="plotly_dark", height=380, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=40, r=40, t=60, b=40))
     return fig
 
 # --- 4. APP LOGIC & NAVIGATION ROUTING ---
@@ -165,7 +157,7 @@ elif full_df is not None and not full_df.empty:
     
     seasons = sorted([int(s) for s in full_df['Season'].unique() if pd.notna(s) and int(s) > 0], reverse=True)
     st.sidebar.title("⚙️ Hub Controls")
-    view_mode = st.sidebar.radio("Navigation", ["🏠 League Home", "🏆 Standings", "🏢 Team Pages", "🔬 Advanced Analytics", "⚔️ Head-to-Head Radar"])
+    view_mode = st.sidebar.radio("Navigation", ["🏠 League Home", "🏆 Standings", "🏢 Team Pages", "🗃️ Full Player Database", "🔬 Advanced Analytics", "⚔️ Head-to-Head Radar"])
     st.sidebar.divider()
     scope_opts = [f"Season {s}" for s in seasons] + ["Career Stats"]
     selected_scope = st.sidebar.selectbox("Data Scope", scope_opts, index=0)
@@ -181,9 +173,13 @@ elif full_df is not None and not full_df.empty:
     # PLAYER STATS CALCULATION
     df_reg = df_active[df_active['Type'].astype(str).str.lower() == 'player'] if 'Type' in df_active.columns else df_active
     if not df_reg.empty:
+        # Calculate Games Played
+        p_gp = df_reg.groupby('Player/Team')['Game_ID'].nunique().reset_index().rename(columns={'Game_ID': 'GP'})
+        
         latest_teams = df_reg.sort_values('Season', ascending=False).groupby('Player/Team')['Team Name'].first().reset_index()
         p_stats = df_reg.groupby('Player/Team').mean(numeric_only=True).reset_index()
         p_stats = p_stats.merge(latest_teams, on='Player/Team', how='left')
+        p_stats = p_stats.merge(p_gp, on='Player/Team', how='left')
 
         for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', '3PA', 'TO', 'FGA', 'FGM', 'FTA', 'FTM', 'Poss_Raw']: p_stats[f'{col}/G'] = p_stats[col].round(1)
         p_stats['FG%'] = (p_stats['FGM'] / p_stats['FGA'].replace(0,1) * 100).round(1)
@@ -195,7 +191,16 @@ elif full_df is not None and not full_df.empty:
         p_stats['PIE'] = p_stats['PIE_Raw'].round(1)
         p_stats['PPP'] = (p_stats['PTS'] / p_stats['Poss_Raw'].replace(0, 1)).round(2) 
         p_stats['DEF'] = p_stats['STL/G'] + p_stats['BLK/G']
+        
+        # Sort by PIE and Assign Official League Rank
         p_stats = p_stats.sort_values('PIE', ascending=False).reset_index(drop=True)
+        p_stats['League_Rank'] = p_stats.index + 1
+
+        # 60% Rule Calculation
+        max_league_gp = p_stats['GP'].max()
+        qualifying_gp_min = max_league_gp * 0.6 if pd.notna(max_league_gp) else 0
+        qualified_p_stats = p_stats[p_stats['GP'] >= qualifying_gp_min].copy()
+        if qualified_p_stats.empty: qualified_p_stats = p_stats # Fallback
 
     # TEAM STATS CALCULATION
     t_stats = pd.DataFrame()
@@ -204,7 +209,7 @@ elif full_df is not None and not full_df.empty:
         team_df = team_df[(team_df['Team Name'].astype(str) != '0') & (team_df['Team Name'].notna())]
         if not team_df.empty:
             t_stats = team_df.groupby('Team Name').sum(numeric_only=True).reset_index()
-            t_stats['GP'] = team_df.groupby('Team Name')['Game_ID'].count().values
+            t_stats['GP'] = team_df.groupby('Team Name')['Game_ID'].nunique().values
             t_stats['Win %'] = (t_stats['Win'] / t_stats['GP'].replace(0, 1) * 100).round(1)
             for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', '3PA', 'TO', 'FGA', 'FGM', 'FTA', 'FTM', 'Poss_Raw']: t_stats[f'{col}/G'] = (t_stats[col] / t_stats['GP']).round(1)
             t_stats['FG%'] = (t_stats['FGM'] / t_stats['FGA'].replace(0,1) * 100).round(1)
@@ -218,13 +223,13 @@ elif full_df is not None and not full_df.empty:
 
     # --- ROUTING ENGINE ---
     if view_mode == "🏠 League Home":
-        st.subheader("👑 Official League Leaders (5-Tool)")
+        st.subheader("👑 Official League Leaders (60% GP Qualifier)")
         c1, c2, c3, c4, c5 = st.columns(5)
-        with c1: st.markdown(generate_mini_leaderboard("Points", p_stats.sort_values('PTS/G', ascending=False), 'PTS/G', color="#cc0000"), unsafe_allow_html=True)
-        with c2: st.markdown(generate_mini_leaderboard("Assists", p_stats.sort_values('AST/G', ascending=False), 'AST/G', color="#00bfff"), unsafe_allow_html=True)
-        with c3: st.markdown(generate_mini_leaderboard("Rebounds", p_stats.sort_values('REB/G', ascending=False), 'REB/G', color="#32cd32"), unsafe_allow_html=True)
-        with c4: st.markdown(generate_mini_leaderboard("Steals", p_stats.sort_values('STL/G', ascending=False), 'STL/G', color="#ff8c00"), unsafe_allow_html=True)
-        with c5: st.markdown(generate_mini_leaderboard("Blocks", p_stats.sort_values('BLK/G', ascending=False), 'BLK/G', color="#8a2be2"), unsafe_allow_html=True)
+        with c1: st.markdown(generate_mini_leaderboard("Points", qualified_p_stats.sort_values('PTS/G', ascending=False), 'PTS/G', color="#cc0000"), unsafe_allow_html=True)
+        with c2: st.markdown(generate_mini_leaderboard("Assists", qualified_p_stats.sort_values('AST/G', ascending=False), 'AST/G', color="#00bfff"), unsafe_allow_html=True)
+        with c3: st.markdown(generate_mini_leaderboard("Rebounds", qualified_p_stats.sort_values('REB/G', ascending=False), 'REB/G', color="#32cd32"), unsafe_allow_html=True)
+        with c4: st.markdown(generate_mini_leaderboard("Steals", qualified_p_stats.sort_values('STL/G', ascending=False), 'STL/G', color="#ff8c00"), unsafe_allow_html=True)
+        with c5: st.markdown(generate_mini_leaderboard("Blocks", qualified_p_stats.sort_values('BLK/G', ascending=False), 'BLK/G', color="#8a2be2"), unsafe_allow_html=True)
 
     elif view_mode == "🏆 Standings":
         st.subheader(f"🏆 {banner_text} Power Rankings")
@@ -243,7 +248,25 @@ elif full_df is not None and not full_df.empty:
             team_p_stats = p_stats[p_stats['Team Name'] == selected_team].reset_index(drop=True)
             cols = st.columns(4)
             for idx, row in team_p_stats.iterrows():
-                with cols[idx % 4]: st.markdown(generate_2k_player_card(row['Player/Team'], row, rank=""), unsafe_allow_html=True)
+                with cols[idx % 4]: st.markdown(generate_2k_player_card(row['Player/Team'], row, rank=row['League_Rank']), unsafe_allow_html=True)
+
+    elif view_mode == "🗃️ Full Player Database":
+        st.subheader("🗃️ Complete League Roster")
+        
+        col1, col2 = st.columns(2)
+        with col1: search_name = st.text_input("🔍 Search by Player Name")
+        with col2: sort_metric = st.selectbox("Sort Roster By", ["PIE", "PTS/G", "REB/G", "AST/G", "DEF", "FG%", "TS%", "PPP"])
+        
+        filtered_df = p_stats.copy()
+        if search_name:
+            filtered_df = filtered_df[filtered_df['Player/Team'].str.contains(search_name, case=False, na=False)]
+            
+        filtered_df = filtered_df.sort_values(sort_metric, ascending=False).reset_index(drop=True)
+        
+        cols = st.columns(4)
+        for idx, row in filtered_df.iterrows():
+            with cols[idx % 4]:
+                st.markdown(generate_2k_player_card(row['Player/Team'], row, rank=row['League_Rank']), unsafe_allow_html=True)
 
     elif view_mode == "🔬 Advanced Analytics":
         st.subheader("🧪 Sabermetrics & Efficiency Lab")
@@ -257,9 +280,8 @@ elif full_df is not None and not full_df.empty:
     elif view_mode == "⚔️ Head-to-Head Radar":
         st.subheader("🕸️ Dynamic Matchup Lab")
         mode = st.radio("Matchup Type", ["Player vs Player", "Team vs Team"], horizontal=True)
-        
         def norm(val, mx): return min(100, (max(0, val) / mx) * 100) if mx > 0 else 0
-        def rev_norm(val, mx): return max(0, 100 - (norm(val, mx))) # Higher is worse (like Turnovers)
+        def rev_norm(val, mx): return max(0, 100 - (norm(val, mx)))
 
         if mode == "Player vs Player" and not df_reg.empty:
             c1, c2 = st.columns(2)
@@ -272,22 +294,18 @@ elif full_df is not None and not full_df.empty:
                 d2 = p_stats[p_stats['Player/Team'] == p2_sel].iloc[0]
                 mx = p_stats.max(numeric_only=True)
                 
-                # RADAR 1: The 5-Tool Core
                 cats1 = ['Scoring (PPG)', 'Playmaking (APG)', 'Rebounding (RPG)', 'Defense (Stocks)', 'Efficiency (FG%)']
                 r1_1 = [norm(d1['PTS/G'], mx['PTS/G']), norm(d1['AST/G'], mx['AST/G']), norm(d1['REB/G'], mx['REB/G']), norm(d1['DEF'], mx['DEF']), norm(d1['FG%'], 100)]
                 r2_1 = [norm(d2['PTS/G'], mx['PTS/G']), norm(d2['AST/G'], mx['AST/G']), norm(d2['REB/G'], mx['REB/G']), norm(d2['DEF'], mx['DEF']), norm(d2['FG%'], 100)]
                 
-                # RADAR 2: Sharpshooter Matrix
                 cats2 = ['3P Vol (3PA)', '3P%', 'FT%', 'True Shooting', 'Effective FG%']
                 r1_2 = [norm(d1['3PA/G'], mx['3PA/G']), norm(d1['3P%'], 100), norm(d1['FT%'], 100), norm(d1['TS%'], 100), norm(d1['eFG%'], 100)]
                 r2_2 = [norm(d2['3PA/G'], mx['3PA/G']), norm(d2['3P%'], 100), norm(d2['FT%'], 100), norm(d2['TS%'], 100), norm(d2['eFG%'], 100)]
                 
-                # RADAR 3: Floor General Web
                 cats3 = ['AST/TO Ratio', 'Total Assists', 'Turnovers (Low=Good)', 'Possessions Handled', 'Win %']
                 r1_3 = [norm(d1['AST/TO'], mx['AST/TO']), norm(d1['AST/G'], mx['AST/G']), rev_norm(d1['TO/G'], mx['TO/G']), norm(d1['Poss_Raw/G'], mx['Poss_Raw/G']), norm(d1['Win'], mx['Win'])]
                 r2_3 = [norm(d2['AST/TO'], mx['AST/TO']), norm(d2['AST/G'], mx['AST/G']), rev_norm(d2['TO/G'], mx['TO/G']), norm(d2['Poss_Raw/G'], mx['Poss_Raw/G']), norm(d2['Win'], mx['Win'])]
                 
-                # RADAR 4: Impact & Volume Engine
                 cats4 = ['Overall Impact (PIE)', 'Pts Per Possession', 'Volume (FGA)', 'FT Attempts', 'Double-Doubles']
                 r1_4 = [norm(d1['PIE'], mx['PIE']), norm(d1['PPP'], mx['PPP']), norm(d1['FGA/G'], mx['FGA/G']), norm(d1['FTA/G'], mx['FTA/G']), norm(d1['DD'], mx['DD'])]
                 r2_4 = [norm(d2['PIE'], mx['PIE']), norm(d2['PPP'], mx['PPP']), norm(d2['FGA/G'], mx['FGA/G']), norm(d2['FTA/G'], mx['FTA/G']), norm(d2['DD'], mx['DD'])]
@@ -311,12 +329,10 @@ elif full_df is not None and not full_df.empty:
                 d2 = t_stats[t_stats['Team Name'] == t2_sel].iloc[0]
                 mx = t_stats.max(numeric_only=True)
                 
-                # RADAR 1: Team Core Stats
                 cats1 = ['Points (PPG)', 'Assists (APG)', 'Rebounds (RPG)', 'Defense (Stocks)', 'Win %']
                 r1_1 = [norm(d1['PTS/G'], mx['PTS/G']), norm(d1['AST/G'], mx['AST/G']), norm(d1['REB/G'], mx['REB/G']), norm(d1['DEF'], mx['DEF']), d1['Win %']]
                 r2_1 = [norm(d2['PTS/G'], mx['PTS/G']), norm(d2['AST/G'], mx['AST/G']), norm(d2['REB/G'], mx['REB/G']), norm(d2['DEF'], mx['DEF']), d2['Win %']]
                 
-                # RADAR 2: Team Efficiency
                 cats2 = ['Offensive Rating', 'True Shooting', 'Effective FG%', '3P%', 'AST/TO Ratio']
                 r1_2 = [norm(d1['OffRtg'], mx['OffRtg']), norm(d1['TS%'], 100), norm(d1['eFG%'], 100), norm(d1['3P%'], 100), norm(d1['AST/TO'], mx['AST/TO'])]
                 r2_2 = [norm(d2['OffRtg'], mx['OffRtg']), norm(d2['TS%'], 100), norm(d2['eFG%'], 100), norm(d2['3P%'], 100), norm(d2['AST/TO'], mx['AST/TO'])]
