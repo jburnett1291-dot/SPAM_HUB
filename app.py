@@ -67,6 +67,15 @@ def load_data():
             
         if 'Win' in df.columns: df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
+        
+        # RE-INJECTED: Multiplier Logic (Double-Doubles / Triple-Doubles)
+        def calc_multis(row):
+            if row['is_ff']: return pd.Series([0, 0])
+            s = [row['PTS'], row['REB'], row['AST'], row['STL'], row['BLK']]
+            tens = sum(1 for x in s if x >= 10)
+            return pd.Series([1 if tens >= 2 else 0, 1 if tens >= 3 else 0])
+        df[['DD', 'TD']] = df.apply(calc_multis, axis=1)
+        
         df['PIE_Raw'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss_Raw'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
         return df
