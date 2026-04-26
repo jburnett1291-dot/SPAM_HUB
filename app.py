@@ -105,6 +105,30 @@ def generate_2k_player_card(player_name, stats, rank=""):
 </div>
 </div>'''
 
+def generate_2k_player_row(player_name, rank, gp, ppg, rpg, apg, stocks, fg, ts, pie):
+    color = "#ffd700" if rank == 1 else "#c0c0c0" if rank == 2 else "#cd7f32" if rank == 3 else "#00bfff"
+    return f"""<div style="background: linear-gradient(145deg, #1c2128, #2a2d35); border-left: 6px solid {color}; border-radius: 8px; padding: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+<div style="display: flex; align-items: center; width: 25%;">
+<h2 style="margin:0; color:{color}; margin-right: 20px; font-size: 28px; font-family: 'Arial Black', sans-serif;">#{int(rank)}</h2>
+<div>
+<h3 style="margin:0; color:white; font-size: 18px; text-transform: uppercase;">{player_name}</h3>
+<div style="font-size: 14px; color: #aaa; margin-top: 2px;">GP: <span style="color:#fff; font-weight:bold;">{int(gp)}</span></div>
+</div>
+</div>
+<div style="display: flex; width: 55%; justify-content: space-around; text-align: center;">
+<div><div style="font-size:11px; color:#888; text-transform:uppercase;">PPG</div><div style="font-size:16px; font-weight:bold; color:#fff;">{ppg:.1f}</div></div>
+<div><div style="font-size:11px; color:#888; text-transform:uppercase;">RPG</div><div style="font-size:16px; font-weight:bold; color:#fff;">{rpg:.1f}</div></div>
+<div><div style="font-size:11px; color:#888; text-transform:uppercase;">APG</div><div style="font-size:16px; font-weight:bold; color:#fff;">{apg:.1f}</div></div>
+<div><div style="font-size:11px; color:#888; text-transform:uppercase;">STOCKS</div><div style="font-size:16px; font-weight:bold; color:#fff;">{stocks:.1f}</div></div>
+<div><div style="font-size:11px; color:#888; text-transform:uppercase;">FG%</div><div style="font-size:16px; font-weight:bold; color:#fff;">{fg:.1f}%</div></div>
+<div><div style="font-size:11px; color:#888; text-transform:uppercase;">TS%</div><div style="font-size:16px; font-weight:bold; color:#fff;">{ts:.1f}%</div></div>
+</div>
+<div style="text-align: right; width: 20%;">
+<div style="font-size: 11px; color: #888; text-transform: uppercase; font-weight: bold;">PIE Rating</div>
+<div style="font-size: 24px; font-weight: bold; color: #d4af37;">{pie:.1f}</div>
+</div>
+</div>"""
+
 def generate_2k_standings_row(team, rank, wins, losses, win_pct, ppg, rpg, apg, off_rtg):
     color = "#ffd700" if rank == 1 else "#c0c0c0" if rank == 2 else "#cd7f32" if rank == 3 else "#00bfff"
     return f"""<div style="background: linear-gradient(145deg, #1c2128, #2a2d35); border-left: 6px solid {color}; border-radius: 8px; padding: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
@@ -173,9 +197,7 @@ elif full_df is not None and not full_df.empty:
     # PLAYER STATS CALCULATION
     df_reg = df_active[df_active['Type'].astype(str).str.lower() == 'player'] if 'Type' in df_active.columns else df_active
     if not df_reg.empty:
-        # Calculate Games Played
         p_gp = df_reg.groupby('Player/Team')['Game_ID'].nunique().reset_index().rename(columns={'Game_ID': 'GP'})
-        
         latest_teams = df_reg.sort_values('Season', ascending=False).groupby('Player/Team')['Team Name'].first().reset_index()
         p_stats = df_reg.groupby('Player/Team').mean(numeric_only=True).reset_index()
         p_stats = p_stats.merge(latest_teams, on='Player/Team', how='left')
@@ -192,15 +214,13 @@ elif full_df is not None and not full_df.empty:
         p_stats['PPP'] = (p_stats['PTS'] / p_stats['Poss_Raw'].replace(0, 1)).round(2) 
         p_stats['DEF'] = p_stats['STL/G'] + p_stats['BLK/G']
         
-        # Sort by PIE and Assign Official League Rank
         p_stats = p_stats.sort_values('PIE', ascending=False).reset_index(drop=True)
         p_stats['League_Rank'] = p_stats.index + 1
 
-        # 60% Rule Calculation
         max_league_gp = p_stats['GP'].max()
         qualifying_gp_min = max_league_gp * 0.6 if pd.notna(max_league_gp) else 0
         qualified_p_stats = p_stats[p_stats['GP'] >= qualifying_gp_min].copy()
-        if qualified_p_stats.empty: qualified_p_stats = p_stats # Fallback
+        if qualified_p_stats.empty: qualified_p_stats = p_stats 
 
     # TEAM STATS CALCULATION
     t_stats = pd.DataFrame()
@@ -263,10 +283,19 @@ elif full_df is not None and not full_df.empty:
             
         filtered_df = filtered_df.sort_values(sort_metric, ascending=False).reset_index(drop=True)
         
-        cols = st.columns(4)
         for idx, row in filtered_df.iterrows():
-            with cols[idx % 4]:
-                st.markdown(generate_2k_player_card(row['Player/Team'], row, rank=row['League_Rank']), unsafe_allow_html=True)
+            st.markdown(generate_2k_player_row(
+                row['Player/Team'], 
+                row['League_Rank'], 
+                row['GP'], 
+                row['PTS/G'], 
+                row['REB/G'], 
+                row['AST/G'], 
+                row['DEF'], 
+                row['FG%'], 
+                row['TS%'], 
+                row['PIE']
+            ), unsafe_allow_html=True)
 
     elif view_mode == "🔬 Advanced Analytics":
         st.subheader("🧪 Sabermetrics & Efficiency Lab")
