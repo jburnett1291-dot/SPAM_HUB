@@ -222,7 +222,8 @@ def generate_2k_player_row(player_name, rank, gp, ppg, rpg, apg, stocks, fg, ts,
 </div>
 </div>"""
 
-def generate_mini_leaderboard(title, df, stat_col, color="#d4af37", top_n=5):
+# FIXED: Added exact 'name_col' forcing to prevent the "0" name bug entirely
+def generate_mini_leaderboard(title, df, stat_col, color="#d4af37", top_n=5, name_col=None):
     html = f"<div style='background:#1c2128; padding:15px; border-radius:8px; border-left:4px solid {color}; margin-bottom:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);'>"
     html += f"<h3 style='margin-top:0; color:#fff; font-size:16px; border-bottom:1px dashed #444; padding-bottom:8px; text-transform:uppercase;'>{title}</h3>"
     
@@ -239,10 +240,13 @@ def generate_mini_leaderboard(title, df, stat_col, color="#d4af37", top_n=5):
             
         rank_color = "#ffd700" if i == 0 else "#888"
         
-        # Auto-detect if it is a Player Name or Team Name
-        name = row.get('Player/Team')
-        if pd.isna(name) or name == 0 or str(name).strip() == '':
-            name = row.get('Team Name', 'Unknown')
+        # Explicitly pull the targeted Name Column to prevent Pandas from dropping string indexes
+        if name_col:
+            name = row.get(name_col, 'Unknown')
+        else:
+            name = row.get('Player/Team')
+            if pd.isna(name) or name == 0 or str(name).strip() == '' or str(name) == '0':
+                name = row.get('Team Name', 'Unknown')
         
         html += f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:14px;'>"
         html += f"<div><span style='color:{rank_color}; font-weight:bold; margin-right:8px;'>{i+1}.</span><span style='color:#ddd; font-weight:bold;'>{name}</span></div>"
@@ -305,16 +309,11 @@ elif full_df is not None and not full_df.empty:
 
         # Calculate Individual Single Game Highs
         p_highs = df_reg.groupby('Player/Team').agg(
-            High_PTS=('PTS', 'max'),
-            High_REB=('REB', 'max'),
-            High_AST=('AST', 'max'),
-            High_STL=('STL', 'max'),
-            High_BLK=('BLK', 'max'),
-            High_3PM=('3PM', 'max')
+            High_PTS=('PTS', 'max'), High_REB=('REB', 'max'), High_AST=('AST', 'max'),
+            High_STL=('STL', 'max'), High_BLK=('BLK', 'max'), High_3PM=('3PM', 'max')
         ).reset_index()
         p_stats = p_stats.merge(p_highs, on='Player/Team', how='left')
 
-        # Add advanced proxies to the core variables 
         for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', '3PA', 'TO', 'FGA', 'FGM', 'FTA', 'FTM', 'Poss_Raw', 'FB_Points', 'Tipped_Passes', 'Shots_Affected']: 
             if col in p_stats.columns: p_stats[f'{col}/G'] = p_stats[col].round(1)
 
@@ -359,20 +358,18 @@ elif full_df is not None and not full_df.empty:
     if view_mode == "🏠 League Home":
         st.subheader("👑 Official League Leaders (60% GP Qualifier)")
         c1, c2, c3, c4, c5 = st.columns(5)
-        with c1: st.markdown(generate_mini_leaderboard("Points", qualified_p_stats, 'PTS/G', color="#cc0000"), unsafe_allow_html=True)
-        with c2: st.markdown(generate_mini_leaderboard("Assists", qualified_p_stats, 'AST/G', color="#00bfff"), unsafe_allow_html=True)
-        with c3: st.markdown(generate_mini_leaderboard("Rebounds", qualified_p_stats, 'REB/G', color="#32cd32"), unsafe_allow_html=True)
-        with c4: st.markdown(generate_mini_leaderboard("Steals", qualified_p_stats, 'STL/G', color="#ff8c00"), unsafe_allow_html=True)
-        with c5: st.markdown(generate_mini_leaderboard("Blocks", qualified_p_stats, 'BLK/G', color="#8a2be2"), unsafe_allow_html=True)
+        # Explicit name_col ensures exact names print
+        with c1: st.markdown(generate_mini_leaderboard("Points", qualified_p_stats, 'PTS/G', color="#cc0000", name_col="Player/Team"), unsafe_allow_html=True)
+        with c2: st.markdown(generate_mini_leaderboard("Assists", qualified_p_stats, 'AST/G', color="#00bfff", name_col="Player/Team"), unsafe_allow_html=True)
+        with c3: st.markdown(generate_mini_leaderboard("Rebounds", qualified_p_stats, 'REB/G', color="#32cd32", name_col="Player/Team"), unsafe_allow_html=True)
+        with c4: st.markdown(generate_mini_leaderboard("Steals", qualified_p_stats, 'STL/G', color="#ff8c00", name_col="Player/Team"), unsafe_allow_html=True)
+        with c5: st.markdown(generate_mini_leaderboard("Blocks", qualified_p_stats, 'BLK/G', color="#8a2be2", name_col="Player/Team"), unsafe_allow_html=True)
 
     elif view_mode == "🏆 Standings":
         st.subheader(f"🏆 {banner_text} Standings & Advanced Metrics")
-        
         col1, col2 = st.columns(2)
-        with col1:
-            st_type = st.selectbox("Game Type Filter", ['All', 'Regular Season', 'Tournament', 'Playoffs'], key='standings_type')
-        with col2:
-            st_sort = st.selectbox("Sort By", ["Wins", "Point Differential", "Defensive Rating (Opp PPP)", "Offensive PPG"])
+        with col1: st_type = st.selectbox("Game Type Filter", ['All', 'Regular Season', 'Tournament', 'Playoffs'], key='standings_type')
+        with col2: st_sort = st.selectbox("Sort By", ["Wins", "Point Differential", "Defensive Rating (Opp PPP)", "Offensive PPG"])
 
         standings_df = df_active[(df_active['Type'].astype(str).str.lower() == 'team')]
         if st_type != 'All': standings_df = standings_df[standings_df['Game_Type'] == st_type]
@@ -384,7 +381,6 @@ elif full_df is not None and not full_df.empty:
                 Games=('Game_ID', 'nunique'), Wins=('Win', 'sum'), PPG=('PTS', 'mean'), Diff=('Point_Diff', 'mean'),
                 Opp_FG=('Opp_FG%', 'mean'), Opp_3P=('Opp_3P%', 'mean'), Opp_PPP=('Opp_PPP', 'mean')
             ).reset_index()
-
             team_aggs['Win%'] = (team_aggs['Wins'] / team_aggs['Games'].replace(0,1)) * 100
             
             if st_sort == "Wins": team_aggs = team_aggs.sort_values(by=['Win%', 'Diff'], ascending=[False, False])
@@ -417,31 +413,31 @@ elif full_df is not None and not full_df.empty:
 
     elif view_mode == "📖 Record Book & Milestones":
         st.subheader(f"📖 {banner_text} Record Book & Milestones")
-        
         tab_game, tab_miles = st.tabs(["🔥 Single Game Records", "🏔️ Milestone Tracker (Totals)"])
         
         with tab_game:
             st.markdown("### 🏆 Individual Single Game Highs")
             p_df = df_active[df_active['Type'].astype(str).str.lower() == 'player'].copy()
-            
             c1, c2, c3 = st.columns(3)
             with c1:
-                st.markdown(generate_mini_leaderboard("Points in a Game", p_df, 'PTS', color="#cc0000"), unsafe_allow_html=True)
-                st.markdown(generate_mini_leaderboard("Steals in a Game", p_df, 'STL', color="#ff8c00"), unsafe_allow_html=True)
+                st.markdown(generate_mini_leaderboard("Points in a Game", p_df, 'PTS', color="#cc0000", name_col="Player/Team"), unsafe_allow_html=True)
+                st.markdown(generate_mini_leaderboard("Steals in a Game", p_df, 'STL', color="#ff8c00", name_col="Player/Team"), unsafe_allow_html=True)
             with c2:
-                st.markdown(generate_mini_leaderboard("Rebounds in a Game", p_df, 'REB', color="#32cd32"), unsafe_allow_html=True)
-                st.markdown(generate_mini_leaderboard("Blocks in a Game", p_df, 'BLK', color="#8a2be2"), unsafe_allow_html=True)
+                st.markdown(generate_mini_leaderboard("Rebounds in a Game", p_df, 'REB', color="#32cd32", name_col="Player/Team"), unsafe_allow_html=True)
+                st.markdown(generate_mini_leaderboard("Blocks in a Game", p_df, 'BLK', color="#8a2be2", name_col="Player/Team"), unsafe_allow_html=True)
             with c3:
-                st.markdown(generate_mini_leaderboard("Assists in a Game", p_df, 'AST', color="#00bfff"), unsafe_allow_html=True)
-                st.markdown(generate_mini_leaderboard("3-Pointers in a Game", p_df, '3PM', color="#d4af37"), unsafe_allow_html=True)
+                st.markdown(generate_mini_leaderboard("Assists in a Game", p_df, 'AST', color="#00bfff", name_col="Player/Team"), unsafe_allow_html=True)
+                st.markdown(generate_mini_leaderboard("3-Pointers in a Game", p_df, '3PM', color="#d4af37", name_col="Player/Team"), unsafe_allow_html=True)
 
             st.markdown("### 🏢 Team Single Game Records")
             t_df = df_active[df_active['Type'].astype(str).str.lower() == 'team'].copy()
+            t_df = t_df[(t_df['Team Name'].astype(str) != '0') & (t_df['Team Name'].notna())]
+            
             if not t_df.empty:
                 c4, c5, c6 = st.columns(3)
-                with c4: st.markdown(generate_mini_leaderboard("Team Points", t_df, 'PTS', color="#cc0000"), unsafe_allow_html=True)
-                with c5: st.markdown(generate_mini_leaderboard("Team Rebounds", t_df, 'REB', color="#32cd32"), unsafe_allow_html=True)
-                with c6: st.markdown(generate_mini_leaderboard("Team Assists", t_df, 'AST', color="#00bfff"), unsafe_allow_html=True)
+                with c4: st.markdown(generate_mini_leaderboard("Team Points", t_df, 'PTS', color="#cc0000", name_col="Team Name"), unsafe_allow_html=True)
+                with c5: st.markdown(generate_mini_leaderboard("Team Rebounds", t_df, 'REB', color="#32cd32", name_col="Team Name"), unsafe_allow_html=True)
+                with c6: st.markdown(generate_mini_leaderboard("Team Assists", t_df, 'AST', color="#00bfff", name_col="Team Name"), unsafe_allow_html=True)
 
         with tab_miles:
             st.markdown("### 🏔️ All-Time Milestones & Totals Leaders")
@@ -450,20 +446,21 @@ elif full_df is not None and not full_df.empty:
             
             st.markdown("#### Player Milestones")
             mc1, mc2, mc3 = st.columns(3)
-            with mc1: st.markdown(generate_mini_leaderboard("Total Points", p_totals, 'PTS', color="#cc0000", top_n=10), unsafe_allow_html=True)
-            with mc2: st.markdown(generate_mini_leaderboard("Total Rebounds", p_totals, 'REB', color="#32cd32", top_n=10), unsafe_allow_html=True)
-            with mc3: st.markdown(generate_mini_leaderboard("Total Assists", p_totals, 'AST', color="#00bfff", top_n=10), unsafe_allow_html=True)
+            with mc1: st.markdown(generate_mini_leaderboard("Total Points", p_totals, 'PTS', color="#cc0000", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+            with mc2: st.markdown(generate_mini_leaderboard("Total Rebounds", p_totals, 'REB', color="#32cd32", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+            with mc3: st.markdown(generate_mini_leaderboard("Total Assists", p_totals, 'AST', color="#00bfff", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
             
             mc4, mc5, mc6 = st.columns(3)
-            with mc4: st.markdown(generate_mini_leaderboard("Total Steals", p_totals, 'STL', color="#ff8c00", top_n=10), unsafe_allow_html=True)
-            with mc5: st.markdown(generate_mini_leaderboard("Total Blocks", p_totals, 'BLK', color="#8a2be2", top_n=10), unsafe_allow_html=True)
-            with mc6: st.markdown(generate_mini_leaderboard("Total 3PM", p_totals, '3PM', color="#d4af37", top_n=10), unsafe_allow_html=True)
+            with mc4: st.markdown(generate_mini_leaderboard("Total Steals", p_totals, 'STL', color="#ff8c00", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+            with mc5: st.markdown(generate_mini_leaderboard("Total Blocks", p_totals, 'BLK', color="#8a2be2", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+            with mc6: st.markdown(generate_mini_leaderboard("Total 3PM", p_totals, '3PM', color="#d4af37", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
 
             st.markdown("#### Team Milestones")
             tc1, tc2 = st.columns(2)
             if not t_totals.empty:
-                with tc1: st.markdown(generate_mini_leaderboard("Most Wins", t_totals, 'Win', color="#ffd700", top_n=5), unsafe_allow_html=True)
-                with tc2: st.markdown(generate_mini_leaderboard("Total Points Scored", t_totals, 'PTS', color="#cc0000", top_n=5), unsafe_allow_html=True)
+                # The explicit name_col="Team Name" perfectly protects this block now
+                with tc1: st.markdown(generate_mini_leaderboard("Most Wins", t_totals, 'Win', color="#ffd700", top_n=5, name_col="Team Name"), unsafe_allow_html=True)
+                with tc2: st.markdown(generate_mini_leaderboard("Total Points Scored", t_totals, 'PTS', color="#cc0000", top_n=5, name_col="Team Name"), unsafe_allow_html=True)
 
     elif view_mode == "🏢 Team Pages":
         available_teams = sorted([t for t in p_stats['Team Name'].unique() if str(t) != '0' and pd.notna(t)])
@@ -472,7 +469,6 @@ elif full_df is not None and not full_df.empty:
             st.markdown(f"<div class='header-banner'>{selected_team} TEAM HUB</div>", unsafe_allow_html=True)
             
             team_data = df_active[(df_active['Team Name'] == selected_team)]
-            
             tab_roster, tab_team_stats, tab_box_scores = st.tabs(["📋 Roster Binder", "📊 Season Stats & Analytics", "📓 Game-by-Game Box Scores"])
 
             with tab_roster:
