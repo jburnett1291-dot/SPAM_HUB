@@ -63,15 +63,19 @@ def load_data():
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
         
+        # Clean out invalid headers or empty team rows to prevent bugs
+        df = df[df['Player/Team'] != 'Player/Team']
+        df = df[df['Team Name'].notna() & (df['Team Name'].astype(str).str.strip() != '') & (df['Team Name'].astype(str) != '0')]
+        
         if 'Player/Team' in df.columns: df['Player/Team'] = df['Player/Team'].apply(smart_name_scrubber)
             
-        # FIXED: Added 'FOULS' to the numeric requirements list so it isn't read as a string
+        # FIXED: FOULS is strictly forced to be a number to stop the string multiply error
         req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win', 'Season', 'Type', 'Team Name']
         for c in req_cols:
             if c not in df.columns: df[c] = 0
             if c not in ['Type', 'Team Name', 'Player/Team']: df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
             
-        if 'Win' in df.columns: df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
+        df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
         df['is_ff'] = (df['PTS'] == 0) & (df['FGA'] == 0) & (df['REB'] == 0)
         
         def calc_multis(row):
@@ -83,6 +87,18 @@ def load_data():
         
         df['PIE_Raw'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss_Raw'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
+
+        # --- AUTO-CALCULATE TEAM TOTALS FROM PLAYERS (NO SPREADSHEET TOTALS REQUIRED) ---
+        df = df[df['Type'].astype(str).str.lower() != 'team'].copy()
+        sum_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Poss_Raw']
+        team_rows = df.groupby(['Game_ID', 'Team Name', 'Season']).agg({
+            **{c: 'sum' for c in sum_cols if c in df.columns},
+            'Win': 'first'
+        }).reset_index()
+        team_rows['Type'] = 'Team'
+        team_rows['Player/Team'] = team_rows['Team Name'] + " TOTALS"
+        
+        df = pd.concat([df, team_rows], ignore_index=True)
 
         # --- ADVANCED PROXY METRICS & OPPONENT STATS PIPELINE ---
         df['Game_ID'] = pd.to_numeric(df['Game_ID'], errors='coerce')
@@ -155,7 +171,6 @@ if not isinstance(full_df, str):
 
     def calc_clubs(row):
         clubs = []
-        # Exclusive Clubs Tracker
         if row['REB'] >= 40 and row['STL'] >= 40 and row['AST'] >= 40: clubs.append(f"40/40/40 (S{int(row['Season'])})")
         elif row['REB'] >= 30 and row['STL'] >= 30 and row['AST'] >= 30: clubs.append(f"30/30/30 (S{int(row['Season'])})")
         if row['PTS'] >= 300 and row['3PM'] >= 100: clubs.append(f"300Pts/100 3s (S{int(row['Season'])})")
@@ -169,7 +184,6 @@ if not isinstance(full_df, str):
 def generate_2k_player_card(player_name, stats, rank=""):
     rank_badge = f'<div style="position:absolute; top:-10px; right:-10px; background:#d4af37; color:#000; font-weight:bold; padding:8px; border-radius:50%; border:2px solid #fff; z-index:10;">#{rank}</div>' if rank else ""
     
-    # Render Milestone Club Badges
     clubs_html = ""
     if 'Clubs' in stats and isinstance(stats['Clubs'], list) and len(stats['Clubs']) > 0:
         badges = "".join([f"<span style='background:#d4af37; color:#000; font-size:10px; font-weight:bold; padding:3px 5px; border-radius:4px; margin:2px; display:inline-block;'>{c}</span>" for c in stats['Clubs']])
@@ -222,25 +236,21 @@ def generate_2k_player_row(player_name, rank, gp, ppg, rpg, apg, stocks, fg, ts,
 </div>
 </div>"""
 
-# FIXED: Added exact 'name_col' forcing to prevent the "0" name bug entirely
 def generate_mini_leaderboard(title, df, stat_col, color="#d4af37", top_n=5, name_col=None):
     html = f"<div style='background:#1c2128; padding:15px; border-radius:8px; border-left:4px solid {color}; margin-bottom:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);'>"
     html += f"<h3 style='margin-top:0; color:#fff; font-size:16px; border-bottom:1px dashed #444; padding-bottom:8px; text-transform:uppercase;'>{title}</h3>"
     
-    # Internal sorting to ensure accuracy
     sorted_df = df.sort_values(by=stat_col, ascending=False).head(top_n)
     
     for i, (_, row) in enumerate(sorted_df.iterrows()):
         val = row[stat_col]
         if pd.isna(val): continue
         
-        # Formatting (Drop decimals if it is an exact integer)
         if val == int(val): val_str = f"{int(val)}"
         else: val_str = f"{val:.1f}"
             
         rank_color = "#ffd700" if i == 0 else "#888"
         
-        # Explicitly pull the targeted Name Column to prevent Pandas from dropping string indexes
         if name_col:
             name = row.get(name_col, 'Unknown')
         else:
@@ -304,10 +314,8 @@ elif full_df is not None and not full_df.empty:
         p_stats = p_stats.merge(latest_teams, on='Player/Team', how='left')
         p_stats = p_stats.merge(p_gp, on='Player/Team', how='left')
         
-        # Merge Clubs & Badges
         p_stats = p_stats.merge(player_clubs, on='Player/Team', how='left')
 
-        # Calculate Individual Single Game Highs
         p_highs = df_reg.groupby('Player/Team').agg(
             High_PTS=('PTS', 'max'), High_REB=('REB', 'max'), High_AST=('AST', 'max'),
             High_STL=('STL', 'max'), High_BLK=('BLK', 'max'), High_3PM=('3PM', 'max')
@@ -358,7 +366,6 @@ elif full_df is not None and not full_df.empty:
     if view_mode == "🏠 League Home":
         st.subheader("👑 Official League Leaders (60% GP Qualifier)")
         c1, c2, c3, c4, c5 = st.columns(5)
-        # Explicit name_col ensures exact names print
         with c1: st.markdown(generate_mini_leaderboard("Points", qualified_p_stats, 'PTS/G', color="#cc0000", name_col="Player/Team"), unsafe_allow_html=True)
         with c2: st.markdown(generate_mini_leaderboard("Assists", qualified_p_stats, 'AST/G', color="#00bfff", name_col="Player/Team"), unsafe_allow_html=True)
         with c3: st.markdown(generate_mini_leaderboard("Rebounds", qualified_p_stats, 'REB/G', color="#32cd32", name_col="Player/Team"), unsafe_allow_html=True)
@@ -458,7 +465,6 @@ elif full_df is not None and not full_df.empty:
             st.markdown("#### Team Milestones")
             tc1, tc2 = st.columns(2)
             if not t_totals.empty:
-                # The explicit name_col="Team Name" perfectly protects this block now
                 with tc1: st.markdown(generate_mini_leaderboard("Most Wins", t_totals, 'Win', color="#ffd700", top_n=5, name_col="Team Name"), unsafe_allow_html=True)
                 with tc2: st.markdown(generate_mini_leaderboard("Total Points Scored", t_totals, 'PTS', color="#cc0000", top_n=5, name_col="Team Name"), unsafe_allow_html=True)
 
