@@ -37,6 +37,9 @@ css_styles = """
 st.markdown(css_styles, unsafe_allow_html=True)
 
 # --- 2. DATA ENGINE ---
+SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
+URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+
 def smart_name_scrubber(raw_name):
     if pd.isna(raw_name) or not isinstance(raw_name, str): return raw_name
     clean_name = re.sub(r'^[|Il\s]+', '', raw_name)
@@ -56,7 +59,8 @@ def smart_name_scrubber(raw_name):
 @st.cache_data(ttl=60)
 def load_data():
     try:
-        df = pd.read_csv("SPAM - Sheet1 (4).csv")
+        # Pulling live data from the Google Sheet
+        df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
         
         if 'Player/Team' in df.columns: df['Player/Team'] = df['Player/Team'].apply(smart_name_scrubber)
