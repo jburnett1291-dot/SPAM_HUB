@@ -205,11 +205,10 @@ def generate_2k_player_card(player_name, stats, rank=""):
 <h4 style="color: #d4af37; border-bottom: 1px solid #333; padding-bottom: 3px; margin-top: 0; font-size: 14px;">Season Averages & Highs</h4>
 <div class="stat-row"><span class="stat-label">GP</span> <span class="stat-val">{int(stats.get('GP', 0))}</span></div>
 <div class="stat-row"><span class="stat-label">PPG | RPG | APG</span> <span class="stat-val">{stats.get('PTS', 0):.1f} | {stats.get('REB', 0):.1f} | {stats.get('AST', 0):.1f}</span></div>
-<div class="stat-row"><span class="stat-label">GAME HIGHS</span> <span class="stat-val" style="color:#fff;">{int(stats.get('High_PTS', 0))}P | {int(stats.get('High_REB', 0))}R | {int(stats.get('High_AST', 0))}A</span></div>
-<div class="stat-row"><span class="stat-label">STOCKS (Def)</span> <span class="stat-val">{stats.get('DEF', 0):.1f}</span></div>
-<div class="stat-row"><span class="stat-label">DEF HIGHS</span> <span class="stat-val">{int(stats.get('High_STL', 0))}S | {int(stats.get('High_BLK', 0))}B</span></div>
+<div class="stat-row"><span class="stat-label">SEASON HIGHS</span> <span class="stat-val" style="color:#fff;">{int(stats.get('High_PTS', 0))}P | {int(stats.get('High_REB', 0))}R | {int(stats.get('High_AST', 0))}A</span></div>
+<div class="stat-row"><span class="stat-label">CAREER HIGHS</span> <span class="stat-val" style="color:#d4af37;">{int(stats.get('AT_High_PTS', 0))}P | {int(stats.get('AT_High_REB', 0))}R | {int(stats.get('AT_High_AST', 0))}A</span></div>
+<div class="stat-row"><span class="stat-label">DEF HIGHS (SZN)</span> <span class="stat-val">{int(stats.get('High_STL', 0))}S | {int(stats.get('High_BLK', 0))}B</span></div>
 <div class="stat-row"><span class="stat-label">FG% | 3P%</span> <span class="stat-val">{stats.get('FG%', 0):.1f}% | {stats.get('3P%', 0):.1f}%</span></div>
-<div class="stat-row"><span class="stat-label">TS% | eFG%</span> <span class="stat-val">{stats.get('TS%', 0):.1f}% | {stats.get('eFG%', 0):.1f}%</span></div>
 <div class="stat-row"><span class="stat-label">FB Pts | Shots Aff.</span> <span class="stat-val">{stats.get('FB_Points', 0):.1f} | {stats.get('Shots_Affected', 0):.1f}</span></div>
 </div>
 </div>
@@ -264,7 +263,8 @@ elif full_df is not None and not full_df.empty:
         "⚔️ Rivalry Corner", 
         "🔮 Oracle Predictor", 
         "🔬 Advanced Analytics Lab", 
-        "🏦 The Vault"
+        "🏦 The Vault",
+        "📖 Record Book & Milestones"
     ])
     st.sidebar.divider()
     scope_opts = [f"Season {s}" for s in seasons] + ["Career Stats"]
@@ -280,7 +280,12 @@ elif full_df is not None and not full_df.empty:
     p_df = df_active[df_active['Type'].astype(str).str.lower() == 'player'].copy()
     t_df = df_active[df_active['Type'].astype(str).str.lower() == 'team'].copy()
     
-    # EXACT Aggregation mapping to ensure ALL columns are present
+    # Calculate All-Time Highs unconditionally to pass to cards
+    full_p_df = full_df[full_df['Type'].astype(str).str.lower() == 'player']
+    p_all_time_highs = full_p_df.groupby('Player/Team').agg(
+        AT_High_PTS=('PTS', 'max'), AT_High_REB=('REB', 'max'), AT_High_AST=('AST', 'max')
+    ).reset_index()
+
     p_stats = p_df.groupby('Player/Team').agg(**{
         'GP': ('Game_ID', 'nunique'), 'PTS': ('PTS', 'mean'), 'REB': ('REB', 'mean'), 'AST': ('AST', 'mean'), 'STL': ('STL', 'mean'), 'BLK': ('BLK', 'mean'),
         'FGM': ('FGM', 'mean'), 'FGA': ('FGA', 'mean'), '3PM': ('3PM', 'mean'), '3PA': ('3PA', 'mean'), 'PIE_Raw': ('PIE_Raw', 'mean'), 'POS': ('Position_Num', 'mean'), 'Team': ('Team Name', 'last'),
@@ -295,11 +300,15 @@ elif full_df is not None and not full_df.empty:
     p_stats = p_stats.merge(player_clubs, on='Player/Team', how='left')
     p_stats['Clubs'] = p_stats['Clubs'].apply(lambda x: x if isinstance(x, list) else [])
 
+    # Merge Season Highs
     p_highs = p_df.groupby('Player/Team').agg(
         High_PTS=('PTS', 'max'), High_REB=('REB', 'max'), High_AST=('AST', 'max'),
         High_STL=('STL', 'max'), High_BLK=('BLK', 'max'), High_3PM=('3PM', 'max')
     ).reset_index()
     p_stats = p_stats.merge(p_highs, on='Player/Team', how='left')
+    
+    # Merge All Time Highs
+    p_stats = p_stats.merge(p_all_time_highs, on='Player/Team', how='left')
 
     for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', '3PA', 'FGM', 'FGA', 'FB_Points', 'Tipped_Passes', 'Shots_Affected']: 
         if col in p_stats.columns: p_stats[col] = p_stats[col].round(1)
@@ -552,6 +561,8 @@ elif full_df is not None and not full_df.empty:
                 s1, s2 = sum(q_scores_1), sum(q_scores_2)
                 if s1 == s2: s1 += 1; q_scores_1[-1] += 1
                 
+                win_team = t1_sel if s1 > s2 else t2_sel
+                
                 def generate_sim_box(team_name, total_pts):
                     roster = p_stats[p_stats['Team'] == team_name].sort_values('PTS', ascending=False)
                     if roster.empty: return pd.DataFrame()
@@ -602,10 +613,14 @@ elif full_df is not None and not full_df.empty:
 
     elif view_mode == "📖 Record Book & Milestones":
         st.subheader(f"📖 {banner_text} Record Book & Milestones")
+        
+        # Dual-track: Both Season logic (p_df) and Career logic (full_p_df)
+        full_p_df = full_df[full_df['Type'].astype(str).str.lower() == 'player']
+
         tab_game, tab_miles = st.tabs(["🔥 Single Game Records", "🏔️ Milestone Tracker (Totals)"])
         
         with tab_game:
-            st.markdown("### 🏆 Individual Single Game Highs")
+            st.markdown("### 🏆 CURRENT SEASON Single Game Highs")
             c1, c2, c3 = st.columns(3)
             with c1:
                 st.markdown(generate_mini_leaderboard("Points in a Game", p_df, 'PTS', color="#cc0000", name_col="Player/Team"), unsafe_allow_html=True)
@@ -616,6 +631,19 @@ elif full_df is not None and not full_df.empty:
             with c3:
                 st.markdown(generate_mini_leaderboard("Assists in a Game", p_df, 'AST', color="#00bfff", name_col="Player/Team"), unsafe_allow_html=True)
                 st.markdown(generate_mini_leaderboard("3-Pointers in a Game", p_df, '3PM', color="#d4af37", name_col="Player/Team"), unsafe_allow_html=True)
+
+            if selected_scope != "Career Stats":
+                st.markdown("<hr>### 🏛️ ALL-TIME Single Game Highs (Franchise History)", unsafe_allow_html=True)
+                ac1, ac2, ac3 = st.columns(3)
+                with ac1:
+                    st.markdown(generate_mini_leaderboard("All-Time Points", full_p_df, 'PTS', color="#cc0000", name_col="Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("All-Time Steals", full_p_df, 'STL', color="#ff8c00", name_col="Player/Team"), unsafe_allow_html=True)
+                with ac2:
+                    st.markdown(generate_mini_leaderboard("All-Time Rebounds", full_p_df, 'REB', color="#32cd32", name_col="Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("All-Time Blocks", full_p_df, 'BLK', color="#8a2be2", name_col="Player/Team"), unsafe_allow_html=True)
+                with ac3:
+                    st.markdown(generate_mini_leaderboard("All-Time Assists", full_p_df, 'AST', color="#00bfff", name_col="Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("All-Time 3PM", full_p_df, '3PM', color="#d4af37", name_col="Player/Team"), unsafe_allow_html=True)
 
         with tab_miles:
             p_totals = p_df.groupby('Player/Team').sum(numeric_only=True).reset_index()
@@ -631,3 +659,9 @@ elif full_df is not None and not full_df.empty:
             with mc4: st.markdown(generate_mini_leaderboard("Total Steals", p_totals, 'STL', color="#ff8c00", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
             with mc5: st.markdown(generate_mini_leaderboard("Total Blocks", p_totals, 'BLK', color="#8a2be2", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
             with mc6: st.markdown(generate_mini_leaderboard("Total 3PM", p_totals, '3PM', color="#d4af37", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+
+            st.markdown("#### Team Milestones")
+            tc1, tc2 = st.columns(2)
+            if not t_totals.empty:
+                with tc1: st.markdown(generate_mini_leaderboard("Most Wins", t_totals, 'Win', color="#ffd700", top_n=5, name_col="Team Name"), unsafe_allow_html=True)
+                with tc2: st.markdown(generate_mini_leaderboard("Total Points Scored", t_totals, 'PTS', color="#cc0000", top_n=5, name_col="Team Name"), unsafe_allow_html=True)
