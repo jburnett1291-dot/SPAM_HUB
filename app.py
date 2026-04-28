@@ -186,10 +186,12 @@ elif full_df is not None and not full_df.empty:
     p_df = df_active[df_active['Type'].astype(str).str.lower() == 'player']
     t_df = df_active[df_active['Type'].astype(str).str.lower() == 'team']
     
-    p_stats = p_df.groupby('Player/Team').agg(
-        GP=('Game_ID', 'nunique'), PTS=('PTS', 'mean'), REB=('REB', 'mean'), AST=('AST', 'mean'), STL=('STL', 'mean'), BLK=('BLK', 'mean'),
-        FGM=('FGM', 'mean'), FGA=('FGA', 'mean'), 3PM=('3PM', 'mean'), 3PA=('3PA', 'mean'), PIE=('PIE_Raw', 'mean'), POS=('Position_Num', 'mean'), Team=('Team Name', 'last')
-    ).reset_index()
+    # DICTIONARY UNPACKING FIX FOR 3PM & 3PA
+    p_stats = p_df.groupby('Player/Team').agg(**{
+        'GP': ('Game_ID', 'nunique'), 'PTS': ('PTS', 'mean'), 'REB': ('REB', 'mean'), 'AST': ('AST', 'mean'), 'STL': ('STL', 'mean'), 'BLK': ('BLK', 'mean'),
+        'FGM': ('FGM', 'mean'), 'FGA': ('FGA', 'mean'), '3PM': ('3PM', 'mean'), '3PA': ('3PA', 'mean'), 'PIE': ('PIE_Raw', 'mean'), 'POS': ('Position_Num', 'mean'), 'Team': ('Team Name', 'last')
+    }).reset_index()
+    
     p_stats['DEF'] = p_stats['STL'] + p_stats['BLK']
     p_stats['TS%'] = (p_stats['PTS'] / (2 * (p_stats['FGA'] + 0.44 * (p_stats['FGA']*0.2)).replace(0, 1)) * 100) # Proxy FTA
     
@@ -457,7 +459,8 @@ elif full_df is not None and not full_df.empty:
         with c4: st.markdown(render_podium("All-Time Steals Leaders", p_tot.sort_values('STL', ascending=False), 'STL'), unsafe_allow_html=True)
 
         st.markdown("### 📜 The Top 10 Lists")
+        # Fixing the name_col mapping manually for the Vault since it handles raw aggregation
         tc1, tc2, tc3 = st.columns(3)
-        with tc1: st.markdown(generate_mini_leaderboard("Points", p_tot, 'PTS', top_n=10), unsafe_allow_html=True)
-        with tc2: st.markdown(generate_mini_leaderboard("Assists", p_tot, 'AST', top_n=10), unsafe_allow_html=True)
-        with tc3: st.markdown(generate_mini_leaderboard("Rebounds", p_tot, 'REB', top_n=10), unsafe_allow_html=True)
+        with tc1: st.markdown(generate_mini_leaderboard("Points", p_tot, 'PTS', top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+        with tc2: st.markdown(generate_mini_leaderboard("Assists", p_tot, 'AST', top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+        with tc3: st.markdown(generate_mini_leaderboard("Rebounds", p_tot, 'REB', top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
