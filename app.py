@@ -117,6 +117,11 @@ def load_data():
         opps = pd.merge(t_logs, t_logs, on='Game_ID', suffixes=('', '_Opp'))
         opps = opps[opps['Team Name'] != opps['Team Name_Opp']]
         
+        # ADD THIS LINE: Drops duplicate pairings to stop the Cartesian Explosion
+        opps = opps.drop_duplicates(subset=['Game_ID', 'Team Name'])
+        
+        opps['Point_Diff'] = opps['PTS'] - opps['PTS_Opp']
+        
         opps['Point_Diff'] = opps['PTS'] - opps['PTS_Opp']
         opps['Opp_Possessions'] = opps['FGA_Opp'] + (0.44 * opps['FTA_Opp']) + opps['TO_Opp']
         opps['Opp_PPP'] = np.where(opps['Opp_Possessions'] > 0, opps['PTS_Opp'] / opps['Opp_Possessions'], 0)
@@ -398,7 +403,13 @@ elif full_df is not None and not full_df.empty:
             
             with tab_dash:
                 c1, c2, c3 = st.columns(3)
-                c1.markdown(f"<div class='metric-box'><div class='metric-title'>Record</div><div class='metric-value'>{int(t_data['Win'].sum())} - {int(len(t_data)-t_data['Win'].sum())}</div></div>", unsafe_allow_html=True)
+                
+                # ADD THESE LINES: Pull record directly from the cleaned unique team stats
+                t_row = t_stats[t_stats['Team Name'] == sel_team].iloc[0]
+                wins = int(t_row['Wins'])
+                losses = int(t_row['GP'] - wins)
+                
+                c1.markdown(f"<div class='metric-box'><div class='metric-title'>Record</div><div class='metric-value'>{wins} - {losses}</div></div>", unsafe_allow_html=True)
                 c2.markdown(f"<div class='metric-box'><div class='metric-title'>Point Diff</div><div class='metric-value'>{t_data['Point_Diff'].mean():+.1f}</div></div>", unsafe_allow_html=True)
                 c3.markdown(f"<div class='metric-box'><div class='metric-title'>Strength of Schedule</div><div class='metric-value'>{t_data['SOS_Game'].mean():.3f}</div></div>", unsafe_allow_html=True)
                 
