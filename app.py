@@ -6,52 +6,51 @@ import numpy as np
 import random
 import re
 
-# --- 1. UI & SLEEK CSS (UPGRADED TO QCL BRANDING) ---
-st.set_page_config(page_title="QCL MASTER DASHBOARD", page_icon="🏆", layout="wide")
+# --- 1. UI & SLEEK CSS ---
+st.set_page_config(page_title="QCL LEAGUE CENTRAL", page_icon="🏀", layout="wide")
 
 css_styles = """
 <style>
-    /* QCL Palette: Navy (#0A192F), Bronze (#CD7F32), Gold (#D4AF37) */
-    .stApp { background: radial-gradient(circle at top, #0A192F 0%, #040914 100%); color: #e0e0e0; font-family: 'Helvetica Neue', sans-serif; }
+    .stApp { background: radial-gradient(circle at top, #121212 0%, #000000 100%); color: #e0e0e0; font-family: 'Helvetica Neue', sans-serif; }
     .header-banner { 
         padding: 20px; text-align: center; 
-        background: linear-gradient(90deg, #CD7F32 0%, #D4AF37 50%, #CD7F32 100%);
-        color: #0A192F; font-family: 'Arial Black'; font-size: 26px; border-radius: 5px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px;
+        background: linear-gradient(90deg, #d4af37 0%, #f7e08a 50%, #d4af37 100%);
+        color: #000; font-family: 'Arial Black'; font-size: 26px; border-radius: 5px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px;
     }
-    .metric-box { background: #112240; border-left: 4px solid #D4AF37; padding: 15px; border-radius: 4px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-    .metric-title { font-size: 12px; color: #8892B0; text-transform: uppercase; letter-spacing: 1px; }
+    .metric-box { background: #1e1e1e; border-left: 4px solid #d4af37; padding: 15px; border-radius: 4px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .metric-title { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
     .metric-value { font-size: 22px; font-weight: 900; color: #fff; margin-top: 5px; }
     
-    .sleek-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px; text-align: center; background: #112240; border-radius: 8px; overflow: hidden; }
-    .sleek-table th { background: #0A192F; color: #D4AF37; padding: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #CD7F32; }
-    .sleek-table td { padding: 10px; border-bottom: 1px solid #1A365D; color: #ddd; }
-    .sleek-table tr:hover { background: #1A365D; }
+    .sleek-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px; text-align: center; background: #161616; border-radius: 8px; overflow: hidden; }
+    .sleek-table th { background: #222; color: #d4af37; padding: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #333; }
+    .sleek-table td { padding: 10px; border-bottom: 1px solid #222; color: #ddd; }
+    .sleek-table tr:hover { background: #1f1f1f; }
     .sleek-table td.player-name { text-align: left; font-weight: bold; color: #fff; }
     
     .podium-container { display: flex; justify-content: center; align-items: flex-end; margin: 30px 0; height: 200px; gap: 10px; }
     .podium { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; text-align: center; width: 120px; border-radius: 8px 8px 0 0; }
-    .podium-1 { background: linear-gradient(to top, #D4AF37, #F7E08A); height: 160px; color: #000; box-shadow: 0 0 20px rgba(212,175,55,0.4); z-index: 3; }
+    .podium-1 { background: linear-gradient(to top, #d4af37, #ffd700); height: 160px; color: #000; box-shadow: 0 0 20px rgba(212,175,55,0.4); z-index: 3; }
     .podium-2 { background: linear-gradient(to top, #a0a0a0, #e0e0e0); height: 120px; color: #000; z-index: 2; }
-    .podium-3 { background: linear-gradient(to top, #CD7F32, #D2691E); height: 90px; color: #000; z-index: 1; }
+    .podium-3 { background: linear-gradient(to top, #cd7f32, #d2691e); height: 90px; color: #000; z-index: 1; }
     .podium-name { font-weight: bold; font-size: 14px; margin-bottom: 5px; padding: 0 5px; }
     .podium-stat { font-size: 20px; font-weight: 900; margin-bottom: 10px; }
     
-    .shot-bar-container { background: #0A192F; height: 20px; border-radius: 10px; width: 100%; position: relative; margin-top: 5px; overflow: hidden; }
+    .shot-bar-container { background: #222; height: 20px; border-radius: 10px; width: 100%; position: relative; margin-top: 5px; overflow: hidden; }
     .shot-bar-fill { height: 100%; position: absolute; left: 0; top: 0; border-radius: 10px; }
     
-    .award-card { background: #112240; border: 1px solid #CD7F32; padding: 20px; border-radius: 8px; text-align: center; height: 100%; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-    .award-title { color: #D4AF37; font-size: 14px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; border-bottom: 1px solid #CD7F32; padding-bottom: 10px; margin-bottom: 15px; }
+    .award-card { background: #161b22; border: 1px solid #d4af37; padding: 20px; border-radius: 8px; text-align: center; height: 100%; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+    .award-title { color: #d4af37; font-size: 14px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
     
     .flip-card { background-color: transparent; width: 100%; perspective: 1000px; margin-bottom: 25px; }
     .flip-card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; }
     .flip-card:hover .flip-card-inner { transform: rotateY(180deg); }
-    .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 12px; border: 3px solid #D4AF37; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    .flip-card-front { background: linear-gradient(145deg, #112240, #0A192F); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;}
-    .flip-card-back { background-color: #0A192F; color: white; transform: rotateY(180deg); padding: 15px; overflow-y: auto; text-align: left; }
-    .stat-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #1A365D; padding: 6px 0; font-size: 13px; }
-    .stat-val { font-weight: bold; color: #D4AF37; }
-    .stat-label { color: #8892B0; }
-    .sim-box { background: #112240; padding: 20px; border-radius: 10px; border: 2px solid #CD7F32; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); margin-bottom: 20px; }
+    .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 12px; border: 3px solid #d4af37; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .flip-card-front { background: linear-gradient(145deg, #1c2128, #2a2d35); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;}
+    .flip-card-back { background-color: #161b22; color: white; transform: rotateY(180deg); padding: 15px; overflow-y: auto; text-align: left; }
+    .stat-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding: 6px 0; font-size: 13px; }
+    .stat-val { font-weight: bold; color: #d4af37; }
+    .stat-label { color: #8b949e; }
+    .sim-box { background: #161b22; padding: 20px; border-radius: 10px; border: 2px solid #d4af37; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); margin-bottom: 20px; }
 </style>
 """
 st.markdown(css_styles, unsafe_allow_html=True)
@@ -75,20 +74,10 @@ def load_data():
         df = df[df['Team Name'].notna() & (df['Team Name'].astype(str).str.strip() != '') & (df['Team Name'].astype(str) != '0')]
         if 'Player/Team' in df.columns: df['Player/Team'] = df['Player/Team'].apply(smart_name_scrubber)
             
-        # LEAGUE OFFICE OVERRIDES (Lineup & Position Adjustments)
-        df['Player/Team'] = df['Player/Team'].replace({'Trifecta': 'Venom'})
-        
-        # Define explicitly which columns are for math
-numeric_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win']
-
-for c in df.columns:
-    if c in numeric_cols:
-        # Safely turn non-numeric junk (like '[]' or text) into 0
-        df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
-
-# Ensure Win and Game_ID are clean integers
-df['Win'] = df['Win'].apply(lambda x: 1 if x > 0 else 0)
-df['Game_ID'] = df['Game_ID'].astype(int)
+        req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win', 'Season', 'Type', 'Team Name']
+        for c in req_cols:
+            if c not in df.columns: df[c] = 0
+            if c not in ['Type', 'Team Name', 'Player/Team']: df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
             
         df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
         df['Game_ID'] = pd.to_numeric(df['Game_ID'], errors='coerce')
@@ -102,16 +91,13 @@ df['Game_ID'] = df['Game_ID'].astype(int)
         team_rows = df.groupby(['Game_ID', 'Team Name', 'Season']).agg({**{c: 'sum' for c in sum_cols}, 'Win': 'first'}).reset_index()
         team_rows['Type'] = 'Team'
         team_rows['Player/Team'] = team_rows['Team Name'] + " TOTALS"
-        df = pd.concat([df], ignore_index=True)
+        df = pd.concat([df, team_rows], ignore_index=True)
 
         # --- PROXY STATS ---
         df['Game_Type'] = np.where(df['Game_ID'] >= 9000, 'Playoffs', np.where(df['Game_ID'] >= 8000, 'Tournament', 'Regular Season'))
         players_df = df[df['Type'].astype(str).str.lower() == 'player'].copy()
         players_df = players_df.sort_values(by=['Game_ID', 'Team Name'])
         players_df['Position_Num'] = players_df.groupby(['Game_ID', 'Team Name']).cumcount() + 1
-        
-        # League Office Override: TaeCP plays Center
-        players_df.loc[players_df['Player/Team'] == 'TaeCP', 'Position_Num'] = 5
         
         players_df['Tipped_Passes'] = np.where(players_df['Position_Num'] <= 2, (players_df['STL'] * 2.2) + (players_df['FOULS'] * 0.4), (players_df['STL'] * 1.2) + (players_df['BLK'] * 0.2)).round().astype(int)
         players_df['Shots_Affected'] = np.where(players_df['Position_Num'] >= 3, (players_df['BLK'] * 3.0) + (players_df['REB'] * 0.4) + (players_df['FOULS'] * 0.5), (players_df['BLK'] * 1.5) + (players_df['STL'] * 0.4)).round().astype(int)
@@ -130,7 +116,11 @@ df['Game_ID'] = df['Game_ID'].astype(int)
         
         opps = pd.merge(t_logs, t_logs, on='Game_ID', suffixes=('', '_Opp'))
         opps = opps[opps['Team Name'] != opps['Team Name_Opp']]
+        
+        # ADD THIS LINE: Drops duplicate pairings to stop the Cartesian Explosion
         opps = opps.drop_duplicates(subset=['Game_ID', 'Team Name'])
+        
+        opps['Point_Diff'] = opps['PTS'] - opps['PTS_Opp']
         
         opps['Point_Diff'] = opps['PTS'] - opps['PTS_Opp']
         opps['Opp_Possessions'] = opps['FGA_Opp'] + (0.44 * opps['FTA_Opp']) + opps['TO_Opp']
@@ -164,7 +154,7 @@ if not isinstance(full_df, str):
 
     season_totals['Clubs'] = season_totals.apply(calc_clubs, axis=1)
     player_clubs = season_totals.groupby('Player/Team')['Clubs'].agg(lambda x: [item for sublist in x for item in sublist if item]).reset_index()
-    player_clubs['Clubs'] = player_clubs['Clubs'].apply(lambda x: list(set(x)))
+    player_clubs['Clubs'] = player_clubs['Clubs'].apply(lambda x: list(set(x))) # Remove duplicates
 
 # --- 3. HTML & CHART GENERATORS ---
 def draw_shot_profile(fgm, fga, tpm, tpa):
@@ -173,10 +163,10 @@ def draw_shot_profile(fgm, fga, tpm, tpa):
     three_pct = (tpm/tpa*100) if tpa > 0 else 0
     two_pct = (twopm/twopa*100) if twopa > 0 else 0
     return f"""
-    <div style="display:flex; justify-content:space-between; margin-bottom:2px; font-size:11px; color:#8892B0;"><span>Interior (2PT)</span><span>{two_pct:.1f}% ({int(twopm)}/{int(twopa)})</span></div>
-    <div class="shot-bar-container"><div class="shot-bar-fill" style="width:{two_pct}%; background:#D4AF37;"></div></div>
-    <div style="display:flex; justify-content:space-between; margin-top:10px; margin-bottom:2px; font-size:11px; color:#8892B0;"><span>Perimeter (3PT)</span><span>{three_pct:.1f}% ({int(tpm)}/{int(tpa)})</span></div>
-    <div class="shot-bar-container"><div class="shot-bar-fill" style="width:{three_pct}%; background:#CD7F32;"></div></div>
+    <div style="display:flex; justify-content:space-between; margin-bottom:2px; font-size:11px; color:#aaa;"><span>Interior (2PT)</span><span>{two_pct:.1f}% ({int(twopm)}/{int(twopa)})</span></div>
+    <div class="shot-bar-container"><div class="shot-bar-fill" style="width:{two_pct}%; background:#d4af37;"></div></div>
+    <div style="display:flex; justify-content:space-between; margin-top:10px; margin-bottom:2px; font-size:11px; color:#aaa;"><span>Perimeter (3PT)</span><span>{three_pct:.1f}% ({int(tpm)}/{int(tpa)})</span></div>
+    <div class="shot-bar-container"><div class="shot-bar-fill" style="width:{three_pct}%; background:#00bfff;"></div></div>
     """
 
 def generate_sleek_box_score(df_game):
@@ -200,28 +190,28 @@ def render_podium(title, top3_df, stat_col):
     return html
 
 def generate_2k_player_card(player_name, stats, rank=""):
-    rank_badge = f'<div style="position:absolute; top:-10px; right:-10px; background:#CD7F32; color:#0A192F; font-weight:bold; padding:8px; border-radius:50%; border:2px solid #D4AF37; z-index:10;">#{rank}</div>' if rank else ""
+    rank_badge = f'<div style="position:absolute; top:-10px; right:-10px; background:#d4af37; color:#000; font-weight:bold; padding:8px; border-radius:50%; border:2px solid #fff; z-index:10;">#{rank}</div>' if rank else ""
     
     clubs_html = ""
     if 'Clubs' in stats and isinstance(stats['Clubs'], list) and len(stats['Clubs']) > 0:
-        badges = "".join([f"<span style='background:#D4AF37; color:#000; font-size:10px; font-weight:bold; padding:3px 5px; border-radius:4px; margin:2px; display:inline-block;'>{c}</span>" for c in stats['Clubs']])
-        clubs_html = f"<div style='margin-top:10px; padding-top:8px; border-top:1px dashed #1A365D; width:100%;'>{badges}</div>"
+        badges = "".join([f"<span style='background:#d4af37; color:#000; font-size:10px; font-weight:bold; padding:3px 5px; border-radius:4px; margin:2px; display:inline-block;'>{c}</span>" for c in stats['Clubs']])
+        clubs_html = f"<div style='margin-top:10px; padding-top:8px; border-top:1px dashed #444; width:100%;'>{badges}</div>"
 
     return f'''<div class="flip-card" style="height: 380px;">
 {rank_badge}
 <div class="flip-card-inner">
 <div class="flip-card-front">
-<img src="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png" style="width: 90px; border-radius: 50%; border: 2px solid #D4AF37; margin-bottom: 10px;">
+<img src="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png" style="width: 90px; border-radius: 50%; border: 2px solid #d4af37; margin-bottom: 10px;">
 <h3 style="margin: 0; color: white; font-size: 18px;">{player_name}</h3>
-<h2 style="color: #D4AF37; margin-top: 5px; margin-bottom: 5px;">{stats.get('PIE', 0):.1f} PIE</h2>
+<h2 style="color: #d4af37; margin-top: 5px; margin-bottom: 5px;">{stats.get('PIE', 0):.1f} PIE</h2>
 {clubs_html}
 </div>
 <div class="flip-card-back">
-<h4 style="color: #D4AF37; border-bottom: 1px solid #1A365D; padding-bottom: 3px; margin-top: 0; font-size: 14px;">Season Averages & Highs</h4>
+<h4 style="color: #d4af37; border-bottom: 1px solid #333; padding-bottom: 3px; margin-top: 0; font-size: 14px;">Season Averages & Highs</h4>
 <div class="stat-row"><span class="stat-label">GP</span> <span class="stat-val">{int(stats.get('GP', 0))}</span></div>
 <div class="stat-row"><span class="stat-label">PPG | RPG | APG</span> <span class="stat-val">{stats.get('PTS', 0):.1f} | {stats.get('REB', 0):.1f} | {stats.get('AST', 0):.1f}</span></div>
 <div class="stat-row"><span class="stat-label">SEASON HIGHS</span> <span class="stat-val" style="color:#fff;">{int(stats.get('High_PTS', 0))}P | {int(stats.get('High_REB', 0))}R | {int(stats.get('High_AST', 0))}A</span></div>
-<div class="stat-row"><span class="stat-label">CAREER HIGHS</span> <span class="stat-val" style="color:#D4AF37;">{int(stats.get('AT_High_PTS', 0))}P | {int(stats.get('AT_High_REB', 0))}R | {int(stats.get('AT_High_AST', 0))}A</span></div>
+<div class="stat-row"><span class="stat-label">CAREER HIGHS</span> <span class="stat-val" style="color:#d4af37;">{int(stats.get('AT_High_PTS', 0))}P | {int(stats.get('AT_High_REB', 0))}R | {int(stats.get('AT_High_AST', 0))}A</span></div>
 <div class="stat-row"><span class="stat-label">DEF HIGHS (SZN)</span> <span class="stat-val">{int(stats.get('High_STL', 0))}S | {int(stats.get('High_BLK', 0))}B</span></div>
 <div class="stat-row"><span class="stat-label">FG% | 3P%</span> <span class="stat-val">{stats.get('FG%', 0):.1f}% | {stats.get('3P%', 0):.1f}%</span></div>
 <div class="stat-row"><span class="stat-label">FB Pts | Shots Aff.</span> <span class="stat-val">{stats.get('FB_Points', 0):.1f} | {stats.get('Shots_Affected', 0):.1f}</span></div>
@@ -229,9 +219,9 @@ def generate_2k_player_card(player_name, stats, rank=""):
 </div>
 </div>'''
 
-def generate_mini_leaderboard(title, df, stat_col, color="#D4AF37", top_n=5, name_col=None):
-    html = f"<div style='background:#112240; padding:15px; border-radius:8px; border-left:4px solid {color}; margin-bottom:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);'>"
-    html += f"<h3 style='margin-top:0; color:#fff; font-size:16px; border-bottom:1px dashed #1A365D; padding-bottom:8px; text-transform:uppercase;'>{title}</h3>"
+def generate_mini_leaderboard(title, df, stat_col, color="#d4af37", top_n=5, name_col=None):
+    html = f"<div style='background:#1c2128; padding:15px; border-radius:8px; border-left:4px solid {color}; margin-bottom:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);'>"
+    html += f"<h3 style='margin-top:0; color:#fff; font-size:16px; border-bottom:1px dashed #444; padding-bottom:8px; text-transform:uppercase;'>{title}</h3>"
     
     sorted_df = df.sort_values(by=stat_col, ascending=False).head(top_n)
     
@@ -241,7 +231,7 @@ def generate_mini_leaderboard(title, df, stat_col, color="#D4AF37", top_n=5, nam
         if val == int(val): val_str = f"{int(val)}"
         else: val_str = f"{val:.1f}"
             
-        rank_color = "#D4AF37" if i == 0 else "#8892B0"
+        rank_color = "#ffd700" if i == 0 else "#888"
         name = row.get(name_col, 'Unknown') if name_col else row.get('Player/Team')
         if pd.isna(name) or str(name).strip() == '0': name = row.get('Team Name', 'Unknown')
         
@@ -257,9 +247,9 @@ def draw_dynamic_radar(p1_name, r1_vals, p2_name, r2_vals, categories, title):
     r2_vals = list(r2_vals) + [r2_vals[0]]
     cats = list(categories) + [categories[0]]
     fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(r=r1_vals, theta=cats, fill='toself', name=p1_name, fillcolor='rgba(212, 175, 55, 0.4)', line=dict(color='#D4AF37', width=2)))
-    fig.add_trace(go.Scatterpolar(r=r2_vals, theta=cats, fill='toself', name=p2_name, fillcolor='rgba(205, 127, 50, 0.4)', line=dict(color='#CD7F32', width=2)))
-    fig.update_layout(title=dict(text=title, font=dict(color='white', size=16)), polar=dict(radialaxis=dict(visible=True, range=[0, 100], showticklabels=False, gridcolor='#1A365D')), showlegend=True, template="plotly_dark", height=380, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=40, r=40, t=60, b=40))
+    fig.add_trace(go.Scatterpolar(r=r1_vals, theta=cats, fill='toself', name=p1_name, fillcolor='rgba(212, 175, 55, 0.4)', line=dict(color='#d4af37', width=2)))
+    fig.add_trace(go.Scatterpolar(r=r2_vals, theta=cats, fill='toself', name=p2_name, fillcolor='rgba(204, 0, 0, 0.4)', line=dict(color='#cc0000', width=2)))
+    fig.update_layout(title=dict(text=title, font=dict(color='white', size=16)), polar=dict(radialaxis=dict(visible=True, range=[0, 100], showticklabels=False, gridcolor='#444')), showlegend=True, template="plotly_dark", height=380, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=40, r=40, t=60, b=40))
     return fig
 
 # --- 4. APP LOGIC & NAVIGATION ROUTING ---
@@ -271,7 +261,6 @@ elif full_df is not None and not full_df.empty:
     st.sidebar.title("⚙️ Hub Controls")
     view_mode = st.sidebar.radio("Navigation", [
         "🏠 League Home & Awards", 
-        "🎯 The Hunt & Syndicate",
         "🏆 Power Rankings & SOS", 
         "🏢 Franchise Hub", 
         "🗃️ Full Player Database", 
@@ -279,7 +268,8 @@ elif full_df is not None and not full_df.empty:
         "⚔️ Rivalry Corner", 
         "🔮 Oracle Predictor", 
         "🔬 Advanced Analytics Lab", 
-        "🏛️ The Eternal Record"
+        "🏦 The Vault",
+        "📖 Record Book & Milestones"
     ])
     st.sidebar.divider()
     scope_opts = [f"Season {s}" for s in seasons] + ["Career Stats"]
@@ -289,12 +279,13 @@ elif full_df is not None and not full_df.empty:
     df_active = full_df if selected_scope == "Career Stats" else full_df[full_df['Season'] == target_season]
     banner_text = "CAREER TOTALS" if selected_scope == "Career Stats" else f"SEASON {target_season}"
 
-    st.markdown(f'<div class="header-banner">🏆 QWIK\'S CUP LEAGUE HUB - {banner_text}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="header-banner">🏀 QCL LEAGUE HUB - {banner_text}</div>', unsafe_allow_html=True)
 
     # Core Stat Generation
     p_df = df_active[df_active['Type'].astype(str).str.lower() == 'player'].copy()
     t_df = df_active[df_active['Type'].astype(str).str.lower() == 'team'].copy()
     
+    # Calculate All-Time Highs unconditionally to pass to cards
     full_p_df = full_df[full_df['Type'].astype(str).str.lower() == 'player']
     p_all_time_highs = full_p_df.groupby('Player/Team').agg(
         AT_High_PTS=('PTS', 'max'), AT_High_REB=('REB', 'max'), AT_High_AST=('AST', 'max')
@@ -308,16 +299,20 @@ elif full_df is not None and not full_df.empty:
     
     p_stats.rename(columns={'PIE_Raw': 'PIE'}, inplace=True)
     p_stats['DEF'] = p_stats['STL'] + p_stats['BLK']
-    p_stats['TS%'] = (p_stats['PTS'] / (2 * (p_stats['FGA'] + 0.44 * (p_stats['FGA']*0.2)).replace(0, 1)) * 100) 
+    p_stats['TS%'] = (p_stats['PTS'] / (2 * (p_stats['FGA'] + 0.44 * (p_stats['FGA']*0.2)).replace(0, 1)) * 100) # Proxy FTA
     
+    # Merge Clubs & Badges
     p_stats = p_stats.merge(player_clubs, on='Player/Team', how='left')
     p_stats['Clubs'] = p_stats['Clubs'].apply(lambda x: x if isinstance(x, list) else [])
 
+    # Merge Season Highs
     p_highs = p_df.groupby('Player/Team').agg(
         High_PTS=('PTS', 'max'), High_REB=('REB', 'max'), High_AST=('AST', 'max'),
         High_STL=('STL', 'max'), High_BLK=('BLK', 'max'), High_3PM=('3PM', 'max')
     ).reset_index()
     p_stats = p_stats.merge(p_highs, on='Player/Team', how='left')
+    
+    # Merge All Time Highs
     p_stats = p_stats.merge(p_all_time_highs, on='Player/Team', how='left')
 
     for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', '3PA', 'FGM', 'FGA', 'FB_Points', 'Tipped_Passes', 'Shots_Affected']: 
@@ -337,13 +332,14 @@ elif full_df is not None and not full_df.empty:
     ).reset_index()
     t_stats['Win%'] = t_stats['Wins'] / t_stats['GP'].replace(0, 1)
     t_stats['DEF'] = t_stats['SPG'] + t_stats['BPG']
-    t_stats['eFG%'] = (t_stats['FGM'] + 0.5 * (t_stats['FGM']*0.3)) / t_stats['FGA'].replace(0, 1) * 100 
+    t_stats['eFG%'] = (t_stats['FGM'] + 0.5 * (t_stats['FGM']*0.3)) / t_stats['FGA'].replace(0, 1) * 100 # Proxy for team eFG
 
     if view_mode == "🏠 League Home & Awards":
         st.markdown("### 🏆 End of Season Awards Tracker (60% GP Required)")
         
         qual_p = p_stats[p_stats['GP'] >= (p_stats['GP'].max() * 0.6)]
         
+        # Display Top 3 For Each Category
         def render_award_row(title, sorted_df, primary_stat_col):
             st.markdown(f"#### {title}")
             if sorted_df.empty:
@@ -353,7 +349,7 @@ elif full_df is not None and not full_df.empty:
             for i, (_, r) in enumerate(sorted_df.head(3).iterrows()):
                 medal = "🥇" if i==0 else "🥈" if i==1 else "🥉"
                 with cols[i]:
-                    st.markdown(f"<div class='award-card'><h3>{medal} {r['Player/Team']}</h3><p style='color:#8892B0;'>{r['Team']}</p><h2 style='color:#D4AF37;'>{r[primary_stat_col]:.1f} {primary_stat_col}</h2><p>{r['PTS']:.1f} PTS | {r['REB']:.1f} REB | {r['AST']:.1f} AST</p></div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='award-card'><h3>{medal} {r['Player/Team']}</h3><p style='color:#aaa;'>{r['Team']}</p><h2 style='color:#d4af37;'>{r[primary_stat_col]:.1f} {primary_stat_col}</h2><p>{r['PTS']:.1f} PTS | {r['REB']:.1f} REB | {r['AST']:.1f} AST</p></div>", unsafe_allow_html=True)
         
         render_award_row("Most Valuable Player Candidates", qual_p.sort_values('PIE', ascending=False), 'PIE')
         st.markdown("<br>", unsafe_allow_html=True)
@@ -361,50 +357,35 @@ elif full_df is not None and not full_df.empty:
         st.markdown("<br>", unsafe_allow_html=True)
         render_award_row("Big Man of the Year Candidates", qual_p[qual_p['POS'] >= 3].sort_values('PIE', ascending=False), 'PIE')
 
-    elif view_mode == "🎯 The Hunt & Syndicate":
-        st.title("🎯 The Hunt & Syndicate Program")
-        st.markdown("Weekly payout incentive program tracking for active QCL teams. Teams buy in at $5 per week to compete for the total prize pot.")
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown("### 🔥 Streak Trends (Last 3 Games)")
+        recent_p = p_df.sort_values(['Player/Team', 'Game_ID']).groupby('Player/Team').tail(3)
+        recent_stats = recent_p.groupby('Player/Team').agg(Recent_PIE=('PIE_Raw', 'mean')).reset_index()
+        trend = p_stats.merge(recent_stats, on='Player/Team')
+        trend['Swing'] = trend['Recent_PIE'] - trend['PIE']
         
-        active_teams = len(t_stats)
-        weekly_entry = 5.00
-        total_pot = active_teams * weekly_entry
-
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.markdown(f"<div class='metric-box'><div class='metric-title'>Active Teams</div><div class='metric-value'>{active_teams}</div></div>", unsafe_allow_html=True)
-        with c2:
-            st.markdown(f"<div class='metric-box'><div class='metric-title'>Weekly Contribution</div><div class='metric-value'>${weekly_entry:.2f} / team</div></div>", unsafe_allow_html=True)
-        with c3:
-            st.markdown(f"<div class='metric-box'><div class='metric-title'>Total Prize Pot</div><div class='metric-value' style='color:#00ff00;'>${total_pot:.2f}</div></div>", unsafe_allow_html=True)
-
-        st.markdown("---")
-        st.markdown("### 🔥 Marked Teams & Bounties")
-        st.info("Teams on an active win streak are marked. Defeating a marked team yields a Syndicate bonus.")
+        tc1, tc2 = st.columns(2)
+        with tc1:
+            st.markdown("<h4 style='color:#00ff00;'>📈 Heating Up</h4>", unsafe_allow_html=True)
+            for _, r in trend.sort_values('Swing', ascending=False).head(3).iterrows():
+                st.markdown(f"<div style='background:#1a2b1a; padding:10px; border-left:4px solid #00ff00; margin-bottom:5px;'><b>{r['Player/Team']}</b> | +{r['Swing']:.1f} PIE over avg</div>", unsafe_allow_html=True)
+        with tc2:
+            st.markdown("<h4 style='color:#ff0000;'>📉 Cooling Down</h4>", unsafe_allow_html=True)
+            for _, r in trend.sort_values('Swing', ascending=True).head(3).iterrows():
+                st.markdown(f"<div style='background:#2b1a1a; padding:10px; border-left:4px solid #ff0000; margin-bottom:5px;'><b>{r['Player/Team']}</b> | {r['Swing']:.1f} PIE under avg</div>", unsafe_allow_html=True)
 
     elif view_mode == "🏆 Power Rankings & SOS":
         st.subheader("📊 League Power Index")
-        st.markdown("Strength of Schedule (SOS) represents the average Win% of opponents faced. **League Office Note:** Adjustments applied for OIAM, MOTF, and Rise Above tie-breakers.")
+        st.markdown("Strength of Schedule (SOS) represents the average Win% of opponents faced. A higher SOS means a tougher schedule.")
         
         ranks = t_stats.copy()
         ranks['True_Power'] = (ranks['Win%'] * 0.6) + (ranks['SOS'] * 0.4)
-        
-        # League Office Manual Overrides based on tiebreakers
-        ranks.loc[ranks['Team Name'] == 'OIAM', 'True_Power'] += 0.05
-        ranks.loc[ranks['Team Name'] == 'MOTF', 'True_Power'] += 0.03
-        ranks.loc[ranks['Team Name'] == 'Rise Above', 'True_Power'] -= 0.02
-        
         ranks = ranks.sort_values('True_Power', ascending=False).reset_index(drop=True)
         
         html = "<table class='sleek-table'><tr><th>Rank</th><th>Team</th><th>Record</th><th>Win%</th><th>SOS</th><th>Pt Diff</th><th>Opp PPP</th></tr>"
         for i, r in ranks.iterrows():
             medal = "🥇 " if i==0 else "🥈 " if i==1 else "🥉 " if i==2 else f"{i+1}. "
-            
-            # League Office Record Display Override
-            wins, losses = int(r['Wins']), int(r['GP']-r['Wins'])
-            if r['Team Name'] == 'Hells Paradise':
-                wins, losses = 11, 1 
-                
-            html += f"<tr><td style='font-size:16px;'>{medal}</td><td class='player-name'>{r['Team Name']}</td><td>{wins}-{losses}</td><td>{r['Win%']:.3f}</td><td style='color:#CD7F32;'>{r['SOS']:.3f}</td><td>{r['Diff']:+.1f}</td><td>{r['Opp_PPP']:.2f}</td></tr>"
+            html += f"<tr><td style='font-size:16px;'>{medal}</td><td class='player-name'>{r['Team Name']}</td><td>{int(r['Wins'])}-{int(r['GP']-r['Wins'])}</td><td>{r['Win%']:.3f}</td><td style='color:#00bfff;'>{r['SOS']:.3f}</td><td>{r['Diff']:+.1f}</td><td>{r['Opp_PPP']:.2f}</td></tr>"
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
 
@@ -417,16 +398,17 @@ elif full_df is not None and not full_df.empty:
             t_data = t_df[t_df['Team Name'] == sel_team]
             p_data = p_df[p_df['Team Name'] == sel_team]
             
+            # The requested clean separation of Tabs
             tab_dash, tab_binder, tab_box = st.tabs(["📋 Season Dashboard", "📇 Player Binder", "📓 Box Scores"])
             
             with tab_dash:
                 c1, c2, c3 = st.columns(3)
-                t_row = t_stats[t_stats['Team Name'] == sel_team].iloc[0]
                 
-                wins, losses = int(t_row['Wins']), int(t_row['GP'] - t_row['Wins'])
-                if sel_team == "Hells Paradise":
-                    wins, losses = 11, 1
-
+                # ADD THESE LINES: Pull record directly from the cleaned unique team stats
+                t_row = t_stats[t_stats['Team Name'] == sel_team].iloc[0]
+                wins = int(t_row['Wins'])
+                losses = int(t_row['GP'] - wins)
+                
                 c1.markdown(f"<div class='metric-box'><div class='metric-title'>Record</div><div class='metric-value'>{wins} - {losses}</div></div>", unsafe_allow_html=True)
                 c2.markdown(f"<div class='metric-box'><div class='metric-title'>Point Diff</div><div class='metric-value'>{t_data['Point_Diff'].mean():+.1f}</div></div>", unsafe_allow_html=True)
                 c3.markdown(f"<div class='metric-box'><div class='metric-title'>Strength of Schedule</div><div class='metric-value'>{t_data['SOS_Game'].mean():.3f}</div></div>", unsafe_allow_html=True)
@@ -447,7 +429,7 @@ elif full_df is not None and not full_df.empty:
                     st.markdown("### 🏆 Best 5 Lineup (By PIE)")
                     best_5 = p_stats[p_stats['Team'] == sel_team].sort_values('PIE', ascending=False).head(5)
                     html = "<table class='sleek-table'><tr><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>PIE</th></tr>"
-                    for _, r in best_5.iterrows(): html += f"<tr><td class='player-name'>{r['Player/Team']}</td><td>{r['PTS']:.1f}</td><td>{r['REB']:.1f}</td><td>{r['AST']:.1f}</td><td style='color:#D4AF37; font-weight:bold;'>{r['PIE']:.1f}</td></tr>"
+                    for _, r in best_5.iterrows(): html += f"<tr><td class='player-name'>{r['Player/Team']}</td><td>{r['PTS']:.1f}</td><td>{r['REB']:.1f}</td><td>{r['AST']:.1f}</td><td style='color:#d4af37; font-weight:bold;'>{r['PIE']:.1f}</td></tr>"
                     st.markdown(html + "</table>", unsafe_allow_html=True)
 
             with tab_binder:
@@ -464,7 +446,7 @@ elif full_df is not None and not full_df.empty:
                     g_data = p_data[p_data['Game_ID'] == sel_game]
                     
                     potg = g_data.loc[g_data['PIE_Raw'].idxmax()]
-                    st.markdown(f"<div style='background: linear-gradient(90deg, #0A192F, #112240); padding:15px; border-left:5px solid #D4AF37; margin-bottom:15px;'><h4 style='margin:0; color:#8892B0;'>PLAYER OF THE GAME</h4><h2 style='margin:0; color:#fff;'>{potg['Player/Team']}</h2><p style='margin:0; color:#D4AF37;'>{int(potg['PTS'])} PTS | {int(potg['REB'])} REB | {potg['PIE_Raw']:.1f} PIE</p></div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='background: linear-gradient(90deg, #111, #333); padding:15px; border-left:5px solid #d4af37; margin-bottom:15px;'><h4 style='margin:0; color:#aaa;'>PLAYER OF THE GAME</h4><h2 style='margin:0; color:#fff;'>{potg['Player/Team']}</h2><p style='margin:0; color:#d4af37;'>{int(potg['PTS'])} PTS | {int(potg['REB'])} REB | {potg['PIE_Raw']:.1f} PIE</p></div>", unsafe_allow_html=True)
                     
                     st.markdown(generate_sleek_box_score(g_data), unsafe_allow_html=True)
                     
@@ -488,7 +470,7 @@ elif full_df is not None and not full_df.empty:
         if len(player_list) >= 2:
             c1, c2 = st.columns(2)
             with c1: p1_sel = st.selectbox("Player 1 (Gold)", player_list)
-            with c2: p2_sel = st.selectbox("Player 2 (Bronze)", player_list, index=1)
+            with c2: p2_sel = st.selectbox("Player 2 (Red)", player_list, index=1)
             
             d1 = p_stats[p_stats['Player/Team'] == p1_sel].iloc[0]
             d2 = p_stats[p_stats['Player/Team'] == p2_sel].iloc[0]
@@ -504,7 +486,7 @@ elif full_df is not None and not full_df.empty:
             with row1_col1: st.plotly_chart(draw_dynamic_radar(p1_sel, r1_1, p2_sel, r2_1, cats1, "The 5-Tool Core"), use_container_width=True)
             
             with row1_col2:
-                st.markdown(f"<div class='award-card'><h3 style='color:#D4AF37;'>Tale of the Tape</h3><hr><p><b>{p1_sel}:</b> {d1['PIE']:.1f} PIE | {d1['PTS']:.1f} PPG</p><p><b>{p2_sel}:</b> {d2['PIE']:.1f} PIE | {d2['PTS']:.1f} PPG</p></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='award-card'><h3 style='color:#d4af37;'>Tale of the Tape</h3><hr><p><b>{p1_sel}:</b> {d1['PIE']:.1f} PIE | {d1['PTS']:.1f} PPG</p><p><b>{p2_sel}:</b> {d2['PIE']:.1f} PIE | {d2['PTS']:.1f} PPG</p></div>", unsafe_allow_html=True)
 
     elif view_mode == "⚔️ Rivalry Corner":
         st.subheader("⚔️ Rivalry Corner")
@@ -525,12 +507,24 @@ elif full_df is not None and not full_df.empty:
                     t1_wins = len(matchups[(matchups['Team Name'] == t1) & (matchups['Opp_Name'] == t2) & (matchups['Win'] == 1)])
                     t2_wins = len(matchups[(matchups['Team Name'] == t2) & (matchups['Opp_Name'] == t1) & (matchups['Win'] == 1)])
                     
-                    st.markdown(f"<div style='background:#112240; border:1px solid #D4AF37; border-radius:8px; padding:20px; margin-bottom:5px;'><h3 style='text-align:center; color:#fff;'>{t1} <span style='color:#D4AF37;'>vs</span> {t2}</h3><h4 style='text-align:center; color:#8892B0;'>{riv['Games']} Meetings</h4><div style='display:flex; justify-content:space-around; margin-top:15px;'><div style='text-align:center;'><h2 style='color:#00ff00;'>{t1_wins} Wins</h2><p>{t1}</p></div><div style='text-align:center;'><h2 style='color:#ff0000;'>{t2_wins} Wins</h2><p>{t2}</p></div></div></div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='background:#161b22; border:1px solid #d4af37; border-radius:8px; padding:20px; margin-bottom:5px;'><h3 style='text-align:center; color:#fff;'>{t1} <span style='color:#d4af37;'>vs</span> {t2}</h3><h4 style='text-align:center; color:#aaa;'>{riv['Games']} Meetings</h4><div style='display:flex; justify-content:space-around; margin-top:15px;'><div style='text-align:center;'><h2 style='color:#00ff00;'>{t1_wins} Wins</h2><p>{t1}</p></div><div style='text-align:center;'><h2 style='color:#ff0000;'>{t2_wins} Wins</h2><p>{t2}</p></div></div></div>", unsafe_allow_html=True)
+                    
+                    # Pull Last 2 Games
+                    game_ids = matchups[matchups['Pairing'] == riv['Pairing']]['Game_ID'].unique()
+                    last_2 = sorted(game_ids, reverse=True)[:2]
+                    st.markdown("<div style='margin-bottom:25px; padding-left:15px; border-left:3px solid #333;'><b>Recent Matchups:</b><br>", unsafe_allow_html=True)
+                    for gid in last_2:
+                        g_rows = matchups[matchups['Game_ID'] == gid]
+                        if len(g_rows) == 2:
+                            r1, r2 = g_rows.iloc[0], g_rows.iloc[1]
+                            st.markdown(f"<span style='color:#aaa;'>Game {int(gid)}:</span> {r1['Team Name']} <b>{int(r1['PTS'])}</b> - {r2['Team Name']} <b>{int(r2['PTS'])}</b>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.error("Matchup data not available.")
 
     elif view_mode == "🔬 Advanced Analytics Lab":
         st.subheader("🔬 The Analytics Lab")
+        st.markdown("Comprehensive dashboard replacing the old scatter plots.")
         
         c1, c2 = st.columns(2)
         with c1:
@@ -552,7 +546,7 @@ elif full_df is not None and not full_df.empty:
 
     elif view_mode == "🔮 Oracle Predictor":
         st.subheader("🔮 QCL Oracle Matchup Predictor")
-        st.markdown("Recalibrated for the tournament-style format. Uses SOS and Pace metrics to generate projected Box Scores.")
+        st.markdown("Recalibrated for 20-minute environments (60-80 pts). Uses SOS to generate projected Box Score & MVP.")
         if not t_stats.empty and len(t_stats) >= 2:
             c1, c2 = st.columns(2)
             with c1: t1_sel = st.selectbox("Home Team", t_stats['Team Name'].tolist())
@@ -562,6 +556,7 @@ elif full_df is not None and not full_df.empty:
                 d1 = t_stats[t_stats['Team Name'] == t1_sel].iloc[0]
                 d2 = t_stats[t_stats['Team Name'] == t2_sel].iloc[0]
                 
+                # Baseline 2K Game Points (Targeting ~75)
                 lg_opp_ppp = t_stats['Opp_PPP'].mean() if t_stats['Opp_PPP'].mean() > 0 else 1.0
                 t1_def_factor = d1['Opp_PPP'] / lg_opp_ppp
                 t2_def_factor = d2['Opp_PPP'] / lg_opp_ppp
@@ -576,6 +571,8 @@ elif full_df is not None and not full_df.empty:
                 
                 s1, s2 = sum(q_scores_1), sum(q_scores_2)
                 if s1 == s2: s1 += 1; q_scores_1[-1] += 1
+                
+                win_team = t1_sel if s1 > s2 else t2_sel
                 
                 def generate_sim_box(team_name, total_pts):
                     roster = p_stats[p_stats['Team'] == team_name].sort_values('PTS', ascending=False)
@@ -593,7 +590,7 @@ elif full_df is not None and not full_df.empty:
                 sb1 = generate_sim_box(t1_sel, s1)
                 sb2 = generate_sim_box(t2_sel, s2)
                 
-                st.markdown(f"<div class='sim-box'><h4 style='color:#8892B0;'>FINAL SCORE</h4><h1 style='font-size:54px; margin:0;'><span style='color:{'#00ff00' if s1>s2 else '#fff'};'>{s1}</span> - <span style='color:{'#00ff00' if s2>s1 else '#fff'};'>{s2}</span></h1><p>{t1_sel} vs {t2_sel}</p></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='sim-box' style='background:#2a2d35;'><h4 style='color:#888;'>FINAL SCORE</h4><h1 style='font-size:54px; margin:0;'><span style='color:{'#00ff00' if s1>s2 else '#fff'};'>{s1}</span> - <span style='color:{'#00ff00' if s2>s1 else '#fff'};'>{s2}</span></h1><p>{t1_sel} vs {t2_sel}</p></div>", unsafe_allow_html=True)
                 
                 colA, colB = st.columns(2)
                 with colA:
@@ -607,8 +604,8 @@ elif full_df is not None and not full_df.empty:
                 mvp = all_sim_p.loc[all_sim_p['PTS'].idxmax()]
                 st.success(f"🏆 **Simulated Game MVP:** {mvp['Player']} with {mvp['PTS']} Points!")
 
-    elif view_mode == "🏛️ The Eternal Record":
-        st.subheader("🏛️ THE ETERNAL RECORD: MASTER LEDGER & HOF")
+    elif view_mode == "🏦 The Vault":
+        st.subheader("🏦 THE VAULT: MASTER LEDGER & HOF")
         
         p_tot = p_df.groupby('Player/Team').sum(numeric_only=True).reset_index()
         
@@ -622,5 +619,61 @@ elif full_df is not None and not full_df.empty:
         with c4: st.markdown(render_podium("All-Time Steals Leaders", p_tot.sort_values('STL', ascending=False), 'STL'), unsafe_allow_html=True)
 
         st.markdown("### 🗃️ The Master Ledger")
-        st.markdown("The complete, sortable archive of all verified statistics.")
+        st.markdown("A complete, sortable archive of all recorded statistics.")
         st.dataframe(p_tot[['Player/Team', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'FGM', 'FGA', '3PM', '3PA', 'Tipped_Passes', 'Shots_Affected', 'FB_Points', 'TO', 'FOULS']].sort_values('PTS', ascending=False), use_container_width=True, hide_index=True)
+
+    elif view_mode == "📖 Record Book & Milestones":
+        st.subheader(f"📖 {banner_text} Record Book & Milestones")
+        
+        # Dual-track: Both Season logic (p_df) and Career logic (full_p_df)
+        full_p_df = full_df[full_df['Type'].astype(str).str.lower() == 'player']
+
+        tab_game, tab_miles = st.tabs(["🔥 Single Game Records", "🏔️ Milestone Tracker (Totals)"])
+        
+        with tab_game:
+            st.markdown("### 🏆 CURRENT SEASON Single Game Highs")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown(generate_mini_leaderboard("Points in a Game", p_df, 'PTS', color="#cc0000", name_col="Player/Team"), unsafe_allow_html=True)
+                st.markdown(generate_mini_leaderboard("Steals in a Game", p_df, 'STL', color="#ff8c00", name_col="Player/Team"), unsafe_allow_html=True)
+            with c2:
+                st.markdown(generate_mini_leaderboard("Rebounds in a Game", p_df, 'REB', color="#32cd32", name_col="Player/Team"), unsafe_allow_html=True)
+                st.markdown(generate_mini_leaderboard("Blocks in a Game", p_df, 'BLK', color="#8a2be2", name_col="Player/Team"), unsafe_allow_html=True)
+            with c3:
+                st.markdown(generate_mini_leaderboard("Assists in a Game", p_df, 'AST', color="#00bfff", name_col="Player/Team"), unsafe_allow_html=True)
+                st.markdown(generate_mini_leaderboard("3-Pointers in a Game", p_df, '3PM', color="#d4af37", name_col="Player/Team"), unsafe_allow_html=True)
+
+            if selected_scope != "Career Stats":
+                st.markdown("<hr>### 🏛️ ALL-TIME Single Game Highs (Franchise History)", unsafe_allow_html=True)
+                ac1, ac2, ac3 = st.columns(3)
+                with ac1:
+                    st.markdown(generate_mini_leaderboard("All-Time Points", full_p_df, 'PTS', color="#cc0000", name_col="Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("All-Time Steals", full_p_df, 'STL', color="#ff8c00", name_col="Player/Team"), unsafe_allow_html=True)
+                with ac2:
+                    st.markdown(generate_mini_leaderboard("All-Time Rebounds", full_p_df, 'REB', color="#32cd32", name_col="Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("All-Time Blocks", full_p_df, 'BLK', color="#8a2be2", name_col="Player/Team"), unsafe_allow_html=True)
+                with ac3:
+                    st.markdown(generate_mini_leaderboard("All-Time Assists", full_p_df, 'AST', color="#00bfff", name_col="Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("All-Time 3PM", full_p_df, '3PM', color="#d4af37", name_col="Player/Team"), unsafe_allow_html=True)
+
+        with tab_miles:
+            p_totals = p_df.groupby('Player/Team').sum(numeric_only=True).reset_index()
+            t_totals = t_df.groupby('Team Name').sum(numeric_only=True).reset_index()
+            
+            st.markdown("#### Player Milestones")
+            mc1, mc2, mc3 = st.columns(3)
+            with mc1: st.markdown(generate_mini_leaderboard("Total Points", p_totals, 'PTS', color="#cc0000", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+            with mc2: st.markdown(generate_mini_leaderboard("Total Rebounds", p_totals, 'REB', color="#32cd32", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+            with mc3: st.markdown(generate_mini_leaderboard("Total Assists", p_totals, 'AST', color="#00bfff", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+            
+            mc4, mc5, mc6 = st.columns(3)
+            with mc4: st.markdown(generate_mini_leaderboard("Total Steals", p_totals, 'STL', color="#ff8c00", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+            with mc5: st.markdown(generate_mini_leaderboard("Total Blocks", p_totals, 'BLK', color="#8a2be2", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+            with mc6: st.markdown(generate_mini_leaderboard("Total 3PM", p_totals, '3PM', color="#d4af37", top_n=10, name_col="Player/Team"), unsafe_allow_html=True)
+
+            st.markdown("#### Team Milestones")
+            tc1, tc2 = st.columns(2)
+            if not t_totals.empty:
+                with tc1: st.markdown(generate_mini_leaderboard("Most Wins", t_totals, 'Win', color="#ffd700", top_n=5, name_col="Team Name"), unsafe_allow_html=True)
+                with tc2: st.markdown(generate_mini_leaderboard("Total Points Scored", t_totals, 'PTS', color="#cc0000", top_n=5, name_col="Team Name"), unsafe_allow_html=True)
+
