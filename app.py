@@ -95,7 +95,7 @@ def load_data():
         team_rows = df.groupby(['Game_ID', 'Team Name', 'Season']).agg({**{c: 'sum' for c in sum_cols}, 'Win': 'first'}).reset_index()
         team_rows['Type'] = 'Team'
         team_rows['Player/Team'] = team_rows['Team Name'] + " TOTALS"
-        df = pd.concat([df], ignore_index=True)
+        df = pd.concat([df, ignore_index=True])
 
         # --- PROXY STATS ---
         df['Game_Type'] = np.where(df['Game_ID'] >= 9000, 'Playoffs', np.where(df['Game_ID'] >= 8000, 'Tournament', 'Regular Season'))
