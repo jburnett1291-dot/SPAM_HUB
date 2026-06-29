@@ -78,10 +78,17 @@ def load_data():
         # LEAGUE OFFICE OVERRIDES (Lineup & Position Adjustments)
         df['Player/Team'] = df['Player/Team'].replace({'Trifecta': 'Venom'})
         
-        req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win', 'Season', 'Type', 'Team Name']
-        for c in req_cols:
-            if c not in df.columns: df[c] = 0
-            if c not in ['Type', 'Team Name', 'Player/Team']: df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+        # Define explicitly which columns are for math
+numeric_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win']
+
+for c in df.columns:
+    if c in numeric_cols:
+        # Safely turn non-numeric junk (like '[]' or text) into 0
+        df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+
+# Ensure Win and Game_ID are clean integers
+df['Win'] = df['Win'].apply(lambda x: 1 if x > 0 else 0)
+df['Game_ID'] = df['Game_ID'].astype(int)
             
         df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
         df['Game_ID'] = pd.to_numeric(df['Game_ID'], errors='coerce')
@@ -95,7 +102,7 @@ def load_data():
         team_rows = df.groupby(['Game_ID', 'Team Name', 'Season']).agg({**{c: 'sum' for c in sum_cols}, 'Win': 'first'}).reset_index()
         team_rows['Type'] = 'Team'
         team_rows['Player/Team'] = team_rows['Team Name'] + " TOTALS"
-        df = pd.concat([df, ignore_index=True])
+        df = pd.concat([df], ignore_index=True)
 
         # --- PROXY STATS ---
         df['Game_Type'] = np.where(df['Game_ID'] >= 9000, 'Playoffs', np.where(df['Game_ID'] >= 8000, 'Tournament', 'Regular Season'))
