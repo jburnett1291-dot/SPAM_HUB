@@ -59,11 +59,20 @@ st.markdown(css_styles, unsafe_allow_html=True)
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
-def smart_name_scrubber(raw_name):
+def basic_name_clean(raw_name):
+    """Remove pure OCR junk only: edge pipes/whitespace and [bracket]/(paren) tags.
+    Never alters casing or strips letters from the gamertag itself."""
     if pd.isna(raw_name) or not isinstance(raw_name, str): return raw_name
-    clean_name = re.sub(r'^[|Il\s]+', '', raw_name)
-    clean_name = re.sub(r'^\[.*?\]\s*|^\(.*?\)\s*', '', clean_name)
-    return clean_name.strip().title()
+    n = re.sub(r'^[|\s]+|[|\s]+$', '', raw_name)
+    n = re.sub(r'^\[.*?\]\s*|^\(.*?\)\s*', '', n)
+    return n.strip()
+
+def name_match_key(name):
+    """OCR-tolerant identity key: strips leading I/l/| prefix runs (2K clan-tag
+    misreads), folds l<->i confusion, case-insensitive. Used ONLY for grouping —
+    display names are never modified by this."""
+    k = re.sub(r'^[|Il\s]+', '', str(name))
+    return k.strip().lower().replace('l', 'i').replace(' ', '')
 
 @st.cache_data(ttl=60)
 def load_data():
@@ -82,9 +91,23 @@ def load_data():
         health['Players recovered (bad Type)'] = int((~is_team_row & (raw_type != 'player')).sum())
         df['Type'] = np.where(is_team_row, 'Team', 'Player')
 
-        if 'Player/Team' in df.columns: df['Player/Team'] = df['Player/Team'].apply(smart_name_scrubber)
+        # --- CANONICAL NAMES: clean OCR junk, then unify variants under the most-used spelling ---
+        df['Player/Team'] = df['Player/Team'].apply(basic_name_clean)
+        p_names = df.loc[df['Type'] == 'Player', 'Player/Team'].dropna()
+        counts = p_names.value_counts()
+        canon = {}
+        for name, cnt in counts.items():
+            k = name_match_key(name)
+            if k not in canon or cnt > canon[k][1]:
+                canon[k] = (name, cnt)
+        def to_canonical(n):
+            if not isinstance(n, str): return n
+            hit = canon.get(name_match_key(n))
+            return hit[0] if hit else n
+        df.loc[df['Type'] == 'Player', 'Player/Team'] = df.loc[df['Type'] == 'Player', 'Player/Team'].map(to_canonical)
+        health['Name variants unified'] = int(sum(1 for n in counts.index if canon[name_match_key(n)][0] != n))
 
-        req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'OREB', 'DREB', 'MIN', 'Game_ID', 'Win', 'Season', 'Type', 'Team Name']
+        req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'OREB', 'DREB', 'MIN', 'Q1', 'Q2', 'Q3', 'Q4', 'Game_ID', 'Win', 'Season', 'Type', 'Team Name']
         for c in req_cols:
             if c not in df.columns: df[c] = 0
             if c not in ['Type', 'Team Name', 'Player/Team', 'Win']: df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
@@ -118,7 +141,7 @@ def load_data():
         recorded = df[df['Type'] == 'Team'].copy()
         recorded = recorded[recorded['PTS'] > 0].drop_duplicates(subset=key, keep='last')
 
-        sum_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'OREB', 'DREB', 'Poss_Raw', 'PIE_Raw', 'Game_Score']
+        sum_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'OREB', 'DREB', 'Q1', 'Q2', 'Q3', 'Q4', 'Poss_Raw', 'PIE_Raw', 'Game_Score']
         rebuilt = players.groupby(key).agg({**{c: 'sum' for c in sum_cols}, 'Win': 'max', 'GKey': 'first'}).reset_index()
         rebuilt = rebuilt.merge(recorded[key].assign(_rec=1), on=key, how='left')
         rebuilt = rebuilt[rebuilt['_rec'].isna()].drop(columns=['_rec'])
@@ -127,6 +150,15 @@ def load_data():
         team_rows['Type'] = 'Team'
         team_rows['Player/Team'] = team_rows['Team Name'].astype(str) + " TOTALS"
         health['Team totals (recorded / rebuilt)'] = f"{len(recorded)} / {len(rebuilt)}"
+
+        # --- NEW-SCHEMA COVERAGE & CONSISTENCY ---
+        q_sum = team_rows[['Q1', 'Q2', 'Q3', 'Q4']].sum(axis=1)
+        has_q = q_sum > 0
+        health['Quarter data coverage'] = f"{int(has_q.sum())}/{len(team_rows)} team-games"
+        q_mismatch = int((has_q & (q_sum != team_rows['PTS'])).sum())
+        if q_mismatch: health['⚠️ Quarters ≠ PTS'] = q_mismatch
+        reb_split = df[df['Type'] == 'Player'][['OREB', 'DREB']].sum(axis=1) > 0
+        health['OREB/DREB coverage'] = f"{int(reb_split.sum())}/{int((df['Type'] == 'Player').sum())} player rows"
 
         # --- WIN RECONCILIATION: fill missing Win from head-to-head score ---
         n_teams = team_rows.groupby(['Season', 'Game_ID'])['Team Name'].transform('nunique')
