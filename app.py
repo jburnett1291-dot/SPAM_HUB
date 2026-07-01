@@ -7,7 +7,7 @@ import random
 import re
 
 # --- 1. UI & SLEEK CSS ---
-st.set_page_config(page_title="QCL LEAGUE CENTRAL", page_icon="🏀", layout="wide")
+st.set_page_config(page_title="SPAM LEAGUE CENTRAL", page_icon="🏀", layout="wide")
 
 css_styles = """
 <style>
@@ -70,17 +70,39 @@ def load_data():
     try:
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
+        health = {}
         df = df[df['Player/Team'] != 'Player/Team']
         df = df[df['Team Name'].notna() & (df['Team Name'].astype(str).str.strip() != '') & (df['Team Name'].astype(str) != '0')]
+        health['Rows loaded'] = len(df)
+
+        # --- TYPE NORMALIZATION: Player/player/Xbox/blank -> Player; Team/Total/TOTAL/Team Total -> Team ---
+        raw_type = df['Type'].astype(str).str.strip().str.lower()
+        total_name = df['Player/Team'].astype(str).str.strip().str.upper().isin(['TOTAL', 'TOTALS', 'TEAM TOTAL'])
+        is_team_row = raw_type.isin(['team', 'total', 'team total', 'totals']) | total_name
+        health['Players recovered (bad Type)'] = int((~is_team_row & (raw_type != 'player')).sum())
+        df['Type'] = np.where(is_team_row, 'Team', 'Player')
+
         if 'Player/Team' in df.columns: df['Player/Team'] = df['Player/Team'].apply(smart_name_scrubber)
-            
+
         req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'OREB', 'DREB', 'MIN', 'Game_ID', 'Win', 'Season', 'Type', 'Team Name']
         for c in req_cols:
             if c not in df.columns: df[c] = 0
-            if c not in ['Type', 'Team Name', 'Player/Team']: df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
-            
-        df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
+            if c not in ['Type', 'Team Name', 'Player/Team', 'Win']: df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+
+        df['Win'] = pd.to_numeric(df['Win'], errors='coerce')  # keep NaN; derived from score later
         df['Game_ID'] = pd.to_numeric(df['Game_ID'], errors='coerce')
+
+        # --- DROP rows with no game/season identity; build cross-season-safe game key ---
+        pre = len(df)
+        df = df[df['Game_ID'].notna() & (df['Season'] > 0)]
+        health['Rows dropped (no Game_ID/Season)'] = pre - len(df)
+        df['GKey'] = df['Season'].astype(int).astype(str) + '-' + df['Game_ID'].astype(int).astype(str)
+
+        # --- DEDUPE double-entered rows (keep the fuller stat line) ---
+        pre = len(df)
+        df['_bulk'] = df['PTS'] + df['FGA'] + df['REB']
+        df = df.sort_values('_bulk').drop_duplicates(subset=['Season', 'Game_ID', 'Team Name', 'Player/Team', 'Type'], keep='last').drop(columns='_bulk').sort_index()
+        health['Duplicate rows removed'] = pre - len(df)
         
         df['PIE_Raw'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss_Raw'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
@@ -90,65 +112,92 @@ def load_data():
         df['Game_Score'] = (df['PTS'] + 0.4 * df['FGM'] - 0.7 * df['FGA'] - 0.4 * (df['FTA'] - df['FTM'])
                             + reb_term + df['STL'] + 0.7 * df['AST'] + 0.7 * df['BLK'] - 0.4 * df['FOULS'] - df['TO'])
 
-        # --- AUTO-CALCULATE TEAM TOTALS ---
-        df = df[df['Type'].astype(str).str.lower() != 'team'].copy()
-        sum_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Poss_Raw']
-        team_rows = df.groupby(['Game_ID', 'Team Name', 'Season']).agg({**{c: 'sum' for c in sum_cols}, 'Win': 'first'}).reset_index()
+        # --- TEAM TOTALS: recorded box-screen totals preferred; rebuilt from players as fallback ---
+        key = ['Season', 'Game_ID', 'Team Name']
+        players = df[df['Type'] == 'Player'].copy()
+        recorded = df[df['Type'] == 'Team'].copy()
+        recorded = recorded[recorded['PTS'] > 0].drop_duplicates(subset=key, keep='last')
+
+        sum_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'OREB', 'DREB', 'Poss_Raw', 'PIE_Raw', 'Game_Score']
+        rebuilt = players.groupby(key).agg({**{c: 'sum' for c in sum_cols}, 'Win': 'max', 'GKey': 'first'}).reset_index()
+        rebuilt = rebuilt.merge(recorded[key].assign(_rec=1), on=key, how='left')
+        rebuilt = rebuilt[rebuilt['_rec'].isna()].drop(columns=['_rec'])
+
+        team_rows = pd.concat([recorded, rebuilt], ignore_index=True)
         team_rows['Type'] = 'Team'
-        team_rows['Player/Team'] = team_rows['Team Name'] + " TOTALS"
-        df = pd.concat([df, team_rows], ignore_index=True)
+        team_rows['Player/Team'] = team_rows['Team Name'].astype(str) + " TOTALS"
+        health['Team totals (recorded / rebuilt)'] = f"{len(recorded)} / {len(rebuilt)}"
+
+        # --- WIN RECONCILIATION: fill missing Win from head-to-head score ---
+        n_teams = team_rows.groupby(['Season', 'Game_ID'])['Team Name'].transform('nunique')
+        max_pts = team_rows.groupby(['Season', 'Game_ID'])['PTS'].transform('max')
+        min_pts = team_rows.groupby(['Season', 'Game_ID'])['PTS'].transform('min')
+        derived = pd.Series(np.where((n_teams == 2) & (max_pts != min_pts), (team_rows['PTS'] == max_pts).astype(float), np.nan), index=team_rows.index)
+        health['Wins derived from score'] = int((team_rows['Win'].isna() & derived.notna()).sum())
+        team_rows['Win'] = team_rows['Win'].fillna(derived)
+
+        win_map = team_rows.set_index(key)['Win']
+        mapped = players.set_index(key).index.map(win_map)
+        players['Win'] = players['Win'].fillna(pd.Series(mapped, index=players.index))
+        df = pd.concat([players, team_rows], ignore_index=True)
+        df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
 
         # --- ADVANCED RATINGS (PER GAME) ---
         p_mask = df['Type'].astype(str).str.lower() == 'player'
-        team_poss = df[p_mask].groupby(['Game_ID', 'Team Name'])['Poss_Raw'].transform('sum')
+        team_poss = df[p_mask].groupby(['Season', 'Game_ID', 'Team Name'])['Poss_Raw'].transform('sum')
         df.loc[p_mask, 'USG_Game'] = np.where(team_poss > 0, df.loc[p_mask, 'Poss_Raw'] / team_poss * 100, 0)
         df['ORtg_Game'] = np.where(df['Poss_Raw'] > 0, df['PTS'] / df['Poss_Raw'] * 100, 0)
 
         # --- PROXY STATS ---
         df['Game_Type'] = np.where(df['Game_ID'] >= 9000, 'Playoffs', np.where(df['Game_ID'] >= 8000, 'Tournament', 'Regular Season'))
         players_df = df[df['Type'].astype(str).str.lower() == 'player'].copy()
-        players_df = players_df.sort_values(by=['Game_ID', 'Team Name'])
-        players_df['Position_Num'] = players_df.groupby(['Game_ID', 'Team Name']).cumcount() + 1
+        players_df = players_df.sort_values(by=['Season', 'Game_ID', 'Team Name'])
+        players_df['Position_Num'] = players_df.groupby(['Season', 'Game_ID', 'Team Name']).cumcount() + 1
         
         players_df['Tipped_Passes'] = np.where(players_df['Position_Num'] <= 2, (players_df['STL'] * 2.2) + (players_df['FOULS'] * 0.4), (players_df['STL'] * 1.2) + (players_df['BLK'] * 0.2)).round().astype(int)
         players_df['Shots_Affected'] = np.where(players_df['Position_Num'] >= 3, (players_df['BLK'] * 3.0) + (players_df['REB'] * 0.4) + (players_df['FOULS'] * 0.5), (players_df['BLK'] * 1.5) + (players_df['STL'] * 0.4)).round().astype(int)
         players_df['FB_Points'] = np.where(players_df['Position_Num'] <= 2, (players_df['STL'] * 2.0) + (players_df['FGM'] * 0.4), (players_df['STL'] * 1.0) + (players_df['FGM'] * 0.1)).round().astype(int)
         players_df['FB_Points'] = players_df[['FB_Points', 'PTS']].min(axis=1)
 
-        df = df.merge(players_df[['Game_ID', 'Team Name', 'Player/Team', 'Tipped_Passes', 'Shots_Affected', 'FB_Points', 'Position_Num']], on=['Game_ID', 'Team Name', 'Player/Team'], how='left')
+        df = df.merge(players_df[['Season', 'Game_ID', 'Team Name', 'Player/Team', 'Tipped_Passes', 'Shots_Affected', 'FB_Points', 'Position_Num']], on=['Season', 'Game_ID', 'Team Name', 'Player/Team'], how='left')
 
-        t_proxy = df[df['Type'].astype(str).str.lower() == 'player'].groupby(['Game_ID', 'Team Name'])[['Tipped_Passes', 'Shots_Affected', 'FB_Points']].sum().reset_index()
+        t_proxy = df[df['Type'] == 'Player'].groupby(['Season', 'Game_ID', 'Team Name'])[['Tipped_Passes', 'Shots_Affected', 'FB_Points']].sum().reset_index()
         for col in ['Tipped_Passes', 'Shots_Affected', 'FB_Points']:
-            df.loc[df['Type'].astype(str).str.lower() == 'team', col] = df.loc[df['Type'].astype(str).str.lower() == 'team'].set_index(['Game_ID', 'Team Name']).index.map(t_proxy.set_index(['Game_ID', 'Team Name'])[col]).fillna(0)
+            df.loc[df['Type'] == 'Team', col] = df.loc[df['Type'] == 'Team'].set_index(['Season', 'Game_ID', 'Team Name']).index.map(t_proxy.set_index(['Season', 'Game_ID', 'Team Name'])[col]).fillna(0)
 
         # --- MATCHUP LOGIC & SOS ---
-        t_logs = df[df['Type'].astype(str).str.lower() == 'team'][['Game_ID', 'Team Name', 'PTS', 'FGM', 'FGA', '3PM', '3PA', 'TO', 'FTA', 'Win', 'Season']].copy()
+        t_logs = df[df['Type'] == 'Team'][['Game_ID', 'Team Name', 'PTS', 'FGM', 'FGA', '3PM', '3PA', 'TO', 'FTA', 'Win', 'Season']].copy()
         t_logs['Team_Win_Pct'] = t_logs.groupby(['Season', 'Team Name'])['Win'].transform('mean')
-        
-        opps = pd.merge(t_logs, t_logs, on='Game_ID', suffixes=('', '_Opp'))
+
+        # SEASON-AWARE PAIRING: only true head-to-head games (exactly 2 teams share Season+Game_ID)
+        n_in_game = t_logs.groupby(['Season', 'Game_ID'])['Team Name'].transform('nunique')
+        pairable = t_logs[n_in_game == 2]
+        opps = pd.merge(pairable, pairable, on=['Season', 'Game_ID'], suffixes=('', '_Opp'))
         opps = opps[opps['Team Name'] != opps['Team Name_Opp']]
-        
-        # ADD THIS LINE: Drops duplicate pairings to stop the Cartesian Explosion
-        opps = opps.drop_duplicates(subset=['Game_ID', 'Team Name'])
-        
-        opps['Point_Diff'] = opps['PTS'] - opps['PTS_Opp']
-        
+        opps = opps.drop_duplicates(subset=['Season', 'Game_ID', 'Team Name'])
+
         opps['Point_Diff'] = opps['PTS'] - opps['PTS_Opp']
         opps['Opp_Possessions'] = opps['FGA_Opp'] + (0.44 * opps['FTA_Opp']) + opps['TO_Opp']
         opps['Opp_PPP'] = np.where(opps['Opp_Possessions'] > 0, opps['PTS_Opp'] / opps['Opp_Possessions'], 0)
         opps['Opp_FG%'] = np.where(opps['FGA_Opp'] > 0, (opps['FGM_Opp'] / opps['FGA_Opp']) * 100, 0)
 
-        df = pd.merge(df, opps[['Game_ID', 'Team Name', 'Point_Diff', 'Opp_PPP', 'Opp_FG%', 'Team Name_Opp', 'Team_Win_Pct_Opp']], on=['Game_ID', 'Team Name'], how='left')
+        df = pd.merge(df, opps[['Season', 'Game_ID', 'Team Name', 'Point_Diff', 'Opp_PPP', 'Opp_FG%', 'Team Name_Opp', 'Team_Win_Pct_Opp']], on=['Season', 'Game_ID', 'Team Name'], how='left')
 
-        df['Point_Diff'] = df.groupby(['Game_ID', 'Team Name'])['Point_Diff'].transform('first')
-        df['Opp_PPP'] = df.groupby(['Game_ID', 'Team Name'])['Opp_PPP'].transform('first')
-        df['SOS_Game'] = df.groupby(['Game_ID', 'Team Name'])['Team_Win_Pct_Opp'].transform('first')
-        df['Opp_Name'] = df.groupby(['Game_ID', 'Team Name'])['Team Name_Opp'].transform('first')
+        df['Point_Diff'] = df.groupby(['Season', 'Game_ID', 'Team Name'])['Point_Diff'].transform('first')
+        df['Opp_PPP'] = df.groupby(['Season', 'Game_ID', 'Team Name'])['Opp_PPP'].transform('first')
+        df['SOS_Game'] = df.groupby(['Season', 'Game_ID', 'Team Name'])['Team_Win_Pct_Opp'].transform('first')
+        df['Opp_Name'] = df.groupby(['Season', 'Game_ID', 'Team Name'])['Team Name_Opp'].transform('first')
 
-        return df
+        return {'df': df, 'health': health}
     except Exception as e: return str(e)
 
-full_df = load_data()
+_loaded = load_data()
+if isinstance(_loaded, str):
+    full_df = _loaded
+    DATA_HEALTH = {}
+else:
+    full_df = _loaded['df']
+    DATA_HEALTH = _loaded['health']
 
 # --- 2B. GLOBAL MILESTONE TRACKER ---
 if not isinstance(full_df, str):
@@ -285,12 +334,16 @@ elif full_df is not None and not full_df.empty:
     st.sidebar.divider()
     scope_opts = [f"Season {s}" for s in seasons] + ["Career Stats"]
     selected_scope = st.sidebar.selectbox("Data Scope", scope_opts, index=0)
+    if DATA_HEALTH:
+        with st.sidebar.expander("🩺 Data Health"):
+            for hk, hv in DATA_HEALTH.items():
+                st.markdown(f"**{hk}:** {hv}")
     
     target_season = seasons[0] if selected_scope == "Career Stats" else int(selected_scope.replace("Season ", ""))
     df_active = full_df if selected_scope == "Career Stats" else full_df[full_df['Season'] == target_season]
     banner_text = "CAREER TOTALS" if selected_scope == "Career Stats" else f"SEASON {target_season}"
 
-    st.markdown(f'<div class="header-banner">🏀 QCL LEAGUE HUB - {banner_text}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="header-banner">🏀 SPAM LEAGUE HUB - {banner_text}</div>', unsafe_allow_html=True)
 
     # Core Stat Generation
     p_df = df_active[df_active['Type'].astype(str).str.lower() == 'player'].copy()
@@ -303,7 +356,7 @@ elif full_df is not None and not full_df.empty:
     ).reset_index()
 
     p_stats = p_df.groupby('Player/Team').agg(**{
-        'GP': ('Game_ID', 'nunique'), 'PTS': ('PTS', 'mean'), 'REB': ('REB', 'mean'), 'AST': ('AST', 'mean'), 'STL': ('STL', 'mean'), 'BLK': ('BLK', 'mean'),
+        'GP': ('GKey', 'nunique'), 'PTS': ('PTS', 'mean'), 'REB': ('REB', 'mean'), 'AST': ('AST', 'mean'), 'STL': ('STL', 'mean'), 'BLK': ('BLK', 'mean'),
         'FGM': ('FGM', 'mean'), 'FGA': ('FGA', 'mean'), '3PM': ('3PM', 'mean'), '3PA': ('3PA', 'mean'), 'PIE_Raw': ('PIE_Raw', 'mean'), 'POS': ('Position_Num', 'mean'), 'Team': ('Team Name', 'last'),
         'Tipped_Passes': ('Tipped_Passes', 'mean'), 'Shots_Affected': ('Shots_Affected', 'mean'), 'FB_Points': ('FB_Points', 'mean'),
         'USG': ('USG_Game', 'mean'), 'ORtg': ('ORtg_Game', 'mean'), 'GmSc': ('Game_Score', 'mean')
@@ -341,7 +394,7 @@ elif full_df is not None and not full_df.empty:
     p_stats['League_Rank'] = p_stats.index + 1
 
     t_stats = t_df.groupby('Team Name').agg(
-        GP=('Game_ID', 'nunique'), Wins=('Win', 'sum'), PPG=('PTS', 'mean'), Diff=('Point_Diff', 'mean'), 
+        GP=('GKey', 'nunique'), Wins=('Win', 'sum'), PPG=('PTS', 'mean'), Diff=('Point_Diff', 'mean'), 
         Opp_PPP=('Opp_PPP', 'mean'), SOS=('SOS_Game', 'mean'), Poss=('Poss_Raw', 'mean'), RPG=('REB', 'mean'), APG=('AST', 'mean'), SPG=('STL', 'mean'), BPG=('BLK', 'mean'), FGM=('FGM','mean'), FGA=('FGA','mean')
     ).reset_index()
     t_stats['Win%'] = t_stats['Wins'] / t_stats['GP'].replace(0, 1)
@@ -405,7 +458,7 @@ elif full_df is not None and not full_df.empty:
             fp_mip = full_df[full_df['Type'].astype(str).str.lower() == 'player']
             def season_line(s):
                 d = fp_mip[fp_mip['Season'] == s]
-                return d.groupby('Player/Team').agg(GP=('Game_ID', 'nunique'), PIE=('PIE_Raw', 'mean'), PTS=('PTS', 'mean')).reset_index()
+                return d.groupby('Player/Team').agg(GP=('GKey', 'nunique'), PIE=('PIE_Raw', 'mean'), PTS=('PTS', 'mean')).reset_index()
             mip = season_line(target_season).merge(season_line(prev_s), on='Player/Team', suffixes=('', '_Prev'))
             mip = mip[(mip['GP'] >= 3) & (mip['GP_Prev'] >= 3)]
             mip['Jump'] = mip['PIE'] - mip['PIE_Prev']
@@ -437,7 +490,7 @@ elif full_df is not None and not full_df.empty:
 
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown("### 🔥 Streak Trends (Last 3 Games)")
-        recent_p = p_df.sort_values(['Player/Team', 'Game_ID']).groupby('Player/Team').tail(3)
+        recent_p = p_df.sort_values(['Player/Team', 'Season', 'Game_ID']).groupby('Player/Team').tail(3)
         recent_stats = recent_p.groupby('Player/Team').agg(Recent_PIE=('PIE_Raw', 'mean')).reset_index()
         trend = p_stats.merge(recent_stats, on='Player/Team')
         trend['Swing'] = trend['Recent_PIE'] - trend['PIE']
@@ -462,7 +515,7 @@ elif full_df is not None and not full_df.empty:
         
         # --- FORM & STREAK TRACKING (feeds The Hunt's MARKED logic) ---
         form_map, streak_map, win_streak_len = {}, {}, {}
-        for team, g in t_df.sort_values('Game_ID').groupby('Team Name'):
+        for team, g in t_df.sort_values(['Season', 'Game_ID']).groupby('Team Name'):
             seq = [int(w) for w in g['Win'].tolist()]
             if not seq:
                 form_map[team], streak_map[team], win_streak_len[team] = "-", "-", 0
@@ -538,10 +591,10 @@ elif full_df is not None and not full_df.empty:
                     with cols[idx % 4]: st.markdown(generate_2k_player_card(row['Player/Team'], row, rank=row['League_Rank']), unsafe_allow_html=True)
 
             with tab_box:
-                game_opts = sorted(p_data['Game_ID'].dropna().unique(), reverse=True)
+                game_opts = sorted(p_data[['Season', 'Game_ID']].dropna().drop_duplicates().itertuples(index=False, name=None), reverse=True)
                 if game_opts:
-                    sel_game = st.selectbox("Select Game", game_opts)
-                    g_data = p_data[p_data['Game_ID'] == sel_game]
+                    sel_game = st.selectbox("Select Game", game_opts, format_func=lambda t: f"S{int(t[0])} • Game {int(t[1])}")
+                    g_data = p_data[(p_data['Season'] == sel_game[0]) & (p_data['Game_ID'] == sel_game[1])]
                     
                     potg = g_data.loc[g_data['PIE_Raw'].idxmax()]
                     st.markdown(f"<div style='background: linear-gradient(90deg, #111, #333); padding:15px; border-left:5px solid #d4af37; margin-bottom:15px;'><h4 style='margin:0; color:#aaa;'>PLAYER OF THE GAME</h4><h2 style='margin:0; color:#fff;'>{potg['Player/Team']}</h2><p style='margin:0; color:#d4af37;'>{int(potg['PTS'])} PTS | {int(potg['REB'])} REB | {potg['PIE_Raw']:.1f} PIE</p></div>", unsafe_allow_html=True)
@@ -590,10 +643,10 @@ elif full_df is not None and not full_df.empty:
         st.subheader("⚔️ Rivalry Corner")
         st.markdown("Teams that have faced off multiple times. The ultimate bad blood matchups.")
         
-        matchups = full_df[full_df['Type'].str.lower() == 'team'].copy()
+        matchups = full_df[full_df['Type'].astype(str).str.lower() == 'team'].copy()
         if 'Opp_Name' in matchups.columns:
             matchups['Pairing'] = matchups.apply(lambda r: " vs ".join(sorted([str(r['Team Name']), str(r['Opp_Name'])])), axis=1)
-            rivals = matchups.groupby('Pairing').agg(Games=('Game_ID', 'nunique')).reset_index()
+            rivals = matchups.groupby('Pairing').agg(Games=('GKey', 'nunique')).reset_index()
             rivals = rivals[rivals['Games'] >= 4].sort_values('Games', ascending=False)
             
             if rivals.empty:
@@ -608,14 +661,14 @@ elif full_df is not None and not full_df.empty:
                     st.markdown(f"<div style='background:#161b22; border:1px solid #d4af37; border-radius:8px; padding:20px; margin-bottom:5px;'><h3 style='text-align:center; color:#fff;'>{t1} <span style='color:#d4af37;'>vs</span> {t2}</h3><h4 style='text-align:center; color:#aaa;'>{riv['Games']} Meetings</h4><div style='display:flex; justify-content:space-around; margin-top:15px;'><div style='text-align:center;'><h2 style='color:#00ff00;'>{t1_wins} Wins</h2><p>{t1}</p></div><div style='text-align:center;'><h2 style='color:#ff0000;'>{t2_wins} Wins</h2><p>{t2}</p></div></div></div>", unsafe_allow_html=True)
                     
                     # Pull Last 2 Games
-                    game_ids = matchups[matchups['Pairing'] == riv['Pairing']]['Game_ID'].unique()
-                    last_2 = sorted(game_ids, reverse=True)[:2]
+                    game_keys = matchups[matchups['Pairing'] == riv['Pairing']][['Season', 'Game_ID']].drop_duplicates()
+                    last_2 = sorted(game_keys.itertuples(index=False, name=None), reverse=True)[:2]
                     st.markdown("<div style='margin-bottom:25px; padding-left:15px; border-left:3px solid #333;'><b>Recent Matchups:</b><br>", unsafe_allow_html=True)
-                    for gid in last_2:
-                        g_rows = matchups[matchups['Game_ID'] == gid]
+                    for (gs, gid) in last_2:
+                        g_rows = matchups[(matchups['Season'] == gs) & (matchups['Game_ID'] == gid) & (matchups['Pairing'] == riv['Pairing'])]
                         if len(g_rows) == 2:
                             r1, r2 = g_rows.iloc[0], g_rows.iloc[1]
-                            st.markdown(f"<span style='color:#aaa;'>Game {int(gid)}:</span> {r1['Team Name']} <b>{int(r1['PTS'])}</b> - {r2['Team Name']} <b>{int(r2['PTS'])}</b>", unsafe_allow_html=True)
+                            st.markdown(f"<span style='color:#aaa;'>S{int(gs)} Game {int(gid)}:</span> {r1['Team Name']} <b>{int(r1['PTS'])}</b> - {r2['Team Name']} <b>{int(r2['PTS'])}</b>", unsafe_allow_html=True)
                     st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.error("Matchup data not available.")
@@ -656,7 +709,7 @@ elif full_df is not None and not full_df.empty:
         st.dataframe(p_stats[['Player/Team', 'Team', 'GP', 'USG', 'ORtg', 'DRtg', 'NetRtg', 'GmSc', 'PIE']].sort_values('NetRtg', ascending=False), use_container_width=True, hide_index=True)
 
     elif view_mode == "🔮 Oracle Predictor":
-        st.subheader("🔮 QCL Oracle Matchup Predictor")
+        st.subheader("🔮 SPAM Oracle Matchup Predictor")
         st.markdown("Recalibrated for 20-minute environments (60-80 pts). Uses SOS to generate projected Box Score & MVP.")
         if not t_stats.empty and len(t_stats) >= 2:
             c1, c2 = st.columns(2)
