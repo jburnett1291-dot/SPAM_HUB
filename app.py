@@ -7,7 +7,7 @@ import random
 import re
 
 # --- 1. UI & SLEEK CSS ---
-st.set_page_config(page_title="SPAM LEAGUE CENTRAL", page_icon="🏀", layout="wide")
+st.set_page_config(page_title="QCL LEAGUE CENTRAL", page_icon="🏀", layout="wide")
 
 css_styles = """
 <style>
@@ -375,7 +375,7 @@ elif full_df is not None and not full_df.empty:
     df_active = full_df if selected_scope == "Career Stats" else full_df[full_df['Season'] == target_season]
     banner_text = "CAREER TOTALS" if selected_scope == "Career Stats" else f"SEASON {target_season}"
 
-    st.markdown(f'<div class="header-banner">🏀 SPAM LEAGUE HUB - {banner_text}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="header-banner">🏀 QCL LEAGUE HUB - {banner_text}</div>', unsafe_allow_html=True)
 
     # Core Stat Generation
     p_df = df_active[df_active['Type'].astype(str).str.lower() == 'player'].copy()
@@ -741,7 +741,7 @@ elif full_df is not None and not full_df.empty:
         st.dataframe(p_stats[['Player/Team', 'Team', 'GP', 'USG', 'ORtg', 'DRtg', 'NetRtg', 'GmSc', 'PIE']].sort_values('NetRtg', ascending=False), use_container_width=True, hide_index=True)
 
     elif view_mode == "🔮 Oracle Predictor":
-        st.subheader("🔮 SPAM Oracle Matchup Predictor")
+        st.subheader("🔮 QCL Oracle Matchup Predictor")
         st.markdown("Recalibrated for 20-minute environments (60-80 pts). Uses SOS to generate projected Box Score & MVP.")
         if not t_stats.empty and len(t_stats) >= 2:
             c1, c2 = st.columns(2)
