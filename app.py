@@ -74,7 +74,7 @@ def load_data():
         df = df[df['Team Name'].notna() & (df['Team Name'].astype(str).str.strip() != '') & (df['Team Name'].astype(str) != '0')]
         if 'Player/Team' in df.columns: df['Player/Team'] = df['Player/Team'].apply(smart_name_scrubber)
             
-        req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Game_ID', 'Win', 'Season', 'Type', 'Team Name']
+        req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'OREB', 'DREB', 'MIN', 'Game_ID', 'Win', 'Season', 'Type', 'Team Name']
         for c in req_cols:
             if c not in df.columns: df[c] = 0
             if c not in ['Type', 'Team Name', 'Player/Team']: df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
@@ -85,6 +85,11 @@ def load_data():
         df['PIE_Raw'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss_Raw'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
 
+        # --- HOLLINGER GAME SCORE (falls back to 0.42*REB when OREB/DREB not tracked) ---
+        reb_term = np.where((df['OREB'] + df['DREB']) > 0, 0.7 * df['OREB'] + 0.3 * df['DREB'], 0.42 * df['REB'])
+        df['Game_Score'] = (df['PTS'] + 0.4 * df['FGM'] - 0.7 * df['FGA'] - 0.4 * (df['FTA'] - df['FTM'])
+                            + reb_term + df['STL'] + 0.7 * df['AST'] + 0.7 * df['BLK'] - 0.4 * df['FOULS'] - df['TO'])
+
         # --- AUTO-CALCULATE TEAM TOTALS ---
         df = df[df['Type'].astype(str).str.lower() != 'team'].copy()
         sum_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA', 'FTA', 'FTM', 'Poss_Raw']
@@ -92,6 +97,12 @@ def load_data():
         team_rows['Type'] = 'Team'
         team_rows['Player/Team'] = team_rows['Team Name'] + " TOTALS"
         df = pd.concat([df, team_rows], ignore_index=True)
+
+        # --- ADVANCED RATINGS (PER GAME) ---
+        p_mask = df['Type'].astype(str).str.lower() == 'player'
+        team_poss = df[p_mask].groupby(['Game_ID', 'Team Name'])['Poss_Raw'].transform('sum')
+        df.loc[p_mask, 'USG_Game'] = np.where(team_poss > 0, df.loc[p_mask, 'Poss_Raw'] / team_poss * 100, 0)
+        df['ORtg_Game'] = np.where(df['Poss_Raw'] > 0, df['PTS'] / df['Poss_Raw'] * 100, 0)
 
         # --- PROXY STATS ---
         df['Game_Type'] = np.where(df['Game_ID'] >= 9000, 'Playoffs', np.where(df['Game_ID'] >= 8000, 'Tournament', 'Regular Season'))
@@ -294,7 +305,8 @@ elif full_df is not None and not full_df.empty:
     p_stats = p_df.groupby('Player/Team').agg(**{
         'GP': ('Game_ID', 'nunique'), 'PTS': ('PTS', 'mean'), 'REB': ('REB', 'mean'), 'AST': ('AST', 'mean'), 'STL': ('STL', 'mean'), 'BLK': ('BLK', 'mean'),
         'FGM': ('FGM', 'mean'), 'FGA': ('FGA', 'mean'), '3PM': ('3PM', 'mean'), '3PA': ('3PA', 'mean'), 'PIE_Raw': ('PIE_Raw', 'mean'), 'POS': ('Position_Num', 'mean'), 'Team': ('Team Name', 'last'),
-        'Tipped_Passes': ('Tipped_Passes', 'mean'), 'Shots_Affected': ('Shots_Affected', 'mean'), 'FB_Points': ('FB_Points', 'mean')
+        'Tipped_Passes': ('Tipped_Passes', 'mean'), 'Shots_Affected': ('Shots_Affected', 'mean'), 'FB_Points': ('FB_Points', 'mean'),
+        'USG': ('USG_Game', 'mean'), 'ORtg': ('ORtg_Game', 'mean'), 'GmSc': ('Game_Score', 'mean')
     }).reset_index()
     
     p_stats.rename(columns={'PIE_Raw': 'PIE'}, inplace=True)
@@ -322,17 +334,34 @@ elif full_df is not None and not full_df.empty:
     p_stats['3P%'] = (p_stats['3PM'] / p_stats['3PA'].replace(0,1) * 100).round(1)
     p_stats['PIE'] = p_stats['PIE'].round(1)
     p_stats['TS%'] = p_stats['TS%'].round(1)
+    for col in ['USG', 'ORtg', 'GmSc']:
+        if col in p_stats.columns: p_stats[col] = p_stats[col].round(1)
 
     p_stats = p_stats.sort_values('PIE', ascending=False).reset_index(drop=True)
     p_stats['League_Rank'] = p_stats.index + 1
 
     t_stats = t_df.groupby('Team Name').agg(
         GP=('Game_ID', 'nunique'), Wins=('Win', 'sum'), PPG=('PTS', 'mean'), Diff=('Point_Diff', 'mean'), 
-        Opp_PPP=('Opp_PPP', 'mean'), SOS=('SOS_Game', 'mean'), RPG=('REB', 'mean'), APG=('AST', 'mean'), SPG=('STL', 'mean'), BPG=('BLK', 'mean'), FGM=('FGM','mean'), FGA=('FGA','mean')
+        Opp_PPP=('Opp_PPP', 'mean'), SOS=('SOS_Game', 'mean'), Poss=('Poss_Raw', 'mean'), RPG=('REB', 'mean'), APG=('AST', 'mean'), SPG=('STL', 'mean'), BPG=('BLK', 'mean'), FGM=('FGM','mean'), FGA=('FGA','mean')
     ).reset_index()
     t_stats['Win%'] = t_stats['Wins'] / t_stats['GP'].replace(0, 1)
     t_stats['DEF'] = t_stats['SPG'] + t_stats['BPG']
     t_stats['eFG%'] = (t_stats['FGM'] + 0.5 * (t_stats['FGM']*0.3)) / t_stats['FGA'].replace(0, 1) * 100 # Proxy for team eFG
+
+    # --- TEAM RATINGS ENGINE ---
+    t_stats['ORtg'] = np.where(t_stats['Poss'] > 0, t_stats['PPG'] / t_stats['Poss'] * 100, 0).round(1)
+    t_stats['DRtg'] = (t_stats['Opp_PPP'] * 100).round(1)
+    t_stats['NetRtg'] = (t_stats['ORtg'] - t_stats['DRtg']).round(1)
+    t_stats['Pace'] = t_stats['Poss'].round(1)
+
+    # --- PLAYER DRtg / NetRtg (team defense baseline, adjusted by stocks vs league avg) ---
+    if not t_stats.empty:
+        p_stats = p_stats.merge(t_stats[['Team Name', 'DRtg']].rename(columns={'Team Name': 'Team', 'DRtg': 'Team_DRtg'}), on='Team', how='left')
+        lg_def = p_stats['DEF'].mean()
+        p_stats['DRtg'] = (p_stats['Team_DRtg'].fillna(t_stats['DRtg'].mean()) - (p_stats['DEF'] - lg_def) * 2.0).round(1)
+    else:
+        p_stats['DRtg'] = 0.0
+    p_stats['NetRtg'] = (p_stats['ORtg'] - p_stats['DRtg']).round(1)
 
     if view_mode == "🏠 League Home & Awards":
         st.markdown("### 🏆 End of Season Awards Tracker (60% GP Required)")
@@ -356,6 +385,55 @@ elif full_df is not None and not full_df.empty:
         render_award_row("Defensive Player of the Year Candidates", qual_p.sort_values('DEF', ascending=False), 'DEF')
         st.markdown("<br>", unsafe_allow_html=True)
         render_award_row("Big Man of the Year Candidates", qual_p[qual_p['POS'] >= 3].sort_values('PIE', ascending=False), 'PIE')
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # --- 6TH MAN OF THE YEAR (best player outside their team's top-5 by PIE) ---
+        top5_per_team = p_stats.sort_values('PIE', ascending=False).groupby('Team').head(5)
+        bench_pool = qual_p[~qual_p['Player/Team'].isin(top5_per_team['Player/Team'])]
+        render_award_row("6th Man of the Year Candidates (Outside Team Top 5)", bench_pool.sort_values('PIE', ascending=False), 'PIE')
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # --- MOST IMPROVED PLAYER (PIE jump vs previous season, 3+ GP both years) ---
+        st.markdown("#### 🚀 Most Improved Player Race")
+        prev_seasons = [s for s in seasons if s < target_season]
+        if selected_scope == "Career Stats":
+            st.info("Switch to a single-season scope to view the MIP race.")
+        elif not prev_seasons:
+            st.info("MIP requires a previous season for comparison.")
+        else:
+            prev_s = max(prev_seasons)
+            fp_mip = full_df[full_df['Type'].astype(str).str.lower() == 'player']
+            def season_line(s):
+                d = fp_mip[fp_mip['Season'] == s]
+                return d.groupby('Player/Team').agg(GP=('Game_ID', 'nunique'), PIE=('PIE_Raw', 'mean'), PTS=('PTS', 'mean')).reset_index()
+            mip = season_line(target_season).merge(season_line(prev_s), on='Player/Team', suffixes=('', '_Prev'))
+            mip = mip[(mip['GP'] >= 3) & (mip['GP_Prev'] >= 3)]
+            mip['Jump'] = mip['PIE'] - mip['PIE_Prev']
+            mip = mip.sort_values('Jump', ascending=False)
+            if mip.empty:
+                st.info("No players with 3+ games in both seasons yet.")
+            else:
+                mip_cols = st.columns(3)
+                for i, (_, r) in enumerate(mip.head(3).iterrows()):
+                    medal = "🥇" if i==0 else "🥈" if i==1 else "🥉"
+                    jump_color = "#00ff00" if r['Jump'] >= 0 else "#ff5555"
+                    with mip_cols[i]:
+                        st.markdown(f"<div class='award-card'><h3>{medal} {r['Player/Team']}</h3><p style='color:#aaa;'>S{prev_s} → S{target_season}</p><h2 style='color:{jump_color};'>{r['Jump']:+.1f} PIE</h2><p>{r['PIE_Prev']:.1f} → {r['PIE']:.1f} PIE | {r['PTS']:.1f} PPG now</p></div>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # --- ALL-LEAGUE TEAMS ---
+        st.markdown("#### 🏅 All-League Teams (By PIE, 60% GP Qualified)")
+        al = qual_p.sort_values('PIE', ascending=False).head(10).reset_index(drop=True)
+        def render_all_league(col, title, squad, border):
+            with col:
+                html = f"<div style='background:#161b22; border:2px solid {border}; border-radius:8px; padding:15px;'><h4 style='color:{border}; text-align:center; text-transform:uppercase; margin-top:0;'>{title}</h4>"
+                for _, r in squad.iterrows():
+                    html += f"<div class='stat-row'><span style='color:#fff; font-weight:bold;'>{r['Player/Team']}</span><span class='stat-label'>{r['Team']}</span><span class='stat-val'>{r['PIE']:.1f} PIE</span></div>"
+                html += "</div>"
+                st.markdown(html, unsafe_allow_html=True)
+        alc1, alc2 = st.columns(2)
+        render_all_league(alc1, "All-League 1st Team", al.head(5), "#d4af37")
+        render_all_league(alc2, "All-League 2nd Team", al.iloc[5:10], "#a0a0a0")
 
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown("### 🔥 Streak Trends (Last 3 Games)")
@@ -382,12 +460,32 @@ elif full_df is not None and not full_df.empty:
         ranks['True_Power'] = (ranks['Win%'] * 0.6) + (ranks['SOS'] * 0.4)
         ranks = ranks.sort_values('True_Power', ascending=False).reset_index(drop=True)
         
-        html = "<table class='sleek-table'><tr><th>Rank</th><th>Team</th><th>Record</th><th>Win%</th><th>SOS</th><th>Pt Diff</th><th>Opp PPP</th></tr>"
+        # --- FORM & STREAK TRACKING (feeds The Hunt's MARKED logic) ---
+        form_map, streak_map, win_streak_len = {}, {}, {}
+        for team, g in t_df.sort_values('Game_ID').groupby('Team Name'):
+            seq = [int(w) for w in g['Win'].tolist()]
+            if not seq:
+                form_map[team], streak_map[team], win_streak_len[team] = "-", "-", 0
+                continue
+            form_map[team] = " ".join(["<span style='color:#00ff00; font-weight:bold;'>W</span>" if w else "<span style='color:#ff5555; font-weight:bold;'>L</span>" for w in seq[-5:]])
+            s = 0
+            for w in reversed(seq):
+                if w == seq[-1]: s += 1
+                else: break
+            streak_map[team] = f"{'W' if seq[-1] else 'L'}{s}"
+            win_streak_len[team] = s if seq[-1] else 0
+
+        html = "<table class='sleek-table'><tr><th>Rank</th><th>Team</th><th>Record</th><th>Win%</th><th>SOS</th><th>Pt Diff</th><th>Form (L5)</th><th>Streak</th></tr>"
         for i, r in ranks.iterrows():
             medal = "🥇 " if i==0 else "🥈 " if i==1 else "🥉 " if i==2 else f"{i+1}. "
-            html += f"<tr><td style='font-size:16px;'>{medal}</td><td class='player-name'>{r['Team Name']}</td><td>{int(r['Wins'])}-{int(r['GP']-r['Wins'])}</td><td>{r['Win%']:.3f}</td><td style='color:#00bfff;'>{r['SOS']:.3f}</td><td>{r['Diff']:+.1f}</td><td>{r['Opp_PPP']:.2f}</td></tr>"
+            tname = r['Team Name']
+            marked = " <span style='background:#cc0000; color:#fff; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:4px; letter-spacing:1px;'>🎯 MARKED</span>" if win_streak_len.get(tname, 0) >= 3 else ""
+            stk = streak_map.get(tname, '-')
+            stk_color = '#00ff00' if stk.startswith('W') else '#ff5555' if stk.startswith('L') else '#888'
+            html += f"<tr><td style='font-size:16px;'>{medal}</td><td class='player-name'>{tname}{marked}</td><td>{int(r['Wins'])}-{int(r['GP']-r['Wins'])}</td><td>{r['Win%']:.3f}</td><td style='color:#00bfff;'>{r['SOS']:.3f}</td><td>{r['Diff']:+.1f}</td><td>{form_map.get(tname, '-')}</td><td style='color:{stk_color}; font-weight:bold;'>{stk}</td></tr>"
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
+        st.caption("🎯 MARKED = active 3+ game win streak. Bounty-eligible under The Hunt.")
 
     elif view_mode == "🏢 Franchise Hub":
         teams = sorted([t for t in p_stats['Team'].unique() if str(t) != '0'])
@@ -462,7 +560,7 @@ elif full_df is not None and not full_df.empty:
         st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("### 📊 Sortable Master Roster")
-        st.dataframe(p_stats[['Player/Team', 'Team', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'Tipped_Passes', 'Shots_Affected', 'FB_Points', 'TS%', 'PIE']].sort_values('PIE', ascending=False), use_container_width=True, hide_index=True)
+        st.dataframe(p_stats[['Player/Team', 'Team', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'USG', 'GmSc', 'NetRtg', 'Tipped_Passes', 'Shots_Affected', 'FB_Points', 'TS%', 'PIE']].sort_values('PIE', ascending=False), use_container_width=True, hide_index=True)
 
     elif view_mode == "⚔️ Head-to-Head Radar":
         st.subheader("🕸️ Player Head-to-Head Deep Dive")
@@ -543,6 +641,19 @@ elif full_df is not None and not full_df.empty:
             fig.update_traces(textposition='top center')
             fig.update_yaxes(autorange="reversed")
             st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown("### 🧮 Team Ratings Board")
+        st.markdown("Points scored / allowed per 100 possessions. Pace = possessions per game.")
+        html = "<table class='sleek-table'><tr><th>Team</th><th>ORtg</th><th>DRtg</th><th>NetRtg</th><th>Pace</th></tr>"
+        for _, r in t_stats.sort_values('NetRtg', ascending=False).iterrows():
+            net_color = '#00ff00' if r['NetRtg'] >= 0 else '#ff5555'
+            html += f"<tr><td class='player-name'>{r['Team Name']}</td><td>{r['ORtg']:.1f}</td><td>{r['DRtg']:.1f}</td><td style='color:{net_color}; font-weight:bold;'>{r['NetRtg']:+.1f}</td><td>{r['Pace']:.1f}</td></tr>"
+        st.markdown(html + "</table>", unsafe_allow_html=True)
+
+        st.markdown("### 🎖️ Player Ratings Engine")
+        st.markdown("USG% = share of team possessions used. ORtg = pts per 100 individual possessions. DRtg = team defense adjusted for stocks. GmSc = Hollinger Game Score.")
+        st.dataframe(p_stats[['Player/Team', 'Team', 'GP', 'USG', 'ORtg', 'DRtg', 'NetRtg', 'GmSc', 'PIE']].sort_values('NetRtg', ascending=False), use_container_width=True, hide_index=True)
 
     elif view_mode == "🔮 Oracle Predictor":
         st.subheader("🔮 QCL Oracle Matchup Predictor")
@@ -676,4 +787,3 @@ elif full_df is not None and not full_df.empty:
             if not t_totals.empty:
                 with tc1: st.markdown(generate_mini_leaderboard("Most Wins", t_totals, 'Win', color="#ffd700", top_n=5, name_col="Team Name"), unsafe_allow_html=True)
                 with tc2: st.markdown(generate_mini_leaderboard("Total Points Scored", t_totals, 'PTS', color="#cc0000", top_n=5, name_col="Team Name"), unsafe_allow_html=True)
-
