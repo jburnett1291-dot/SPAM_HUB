@@ -6,6 +6,14 @@ Qwik's Cup League (QCL) / NBA 2K Pro-Am analytics front end.
 Data source : Google Sheet (CSV export) — Type='Total' rows are source of truth.
 Run         : streamlit run qcl_hub.py
 
+v3.2 CHANGELOG
+--------------
+* PLAYOFFS VIEW   : dedicated postseason section (Game_ID 9001-9999). Same stat
+                    engine as the regular season — leaders, full player table,
+                    team board, single-game highs — scoped to playoff games.
+* STAT ENGINE     : Section 8 refactored into compute_stats() so the main app and
+                    the Playoffs view share identical math (no drift).
+
 v3.1 CHANGELOG
 --------------
 * ORACLE REBUILT  : true Monte Carlo (vectorized, N sims) over a FIVE-MAN ROTATION
@@ -547,6 +555,7 @@ VIEWS = [
     "⚔️ Head-to-Head Radar",
     "🧪 Lineup Lab",
     "🥊 Rivalry Corner",
+    "🏆 Playoffs",
     "🔮 Oracle Predictor",
     "🔬 Advanced Analytics Lab",
     "🏦 The Vault",
@@ -600,106 +609,120 @@ if df_active.empty:
 # =============================================================================
 # 8. CORE STAT ENGINE
 # =============================================================================
-p_df = df_active[df_active['Type'].astype(str).str.lower() == 'player'].copy()
-t_df = df_active[df_active['Type'].astype(str).str.lower() == 'team'].copy()
 full_p_df = full_df[full_df['Type'].astype(str).str.lower() == 'player'].copy()
 
-if p_df.empty or t_df.empty:
+
+def compute_stats(scope_df, full_df, min_gp_filter=0):
+    """Core stat engine. Identical math for regular season, playoffs, or any scope.
+    Returns a dict of frames, or None if the scope lacks player/team rows."""
+    p_df = scope_df[scope_df['Type'].astype(str).str.lower() == 'player'].copy()
+    t_df = scope_df[scope_df['Type'].astype(str).str.lower() == 'team'].copy()
+    fp_df = full_df[full_df['Type'].astype(str).str.lower() == 'player'].copy()
+
+    if p_df.empty or t_df.empty:
+        return None
+
+    p_all_time_highs = fp_df.groupby('Player/Team').agg(
+        AT_High_PTS=('PTS', 'max'), AT_High_REB=('REB', 'max'), AT_High_AST=('AST', 'max')
+    ).reset_index()
+
+    p_stats = p_df.groupby('Player/Team').agg(**{
+        'GP': ('GKey', 'nunique'),
+        'PTS': ('PTS', 'mean'), 'REB': ('REB', 'mean'), 'AST': ('AST', 'mean'),
+        'STL': ('STL', 'mean'), 'BLK': ('BLK', 'mean'), 'TO': ('TO', 'mean'),
+        'FGM': ('FGM', 'mean'), 'FGA': ('FGA', 'mean'),
+        '3PM': ('3PM', 'mean'), '3PA': ('3PA', 'mean'),
+        'FTM': ('FTM', 'mean'), 'FTA': ('FTA', 'mean'),
+        'PIE_Raw': ('PIE_Raw', 'mean'), 'POS': ('Position_Num', 'mean'),
+        'Team': ('Team Name', 'last'),
+        'Tipped_Passes': ('Tipped_Passes', 'mean'), 'Shots_Affected': ('Shots_Affected', 'mean'),
+        'FB_Points': ('FB_Points', 'mean'),
+        'USG': ('USG_Game', 'mean'), 'ORtg': ('ORtg_Game', 'mean'), 'GmSc': ('Game_Score', 'mean'),
+        'Wins': ('Win', 'sum'),
+    }).reset_index()
+
+    p_stats.rename(columns={'PIE_Raw': 'PIE'}, inplace=True)
+    p_stats['DEF'] = p_stats['STL'] + p_stats['BLK']
+    p_stats['Win%'] = (p_stats['Wins'] / p_stats['GP'].replace(0, 1)).round(3)
+
+    # REAL TS% — uses actual FTA (no more 0.2*FGA proxy)
+    ts_den = 2 * (p_stats['FGA'] + 0.44 * p_stats['FTA'])
+    p_stats['TS%'] = np.where(ts_den > 0, p_stats['PTS'] / ts_den * 100, 0)
+    # REAL eFG%
+    p_stats['eFG%'] = np.where(p_stats['FGA'] > 0,
+                               (p_stats['FGM'] + 0.5 * p_stats['3PM']) / p_stats['FGA'] * 100, 0)
+
+    p_stats = p_stats.merge(player_clubs, on='Player/Team', how='left')
+    p_stats['Clubs'] = p_stats['Clubs'].apply(lambda x: x if isinstance(x, list) else [])
+
+    p_highs = p_df.groupby('Player/Team').agg(
+        High_PTS=('PTS', 'max'), High_REB=('REB', 'max'), High_AST=('AST', 'max'),
+        High_STL=('STL', 'max'), High_BLK=('BLK', 'max'), High_3PM=('3PM', 'max')
+    ).reset_index()
+    p_stats = p_stats.merge(p_highs, on='Player/Team', how='left')
+    p_stats = p_stats.merge(p_all_time_highs, on='Player/Team', how='left')
+
+    p_stats['FG%'] = (p_stats['FGM'] / p_stats['FGA'].replace(0, 1) * 100)
+    p_stats['3P%'] = (p_stats['3PM'] / p_stats['3PA'].replace(0, 1) * 100)
+
+    for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FGM', 'FGA', 'FTM', 'FTA',
+                'FB_Points', 'Tipped_Passes', 'Shots_Affected', 'PIE', 'TS%', 'eFG%',
+                'FG%', '3P%', 'USG', 'ORtg', 'GmSc', 'DEF']:
+        if col in p_stats.columns:
+            p_stats[col] = p_stats[col].round(1)
+
+    p_stats = p_stats.sort_values('PIE', ascending=False).reset_index(drop=True)
+    p_stats['League_Rank'] = p_stats.index + 1
+
+    # --- TEAM STATS ---
+    t_stats = t_df.groupby('Team Name').agg(
+        GP=('GKey', 'nunique'), Wins=('Win', 'sum'), PPG=('PTS', 'mean'),
+        PTS_SD=('PTS', 'std'), OppPPG=('Opp_PTS', 'mean'),
+        Diff=('Point_Diff', 'mean'), Opp_PPP=('Opp_PPP', 'mean'), SOS=('SOS_Game', 'mean'),
+        Poss=('Poss_Raw', 'mean'), RPG=('REB', 'mean'), APG=('AST', 'mean'),
+        SPG=('STL', 'mean'), BPG=('BLK', 'mean'), TOPG=('TO', 'mean'),
+        FGM=('FGM', 'mean'), FGA=('FGA', 'mean'), TPM=('3PM', 'mean'),
+    ).reset_index()
+    t_stats['Win%'] = (t_stats['Wins'] / t_stats['GP'].replace(0, 1)).round(3)
+    t_stats['DEF'] = t_stats['SPG'] + t_stats['BPG']
+    t_stats['eFG%'] = np.where(t_stats['FGA'] > 0,
+                               (t_stats['FGM'] + 0.5 * t_stats['TPM']) / t_stats['FGA'] * 100, 0)
+    t_stats['ORtg'] = np.where(t_stats['Poss'] > 0, t_stats['PPG'] / t_stats['Poss'] * 100, 0).round(1)
+    _drtg_fill = t_stats['Opp_PPP'].mean()
+    _drtg_fill = _drtg_fill if pd.notna(_drtg_fill) else 1.0
+    t_stats['DRtg'] = (t_stats['Opp_PPP'].fillna(_drtg_fill) * 100).round(1)
+    t_stats['NetRtg'] = (t_stats['ORtg'] - t_stats['DRtg']).round(1)
+    t_stats['Pace'] = t_stats['Poss'].round(1)
+    t_stats['Diff'] = t_stats['Diff'].fillna(0)
+    t_stats['PTS_SD'] = t_stats['PTS_SD'].fillna(7.0).clip(lower=3.5, upper=14.0)
+
+    # --- PLAYER DRtg / NetRtg ---
+    if not t_stats.empty:
+        p_stats = p_stats.merge(
+            t_stats[['Team Name', 'DRtg']].rename(columns={'Team Name': 'Team', 'DRtg': 'Team_DRtg'}),
+            on='Team', how='left')
+        lg_def = p_stats['DEF'].mean()
+        p_stats['DRtg'] = (p_stats['Team_DRtg'].fillna(t_stats['DRtg'].mean())
+                           - (p_stats['DEF'] - lg_def) * 2.0).round(1)
+    else:
+        p_stats['DRtg'] = 0.0
+    p_stats['NetRtg'] = (p_stats['ORtg'] - p_stats['DRtg']).round(1)
+
+    p_view = p_stats[p_stats['GP'] >= min_gp_filter].copy()
+
+    return {'p_df': p_df, 't_df': t_df, 'p_stats': p_stats, 't_stats': t_stats, 'p_view': p_view}
+
+
+_S = compute_stats(df_active, full_df, min_gp_filter)
+if _S is None:
     st.warning("Not enough player/team rows in this scope to build stats.")
     st.stop()
-
-p_all_time_highs = full_p_df.groupby('Player/Team').agg(
-    AT_High_PTS=('PTS', 'max'), AT_High_REB=('REB', 'max'), AT_High_AST=('AST', 'max')
-).reset_index()
-
-p_stats = p_df.groupby('Player/Team').agg(**{
-    'GP': ('GKey', 'nunique'),
-    'PTS': ('PTS', 'mean'), 'REB': ('REB', 'mean'), 'AST': ('AST', 'mean'),
-    'STL': ('STL', 'mean'), 'BLK': ('BLK', 'mean'), 'TO': ('TO', 'mean'),
-    'FGM': ('FGM', 'mean'), 'FGA': ('FGA', 'mean'),
-    '3PM': ('3PM', 'mean'), '3PA': ('3PA', 'mean'),
-    'FTM': ('FTM', 'mean'), 'FTA': ('FTA', 'mean'),
-    'PIE_Raw': ('PIE_Raw', 'mean'), 'POS': ('Position_Num', 'mean'),
-    'Team': ('Team Name', 'last'),
-    'Tipped_Passes': ('Tipped_Passes', 'mean'), 'Shots_Affected': ('Shots_Affected', 'mean'),
-    'FB_Points': ('FB_Points', 'mean'),
-    'USG': ('USG_Game', 'mean'), 'ORtg': ('ORtg_Game', 'mean'), 'GmSc': ('Game_Score', 'mean'),
-    'Wins': ('Win', 'sum'),
-}).reset_index()
-
-p_stats.rename(columns={'PIE_Raw': 'PIE'}, inplace=True)
-p_stats['DEF'] = p_stats['STL'] + p_stats['BLK']
-p_stats['Win%'] = (p_stats['Wins'] / p_stats['GP'].replace(0, 1)).round(3)
-
-# REAL TS% — uses actual FTA (no more 0.2*FGA proxy)
-ts_den = 2 * (p_stats['FGA'] + 0.44 * p_stats['FTA'])
-p_stats['TS%'] = np.where(ts_den > 0, p_stats['PTS'] / ts_den * 100, 0)
-# REAL eFG%
-p_stats['eFG%'] = np.where(p_stats['FGA'] > 0,
-                           (p_stats['FGM'] + 0.5 * p_stats['3PM']) / p_stats['FGA'] * 100, 0)
-
-p_stats = p_stats.merge(player_clubs, on='Player/Team', how='left')
-p_stats['Clubs'] = p_stats['Clubs'].apply(lambda x: x if isinstance(x, list) else [])
-
-p_highs = p_df.groupby('Player/Team').agg(
-    High_PTS=('PTS', 'max'), High_REB=('REB', 'max'), High_AST=('AST', 'max'),
-    High_STL=('STL', 'max'), High_BLK=('BLK', 'max'), High_3PM=('3PM', 'max')
-).reset_index()
-p_stats = p_stats.merge(p_highs, on='Player/Team', how='left')
-p_stats = p_stats.merge(p_all_time_highs, on='Player/Team', how='left')
-
-p_stats['FG%'] = (p_stats['FGM'] / p_stats['FGA'].replace(0, 1) * 100)
-p_stats['3P%'] = (p_stats['3PM'] / p_stats['3PA'].replace(0, 1) * 100)
-
-for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FGM', 'FGA', 'FTM', 'FTA',
-            'FB_Points', 'Tipped_Passes', 'Shots_Affected', 'PIE', 'TS%', 'eFG%',
-            'FG%', '3P%', 'USG', 'ORtg', 'GmSc', 'DEF']:
-    if col in p_stats.columns:
-        p_stats[col] = p_stats[col].round(1)
-
-p_stats = p_stats.sort_values('PIE', ascending=False).reset_index(drop=True)
-p_stats['League_Rank'] = p_stats.index + 1
-
-# --- TEAM STATS ---
-t_stats = t_df.groupby('Team Name').agg(
-    GP=('GKey', 'nunique'), Wins=('Win', 'sum'), PPG=('PTS', 'mean'),
-    PTS_SD=('PTS', 'std'), OppPPG=('Opp_PTS', 'mean'),
-    Diff=('Point_Diff', 'mean'), Opp_PPP=('Opp_PPP', 'mean'), SOS=('SOS_Game', 'mean'),
-    Poss=('Poss_Raw', 'mean'), RPG=('REB', 'mean'), APG=('AST', 'mean'),
-    SPG=('STL', 'mean'), BPG=('BLK', 'mean'), TOPG=('TO', 'mean'),
-    FGM=('FGM', 'mean'), FGA=('FGA', 'mean'), TPM=('3PM', 'mean'),
-).reset_index()
-t_stats['Win%'] = (t_stats['Wins'] / t_stats['GP'].replace(0, 1)).round(3)
-t_stats['DEF'] = t_stats['SPG'] + t_stats['BPG']
-t_stats['eFG%'] = np.where(t_stats['FGA'] > 0,
-                           (t_stats['FGM'] + 0.5 * t_stats['TPM']) / t_stats['FGA'] * 100, 0)
-t_stats['ORtg'] = np.where(t_stats['Poss'] > 0, t_stats['PPG'] / t_stats['Poss'] * 100, 0).round(1)
-_drtg_fill = t_stats['Opp_PPP'].mean()
-_drtg_fill = _drtg_fill if pd.notna(_drtg_fill) else 1.0
-t_stats['DRtg'] = (t_stats['Opp_PPP'].fillna(_drtg_fill) * 100).round(1)
-t_stats['NetRtg'] = (t_stats['ORtg'] - t_stats['DRtg']).round(1)
-t_stats['Pace'] = t_stats['Poss'].round(1)
-t_stats['Diff'] = t_stats['Diff'].fillna(0)
-t_stats['PTS_SD'] = t_stats['PTS_SD'].fillna(7.0).clip(lower=3.5, upper=14.0)
-
-# --- PLAYER DRtg / NetRtg ---
-if not t_stats.empty:
-    p_stats = p_stats.merge(
-        t_stats[['Team Name', 'DRtg']].rename(columns={'Team Name': 'Team', 'DRtg': 'Team_DRtg'}),
-        on='Team', how='left')
-    lg_def = p_stats['DEF'].mean()
-    p_stats['DRtg'] = (p_stats['Team_DRtg'].fillna(t_stats['DRtg'].mean())
-                       - (p_stats['DEF'] - lg_def) * 2.0).round(1)
-else:
-    p_stats['DRtg'] = 0.0
-p_stats['NetRtg'] = (p_stats['ORtg'] - p_stats['DRtg']).round(1)
-
-# Filtered view used by the browsable tables
-p_view = p_stats[p_stats['GP'] >= min_gp_filter].copy()
+p_df, t_df = _S['p_df'], _S['t_df']
+p_stats, t_stats, p_view = _S['p_stats'], _S['t_stats'], _S['p_view']
 
 
 # =============================================================================
-# 9. ROTATION + MONTE CARLO ENGINE  (⭐ THE FIX)
+# 9. ROTATION + MONTE CARLO ENGINE
 # =============================================================================
 def get_rotation(team_name, size=ROTATION_SIZE, exclude=None):
     """Only five bodies play in Pro-Am. Rotation = most-used players by GAMES PLAYED,
@@ -1391,6 +1414,127 @@ elif view_mode == "🥊 Rivalry Corner":
                                         unsafe_allow_html=True)
 
 
+# ------------------------------------------------------------- PLAYOFFS ------
+elif view_mode == "🏆 Playoffs":
+    st.subheader("🏆 Playoff Central")
+    st.markdown("Playoff games only — **Game_ID 9001–9999**. Same stat engine as the regular "
+                "season, run over postseason games in the current scope. (Ignores the sidebar "
+                "Game Type filter.)")
+
+    if selected_scope == "Career Stats":
+        po_scope = full_df
+    else:
+        po_scope = full_df[full_df['Season'] == target_season]
+
+    po_src = po_scope[(po_scope['Game_ID'] >= 9001) & (po_scope['Game_ID'] <= 9999)]
+
+    if po_src.empty:
+        st.info("No playoff games logged in this scope yet (playoffs = Game_ID 9001–9999).")
+    else:
+        PO = compute_stats(po_src, full_df, min_gp_filter=0)
+        if PO is None:
+            st.warning("Playoff games found, but not enough player/team rows to build stats.")
+        else:
+            po_p_stats, po_t_stats = PO['p_stats'], PO['t_stats']
+            po_p_df, po_t_df = PO['p_df'], PO['t_df']
+
+            m1, m2, m3, m4 = st.columns(4)
+            m1.markdown(f"<div class='metric-box'><div class='metric-title'>Playoff Games</div><div class='metric-value'>{po_src['GKey'].nunique()}</div></div>", unsafe_allow_html=True)
+            m2.markdown(f"<div class='metric-box'><div class='metric-title'>Players</div><div class='metric-value'>{po_p_stats['Player/Team'].nunique()}</div></div>", unsafe_allow_html=True)
+            m3.markdown(f"<div class='metric-box'><div class='metric-title'>Teams</div><div class='metric-value'>{po_t_stats['Team Name'].nunique()}</div></div>", unsafe_allow_html=True)
+            m4.markdown(f"<div class='metric-box'><div class='metric-title'>Playoff PPG</div><div class='metric-value'>{fnum(po_t_stats['PPG'].mean()):.1f}</div></div>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            po_tabs = st.tabs(["🏆 Leaders", "📊 Player Stats", "🏟️ Team Stats", "🔥 Single-Game Highs"])
+
+            # ---- LEADERS (per-game + totals) ----
+            with po_tabs[0]:
+                st.markdown("#### Per-Game Leaders")
+                depth = st.slider("Show top N", 3, 15, 5, key="po_leaders_depth")
+                lc1, lc2, lc3 = st.columns(3)
+                with lc1:
+                    st.markdown(generate_mini_leaderboard("PPG", po_p_stats, 'PTS', "#cc0000", depth, "Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("STOCKS", po_p_stats, 'DEF', "#ff8c00", depth, "Player/Team"), unsafe_allow_html=True)
+                with lc2:
+                    st.markdown(generate_mini_leaderboard("RPG", po_p_stats, 'REB', "#32cd32", depth, "Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("PIE", po_p_stats, 'PIE', GOLD, depth, "Player/Team"), unsafe_allow_html=True)
+                with lc3:
+                    st.markdown(generate_mini_leaderboard("APG", po_p_stats, 'AST', "#00bfff", depth, "Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("GmSc", po_p_stats, 'GmSc', "#8a2be2", depth, "Player/Team"), unsafe_allow_html=True)
+
+                st.markdown("#### Totals")
+                po_tot = po_p_df.groupby('Player/Team').sum(numeric_only=True).reset_index()
+                tc1, tc2, tc3 = st.columns(3)
+                tc1.markdown(generate_mini_leaderboard("Total PTS", po_tot, 'PTS', "#cc0000", depth, "Player/Team"), unsafe_allow_html=True)
+                tc2.markdown(generate_mini_leaderboard("Total REB", po_tot, 'REB', "#32cd32", depth, "Player/Team"), unsafe_allow_html=True)
+                tc3.markdown(generate_mini_leaderboard("Total AST", po_tot, 'AST', "#00bfff", depth, "Player/Team"), unsafe_allow_html=True)
+
+            # ---- PLAYER STATS (same columns as Full Player Database) ----
+            with po_tabs[1]:
+                f1, f2 = st.columns([2, 2])
+                q = f1.text_input("🔍 Search player", key="po_pq")
+                sort_by = f2.selectbox("Sort by", ['PIE', 'PTS', 'REB', 'AST', 'DEF', 'GmSc',
+                                                   'NetRtg', 'USG', 'TS%', 'GP'], index=0, key="po_sort")
+                view = po_p_stats.copy()
+                if q:
+                    view = view[view['Player/Team'].str.contains(q, case=False, na=False)]
+                view = view.sort_values(sort_by, ascending=False)
+                cols = ['Player/Team', 'Team', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TO',
+                        'FG%', '3P%', 'TS%', 'eFG%', 'USG', 'ORtg', 'DRtg', 'NetRtg', 'GmSc', 'PIE']
+                cols = [c for c in cols if c in view.columns]
+                st.markdown(f"##### Playoff Player Stats — {len(view)} players")
+                st.dataframe(view[cols], use_container_width=True, hide_index=True)
+                dl(view[cols], "⬇️ Playoff stats CSV", "qcl_playoff_players.csv", "dl_po_players")
+
+            # ---- TEAM STATS ----
+            with po_tabs[2]:
+                st.markdown("##### Playoff Team Board")
+                html = ("<table class='sleek-table'><tr><th>Team</th><th>Record</th><th>Win%</th>"
+                        "<th>PPG</th><th>Opp PPG</th><th>ORtg</th><th>DRtg</th><th>NetRtg</th><th>Pace</th></tr>")
+                for _, r in po_t_stats.sort_values(['Win%', 'NetRtg'], ascending=False).iterrows():
+                    wins = int(r['Wins'])
+                    losses = int(r['GP'] - r['Wins'])
+                    nc = GREEN if r['NetRtg'] >= 0 else RED
+                    html += (f"<tr><td class='player-name'>{r['Team Name']}</td>"
+                             f"<td>{wins}-{losses}</td><td>{r['Win%']:.3f}</td>"
+                             f"<td>{r['PPG']:.1f}</td><td>{fnum(r['OppPPG']):.1f}</td>"
+                             f"<td>{r['ORtg']:.1f}</td><td>{r['DRtg']:.1f}</td>"
+                             f"<td style='color:{nc}; font-weight:bold;'>{r['NetRtg']:+.1f}</td>"
+                             f"<td>{r['Pace']:.1f}</td></tr>")
+                st.markdown(html + "</table>", unsafe_allow_html=True)
+                dl(po_t_stats, "⬇️ Playoff team stats CSV", "qcl_playoff_teams.csv", "dl_po_teams")
+
+                st.markdown("##### 💥 Biggest Playoff Blowouts")
+                blow = po_t_df[po_t_df['Point_Diff'].notna() & (po_t_df['Point_Diff'] > 0)] \
+                    .sort_values('Point_Diff', ascending=False).head(10)
+                if blow.empty:
+                    st.info("No head-to-head playoff games recorded yet.")
+                else:
+                    html = "<table class='sleek-table'><tr><th>Season</th><th>Game</th><th>Winner</th><th>Score</th><th>Margin</th></tr>"
+                    for _, r in blow.iterrows():
+                        opp_pts = int(r['Opp_PTS']) if ('Opp_PTS' in r and pd.notna(r['Opp_PTS'])) else '?'
+                        html += (f"<tr><td>S{int(r['Season'])}</td><td>G{int(r['Game_ID'])}</td>"
+                                 f"<td class='player-name'>{r['Team Name']}</td>"
+                                 f"<td>{int(r['PTS'])} — {opp_pts}</td>"
+                                 f"<td style='color:{GOLD}; font-weight:bold;'>+{int(r['Point_Diff'])}</td></tr>")
+                    st.markdown(html + "</table>", unsafe_allow_html=True)
+
+            # ---- SINGLE-GAME HIGHS ----
+            with po_tabs[3]:
+                depth = st.slider("Show top N", 3, 15, 5, key="po_sg_depth")
+                st.markdown("#### Playoff Single-Game Highs")
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.markdown(generate_mini_leaderboard("Points", po_p_df, 'PTS', "#cc0000", depth, "Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("Steals", po_p_df, 'STL', "#ff8c00", depth, "Player/Team"), unsafe_allow_html=True)
+                with c2:
+                    st.markdown(generate_mini_leaderboard("Rebounds", po_p_df, 'REB', "#32cd32", depth, "Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("Blocks", po_p_df, 'BLK', "#8a2be2", depth, "Player/Team"), unsafe_allow_html=True)
+                with c3:
+                    st.markdown(generate_mini_leaderboard("Assists", po_p_df, 'AST', "#00bfff", depth, "Player/Team"), unsafe_allow_html=True)
+                    st.markdown(generate_mini_leaderboard("3-Pointers", po_p_df, '3PM', GOLD, depth, "Player/Team"), unsafe_allow_html=True)
+
+
 # ------------------------------------------------------- ORACLE PREDICTOR ----
 elif view_mode == "🔮 Oracle Predictor":
     st.subheader("🔮 QCL Oracle — Monte Carlo Matchup Engine")
@@ -1738,4 +1882,4 @@ elif view_mode == "📖 Record Book & Milestones":
 
 
 st.sidebar.divider()
-st.sidebar.caption("QCL HUB v3.1 • QSPN Analytics • Ball or Mute")
+st.sidebar.caption("QCL HUB v3.2 • QSPN Analytics • Ball or Mute")
