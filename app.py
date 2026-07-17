@@ -548,6 +548,7 @@ if not seasons:
 st.sidebar.title("⚙️ Hub Controls")
 VIEWS = [
     "🏠 League Home & Awards",
+    "🏅 Awards & Rewards",
     "🏆 Power Rankings & SOS",
     "🏢 Franchise Hub",
     "🔦 Player Spotlight",
@@ -1699,187 +1700,57 @@ elif view_mode == "🔮 Oracle Predictor":
                         dl(mvp, "⬇️ MVP odds CSV", "mvp_odds.csv", "dl_mvp")
 
 
-# ------------------------------------------------------- ANALYTICS LAB -------
-elif view_mode == "🔬 Advanced Analytics Lab":
-    st.subheader("🔬 The Analytics Lab")
+# -------------------------------------------------------- AWARDS & REWARDS ---
+elif view_mode == "🏅 Awards & Rewards":
+    st.subheader("🏅 Awards & Rewards")
+    st.markdown("Your custom award cards — the real QSPN artwork. Drop the PNGs in a **`cards/`** "
+                "folder in the repo, list them below, and they render here. Pick an award to "
+                "spotlight it, or browse the trophy wall.")
 
-    lab = st.tabs(["Four Factors", "Pace & Space", "Team Ratings", "Player Ratings", "Correlations"])
+    # Resolve the cards folder relative to app.py (works on Streamlit Cloud).
+    try:
+        _BASE = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        _BASE = os.getcwd()
+    CARDS_DIR = os.path.join(_BASE, "cards")
 
-    with lab[0]:
-        st.markdown("### 📈 Four Factors")
-        html = ("<table class='sleek-table'><tr><th>Team</th><th>eFG%</th><th>TO/G</th>"
-                "<th>Opp PPP</th><th>Pace</th></tr>")
-        for _, r in t_stats.sort_values('Win%', ascending=False).iterrows():
-            html += (f"<tr><td class='player-name'>{r['Team Name']}</td><td>{r['eFG%']:.1f}%</td>"
-                     f"<td>{fnum(r['TOPG']):.1f}</td><td>{fnum(r['Opp_PPP']):.2f}</td><td>{r['Pace']:.1f}</td></tr>")
-        st.markdown(html + "</table>", unsafe_allow_html=True)
+    # === REGISTRY — add one dict per card. `file` = filename inside cards/ (or a full URL). ===
+    AWARD_CARDS = [
+        {"award": "OPOY", "player": "iBoola", "team": "Team Obsidian", "season": 6,
+         "file": "opoy_iboola_s6.png",
+         "stats": "33.7 PPG • 7.2 APG • 8.2 3PM/G",
+         "notes": "Led the league in total scoring and 3PM"},
+        {"award": "MVP", "player": "DynastyOnTop", "team": "Miracles", "season": 6,
+         "file": "mvp_dynastyontop_s6.png",
+         "stats": "19.1 PPG • 11.9 RPG • 1.7 STKS",
+         "notes": "Top 3 in total points, rebounds and assists"},
+        # Add more cards here — copy a block above, change the fields + filename.
+    ]
 
-    with lab[1]:
-        st.markdown("### 🏃 Offense vs Defense Quadrants")
-        qd = t_stats.dropna(subset=['Opp_PPP'])
-        if qd.empty:
-            st.info("No head-to-head defensive data yet.")
-        else:
-            fig = px.scatter(qd, x='PPG', y='Opp_PPP', text='Team Name', size='GP',
-                             title="Right = better offense. Lower = better defense.",
-                             template="plotly_dark", color='Win%', color_continuous_scale='YlOrBr')
-            fig.update_traces(textposition='top center')
-            fig.update_yaxes(autorange="reversed")
-            fig.add_hline(y=float(qd['Opp_PPP'].mean()), line_dash="dot", line_color="#555")
-            fig.add_vline(x=float(qd['PPG'].mean()), line_dash="dot", line_color="#555")
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=520)
-            st.plotly_chart(fig, use_container_width=True)
+    def card_path(entry):
+        """Return a loadable image ref (URL as-is, or local path if it exists), else None."""
+        f = entry.get("file", "")
+        if isinstance(f, str) and f.lower().startswith("http"):
+            return f
+        p = os.path.join(CARDS_DIR, f) if f else ""
+        return p if (f and os.path.exists(p)) else None
 
-    with lab[2]:
-        st.markdown("### 🧮 Team Ratings Board")
-        st.caption("Points scored / allowed per 100 possessions. Pace = possessions per game.")
-        html = "<table class='sleek-table'><tr><th>Team</th><th>ORtg</th><th>DRtg</th><th>NetRtg</th><th>Pace</th></tr>"
-        for _, r in t_stats.sort_values('NetRtg', ascending=False).iterrows():
-            nc = GREEN if r['NetRtg'] >= 0 else RED
-            html += (f"<tr><td class='player-name'>{r['Team Name']}</td><td>{r['ORtg']:.1f}</td>"
-                     f"<td>{r['DRtg']:.1f}</td><td style='color:{nc}; font-weight:bold;'>{r['NetRtg']:+.1f}</td>"
-                     f"<td>{r['Pace']:.1f}</td></tr>")
-        st.markdown(html + "</table>", unsafe_allow_html=True)
-        dl(t_stats, "⬇️ Team ratings CSV", "team_ratings.csv", "dl_tr")
+    def _label(e):
+        return f"{e['award']} — {e['player']} (S{e['season']})"
 
-    with lab[3]:
-        st.markdown("### 🎖️ Player Ratings Engine")
-        st.caption("USG% = share of team possessions used. ORtg = pts per 100 individual possessions. "
-                   "DRtg = team defense adjusted for stocks. GmSc = Hollinger Game Score.")
-        st.dataframe(p_view[['Player/Team', 'Team', 'GP', 'USG', 'ORtg', 'DRtg', 'NetRtg', 'GmSc', 'PIE']]
-                     .sort_values('NetRtg', ascending=False),
-                     use_container_width=True, hide_index=True)
+    if not AWARD_CARDS:
+        st.info("No cards registered yet. Add entries to the AWARD_CARDS list in app.py.")
+    else:
+        # -- filters --
+        fc1, fc2 = st.columns([1, 2])
+        all_seasons = sorted({e["season"] for e in AWARD_CARDS}, reverse=True)
+        pick_season = fc1.multiselect("Season", all_seasons, default=all_seasons, key="ar_season")
+        q = fc2.text_input("🔍 Search award / player / team", key="ar_q").strip().lower()
 
-    with lab[4]:
-        st.markdown("### 🔗 What Actually Wins Games?")
-        if len(t_stats) >= 3:
-            corr_cols = ['PPG', 'OppPPG', 'eFG%', 'TOPG', 'RPG', 'APG', 'SPG', 'BPG', 'Pace', 'NetRtg']
-            cd = t_stats[corr_cols + ['Win%']].apply(pd.to_numeric, errors='coerce')
-            corr = cd.corr()['Win%'].drop('Win%').dropna().sort_values()
-            if corr.empty:
-                st.info("Not enough varied data for correlations yet.")
-            else:
-                fig = px.bar(x=corr.values, y=corr.index, orientation='h', template='plotly_dark',
-                             labels={'x': 'Correlation with Win%', 'y': ''},
-                             color=corr.values, color_continuous_scale='RdYlGn')
-                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                  height=420, coloraxis_showscale=False)
-                st.plotly_chart(fig, use_container_width=True)
-                st.caption("Correlation, not causation — and with a small sample it moves fast.")
-        else:
-            st.info("Need at least 3 teams for correlation analysis.")
+        cards = [e for e in AWARD_CARDS if e["season"] in pick_season]
+        if q:
+            cards = [e for e in cards
+                     if q in e["award"].lower() or q in e["player"].lower() or q in e["team"].lower()]
 
-
-# ---------------------------------------------------------------- VAULT ------
-elif view_mode == "🏦 The Vault":
-    st.subheader("🏦 THE VAULT — Master Ledger & Hall of Fame")
-    p_tot = p_df.groupby('Player/Team').sum(numeric_only=True).reset_index()
-
-    st.markdown("### 🏆 Hall of Fame Podiums")
-    stat_pick = st.multiselect("Podiums to show", ['PTS', 'AST', 'REB', 'STL', 'BLK', '3PM'],
-                               default=['PTS', 'AST', 'REB', 'STL'])
-    labels = {'PTS': 'Scoring', 'AST': 'Assist', 'REB': 'Rebound', 'STL': 'Steals',
-              'BLK': 'Blocks', '3PM': '3-Point'}
-    for i in range(0, len(stat_pick), 2):
-        cols = st.columns(2)
-        for j, s in enumerate(stat_pick[i:i + 2]):
-            with cols[j]:
-                st.markdown(render_podium(f"All-Time {labels[s]} Leaders",
-                                          p_tot.sort_values(s, ascending=False), s),
-                            unsafe_allow_html=True)
-
-    st.markdown("### 🗃️ The Master Ledger")
-    q = st.text_input("🔍 Search the ledger")
-    cols = [c for c in ['Player/Team', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'FGM', 'FGA', '3PM', '3PA',
-                        'FTM', 'FTA', 'Tipped_Passes', 'Shots_Affected', 'FB_Points', 'TO', 'FOULS']
-            if c in p_tot.columns]
-    ledger = p_tot[cols]
-    if q:
-        ledger = ledger[ledger['Player/Team'].str.contains(q, case=False, na=False)]
-    st.dataframe(ledger.sort_values('PTS', ascending=False), use_container_width=True, hide_index=True)
-    dl(ledger, "⬇️ Master ledger CSV", "qcl_master_ledger.csv", "dl_vault")
-
-
-# ----------------------------------------------------------- RECORD BOOK -----
-elif view_mode == "📖 Record Book & Milestones":
-    st.subheader(f"📖 {banner_text} Record Book")
-    tab_game, tab_miles, tab_team = st.tabs(["🔥 Single Game", "🏔️ Career Totals", "🏟️ Team Records"])
-
-    with tab_game:
-        depth = st.slider("Show top N", 3, 15, 5, key="rb_depth")
-        st.markdown("### 🏆 Current Scope — Single Game Highs")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.markdown(generate_mini_leaderboard("Points", p_df, 'PTS', "#cc0000", depth, "Player/Team"), unsafe_allow_html=True)
-            st.markdown(generate_mini_leaderboard("Steals", p_df, 'STL', "#ff8c00", depth, "Player/Team"), unsafe_allow_html=True)
-        with c2:
-            st.markdown(generate_mini_leaderboard("Rebounds", p_df, 'REB', "#32cd32", depth, "Player/Team"), unsafe_allow_html=True)
-            st.markdown(generate_mini_leaderboard("Blocks", p_df, 'BLK', "#8a2be2", depth, "Player/Team"), unsafe_allow_html=True)
-        with c3:
-            st.markdown(generate_mini_leaderboard("Assists", p_df, 'AST', "#00bfff", depth, "Player/Team"), unsafe_allow_html=True)
-            st.markdown(generate_mini_leaderboard("3-Pointers", p_df, '3PM', GOLD, depth, "Player/Team"), unsafe_allow_html=True)
-
-        if selected_scope != "Career Stats":
-            st.markdown("<hr>", unsafe_allow_html=True)
-            st.markdown("### 🏛️ All-Time Single Game Highs (Franchise History)")
-            ac1, ac2, ac3 = st.columns(3)
-            with ac1:
-                st.markdown(generate_mini_leaderboard("All-Time Points", full_p_df, 'PTS', "#cc0000", depth, "Player/Team"), unsafe_allow_html=True)
-                st.markdown(generate_mini_leaderboard("All-Time Steals", full_p_df, 'STL', "#ff8c00", depth, "Player/Team"), unsafe_allow_html=True)
-            with ac2:
-                st.markdown(generate_mini_leaderboard("All-Time Rebounds", full_p_df, 'REB', "#32cd32", depth, "Player/Team"), unsafe_allow_html=True)
-                st.markdown(generate_mini_leaderboard("All-Time Blocks", full_p_df, 'BLK', "#8a2be2", depth, "Player/Team"), unsafe_allow_html=True)
-            with ac3:
-                st.markdown(generate_mini_leaderboard("All-Time Assists", full_p_df, 'AST', "#00bfff", depth, "Player/Team"), unsafe_allow_html=True)
-                st.markdown(generate_mini_leaderboard("All-Time 3PM", full_p_df, '3PM', GOLD, depth, "Player/Team"), unsafe_allow_html=True)
-
-    with tab_miles:
-        p_totals = p_df.groupby('Player/Team').sum(numeric_only=True).reset_index()
-        mc1, mc2, mc3 = st.columns(3)
-        mc1.markdown(generate_mini_leaderboard("Total Points", p_totals, 'PTS', "#cc0000", 10, "Player/Team"), unsafe_allow_html=True)
-        mc2.markdown(generate_mini_leaderboard("Total Rebounds", p_totals, 'REB', "#32cd32", 10, "Player/Team"), unsafe_allow_html=True)
-        mc3.markdown(generate_mini_leaderboard("Total Assists", p_totals, 'AST', "#00bfff", 10, "Player/Team"), unsafe_allow_html=True)
-        mc4, mc5, mc6 = st.columns(3)
-        mc4.markdown(generate_mini_leaderboard("Total Steals", p_totals, 'STL', "#ff8c00", 10, "Player/Team"), unsafe_allow_html=True)
-        mc5.markdown(generate_mini_leaderboard("Total Blocks", p_totals, 'BLK', "#8a2be2", 10, "Player/Team"), unsafe_allow_html=True)
-        mc6.markdown(generate_mini_leaderboard("Total 3PM", p_totals, '3PM', GOLD, 10, "Player/Team"), unsafe_allow_html=True)
-
-        st.markdown("### 🎖️ Club Memberships")
-        clubbed = p_stats[p_stats['Clubs'].apply(len) > 0]
-        if clubbed.empty:
-            st.info("No club memberships earned yet.")
-        else:
-            for _, r in clubbed.iterrows():
-                chips = "".join([f"<span class='chip'>{c}</span>" for c in r['Clubs']])
-                st.markdown(f"<div style='background:#161b22; padding:10px; border-left:3px solid {GOLD}; "
-                            f"margin-bottom:6px;'><b style='color:#fff;'>{r['Player/Team']}</b> "
-                            f"<span style='color:#888;'>({r['Team']})</span><br>{chips}</div>",
-                            unsafe_allow_html=True)
-
-    with tab_team:
-        t_totals = t_df.groupby('Team Name').sum(numeric_only=True).reset_index()
-        if t_totals.empty:
-            st.info("No team totals in scope.")
-        else:
-            tc1, tc2 = st.columns(2)
-            tc1.markdown(generate_mini_leaderboard("Most Wins", t_totals, 'Win', "#ffd700", 8, "Team Name"), unsafe_allow_html=True)
-            tc2.markdown(generate_mini_leaderboard("Total Points Scored", t_totals, 'PTS', "#cc0000", 8, "Team Name"), unsafe_allow_html=True)
-
-            st.markdown("### 💥 Biggest Blowouts")
-            blow = t_df[t_df['Point_Diff'].notna() & (t_df['Point_Diff'] > 0)] \
-                .sort_values('Point_Diff', ascending=False).head(10)
-            if blow.empty:
-                st.info("No head-to-head games recorded yet.")
-            else:
-                html = "<table class='sleek-table'><tr><th>Season</th><th>Game</th><th>Winner</th><th>Score</th><th>Margin</th></tr>"
-                for _, r in blow.iterrows():
-                    opp_pts = int(r['Opp_PTS']) if ('Opp_PTS' in r and pd.notna(r['Opp_PTS'])) else '?'
-                    html += (f"<tr><td>S{int(r['Season'])}</td><td>G{int(r['Game_ID'])}</td>"
-                             f"<td class='player-name'>{r['Team Name']}</td>"
-                             f"<td>{int(r['PTS'])} — {opp_pts}</td>"
-                             f"<td style='color:{GOLD}; font-weight:bold;'>+{int(r['Point_Diff'])}</td></tr>")
-                st.markdown(html + "</table>", unsafe_allow_html=True)
-
-
-st.sidebar.divider()
-st.sidebar.caption("QCL HUB v3.2 • QSPN Analytics • Ball or Mute")
+        if not cards:
+            st.info("No cards match the
