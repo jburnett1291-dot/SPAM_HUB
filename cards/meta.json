@@ -20,5 +20,12 @@
     "highlights": [
       "vs. La Familia (Win)  Points: 51  Rebounds: 1  Assists: 9  Steals: 0  Blocks: 1  Turnovers: 1  Shooting: 19-for-24 FG (79.2%), 11-for-16 3PT (68.8%)  Game Score: 48.22  PIE Raw: 49.0"
     ]
+  },
+  "BPOY_Kyglo_s1": {
+    "award": "BPOY",
+    "player": "Kyglo_",
+    "team": "Al Ghul Academy",
+    "season": 1,
+    "stats": "36.9 PPG \u2022 0.1 RPG \u2022 4.7 APG \u2022 2.3 STK \u2022 8.0 3PM"
   }
 }
