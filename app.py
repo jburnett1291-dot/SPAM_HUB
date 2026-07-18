@@ -1703,157 +1703,89 @@ elif view_mode == "🔮 Oracle Predictor":
 # -------------------------------------------------------- AWARDS & REWARDS ---
 elif view_mode == "🏅 Awards & Rewards":
     st.subheader("🏅 Awards & Rewards")
-    st.markdown("Two ways to show cards: **upload straight from your phone** (instant, but clears "
-                "when the app restarts), or save PNGs permanently in a **`cards/`** folder in the repo.")
+    st.markdown("Drop card images into the **`cards/`** folder in the repo and they appear here "
+                "**automatically** — no code editing. Or upload from your phone below for a quick look.")
 
-    # ---------- EASY PATH: upload from your phone, no GitHub needed ----------
-    ups = st.file_uploader("📤 Upload card images (PNG / JPG)",
-                           type=["png", "jpg", "jpeg", "webp"],
-                           accept_multiple_files=True, key="ar_upload")
-    if ups:
-        st.caption(f"{len(ups)} card(s) uploaded this session. To keep them forever, add the same "
-                   "files to the cards/ folder in the repo.")
-        ug = st.columns(3)
-        for i, uf in enumerate(ups):
-            with ug[i % 3]:
-                st.image(uf, use_container_width=True)
-                nice = os.path.splitext(uf.name)[0].replace("_", " ").replace("-", " ").title()
-                st.markdown(f"<div style='text-align:center; color:#fff; margin-top:4px;'>"
-                            f"<b>{nice}</b></div>", unsafe_allow_html=True)
-        st.markdown("<hr>", unsafe_allow_html=True)
-
-    st.markdown("#### 🏆 Saved cards (from the repo)")
-
-    # Resolve the cards folder relative to app.py (works on Streamlit Cloud).
+    # cards/ lives right next to app.py, completely separate from the code.
     try:
         _BASE = os.path.dirname(os.path.abspath(__file__))
     except NameError:
         _BASE = os.getcwd()
     CARDS_DIR = os.path.join(_BASE, "cards")
+    try:
+        os.makedirs(CARDS_DIR, exist_ok=True)
+    except Exception:
+        pass
 
-    # === REGISTRY — add one dict per card. `file` = filename inside cards/ (or a full URL). ===
-    AWARD_CARDS = [
-        {"award": "OPOY", "player": "iBoola", "team": "Team Obsidian", "season": 6,
-         "file": "opoy_iboola_s6.png",
-         "stats": "33.7 PPG • 7.2 APG • 8.2 3PM/G",
-         "notes": "Led the league in total scoring and 3PM"},
-        {"award": "MVP", "player": "DynastyOnTop", "team": "Miracles", "season": 6,
-         "file": "mvp_dynastyontop_s6.png",
-         "stats": "19.1 PPG • 11.9 RPG • 1.7 STKS",
-         "notes": "Top 3 in total points, rebounds and assists"},
-        # Add more cards here — copy a block above, change the fields + filename.
-    ]
+    IMG_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 
-    def card_path(entry):
-        """Return a loadable image ref (URL as-is, or local path if it exists), else None."""
-        f = entry.get("file", "")
-        if isinstance(f, str) and f.lower().startswith("http"):
-            return f
-        p = os.path.join(CARDS_DIR, f) if f else ""
-        return p if (f and os.path.exists(p)) else None
+    def _nice(fn):
+        return os.path.splitext(fn)[0].replace("_", " ").replace("-", " ").title()
 
-    def _label(e):
-        return f"{e['award']} — {e['player']} (S{e['season']})"
+    # OPTIONAL: add a stat line / real award name for a file (key = filename without extension).
+    CARD_META = {
+        "opoy_iboola_s6": {"award": "OPOY", "player": "iBoola", "team": "Team Obsidian",
+                           "stats": "33.7 PPG • 7.2 APG • 8.2 3PM/G"},
+        "mvp_dynastyontop_s6": {"award": "MVP", "player": "DynastyOnTop", "team": "Miracles",
+                                "stats": "19.1 PPG • 11.9 RPG • 1.7 STKS"},
+    }
 
-    if not AWARD_CARDS:
-        st.info("No cards registered yet. Add entries to the AWARD_CARDS list in app.py.")
+    # Merge in stats the Discord bot recorded (cards/meta.json). Anything the bot
+    # writes extends / overrides the entries above — fully automatic, no editing.
+    _meta_file = os.path.join(CARDS_DIR, "meta.json")
+    if os.path.exists(_meta_file):
+        try:
+            import json as _json
+            with open(_meta_file, "r", encoding="utf-8") as _mf:
+                CARD_META.update(_json.load(_mf))
+        except Exception:
+            pass
+
+    # ---- phone uploader (shows instantly; clears when the app restarts) ----
+    ups = st.file_uploader("📤 Upload card images (quick view, this session)",
+                           type=["png", "jpg", "jpeg", "webp"],
+                           accept_multiple_files=True, key="ar_upload")
+    if ups:
+        ug = st.columns(3)
+        for i, uf in enumerate(ups):
+            with ug[i % 3]:
+                st.image(uf, use_container_width=True)
+                st.markdown(f"<div style=\'text-align:center;color:#fff;margin-top:4px;\'>"
+                            f"<b>{_nice(uf.name)}</b></div>", unsafe_allow_html=True)
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+    # ---- auto-scan the cards/ folder ----
+    try:
+        files = sorted(f for f in os.listdir(CARDS_DIR) if f.lower().endswith(IMG_EXT))
+    except Exception:
+        files = []
+
+    st.markdown(f"#### 🏆 Trophy Wall — {len(files)} card(s) in the folder")
+    if not files:
+        st.info("The cards/ folder is empty (or not created yet). Upload image files into a "
+                "**cards/** folder in the repo — name them anything — and they show here automatically.")
     else:
-        # -- filters --
-        fc1, fc2 = st.columns([1, 2])
-        all_seasons = sorted({e["season"] for e in AWARD_CARDS}, reverse=True)
-        pick_season = fc1.multiselect("Season", all_seasons, default=all_seasons, key="ar_season")
-        q = fc2.text_input("🔍 Search award / player / team", key="ar_q").strip().lower()
-
-        cards = [e for e in AWARD_CARDS if e["season"] in pick_season]
-        if q:
-            cards = [e for e in cards
-                     if q in e["award"].lower() or q in e["player"].lower() or q in e["team"].lower()]
-
-        if not cards:
-            st.info("No cards match the current filters.")
-        else:
-            # -- reward bounties (CUPBUCKS) --
-            if "award_bounty" not in st.session_state:
-                st.session_state.award_bounty = {}
-            with st.expander("🎁 Set CUPBUCKS bounties"):
-                for e in cards:
-                    kk = _label(e)
-                    cur = st.session_state.award_bounty.get(kk, 0)
-                    st.session_state.award_bounty[kk] = st.number_input(
-                        kk, 0, 1000000, int(cur), 50, key=f"bty_{kk}")
-
-            # -- spotlight --
-            names = [_label(e) for e in cards]
-            if "spot_card" not in st.session_state or st.session_state.spot_card not in names:
-                st.session_state.spot_card = names[0]
-            sel = st.selectbox("Spotlight card", names,
-                               index=names.index(st.session_state.spot_card), key="ar_spot_sel")
-            st.session_state.spot_card = sel
-            entry = next(e for e in cards if _label(e) == sel)
-
-            sc1, sc2 = st.columns([3, 2])
-            with sc1:
-                p = card_path(entry)
-                if p:
-                    st.image(p, use_container_width=True)
-                    if not str(p).lower().startswith("http"):
-                        with open(p, "rb") as fh:
-                            st.download_button("⬇️ Download card", fh.read(),
-                                               file_name=os.path.basename(p),
-                                               mime="image/png", use_container_width=True,
-                                               key=f"dlc_{sel}")
-                else:
-                    st.markdown(
-                        f"<div style='border:2px dashed #d4af37; border-radius:12px; padding:40px; "
-                        f"text-align:center; color:#888;'>🖼️ Missing image<br>"
-                        f"<span style='color:#d4af37;'>cards/{entry['file']}</span><br>"
-                        f"Upload this PNG to the <b>cards/</b> folder in your repo.</div>",
-                        unsafe_allow_html=True)
-            with sc2:
-                bounty = st.session_state.award_bounty.get(sel, 0)
-                bounty_chip = (f"<span class='chip'>🏦 {int(bounty):,} CUPBUCKS</span>" if bounty else "")
-                st.markdown(
-                    f"<div class='sim-box' style='text-align:left;'>"
-                    f"<div class='line-label'>{entry['award']}</div>"
-                    f"<h1 style='color:{GOLD}; margin:6px 0;'>{entry['player']}</h1>"
-                    f"<p style='color:#aaa; margin:0;'>{entry['team']} • Season {entry['season']}</p>"
-                    f"<div class='stat-row'><span class='stat-label'>Line</span>"
-                    f"<span class='stat-val'>{entry.get('stats', '—')}</span></div>"
-                    f"<p style='color:#ddd; margin-top:8px;'>{entry.get('notes', '')}</p>"
-                    f"{bounty_chip}</div>", unsafe_allow_html=True)
-
-            # -- trophy wall --
-            st.markdown("<hr>", unsafe_allow_html=True)
-            st.markdown("### 🖼️ Trophy Wall")
-            total_reward = 0
-            grid = st.columns(3)
-            for i, e in enumerate(cards):
-                kk = _label(e)
-                total_reward += int(st.session_state.award_bounty.get(kk, 0))
-                with grid[i % 3]:
-                    p = card_path(e)
-                    if p:
-                        st.image(p, use_container_width=True)
-                    else:
-                        st.markdown(
-                            f"<div style='border:2px dashed #444; border-radius:10px; padding:30px; "
-                            f"text-align:center; color:#666;'>cards/{e['file']}</div>",
-                            unsafe_allow_html=True)
-                    st.markdown(
-                        f"<div style='text-align:center; margin-top:4px;'>"
-                        f"<b style='color:#fff;'>{e['award']}</b> — {e['player']}<br>"
-                        f"<span style='color:#888; font-size:12px;'>{e['team']} • S{e['season']}</span></div>",
-                        unsafe_allow_html=True)
-                    if st.button("🔦 Spotlight", key=f"spot_{kk}", use_container_width=True):
-                        st.session_state.spot_card = kk
-                        _rerun()
-
-            if total_reward:
-                st.markdown(
-                    f"<div class='sim-box'><div class='line-label'>Rewards Ledger</div>"
-                    f"<h1 style='color:{GOLD}; margin:6px 0;'>{total_reward:,} CUPBUCKS</h1>"
-                    f"<p style='color:#888;'>Total bounty across shown awards</p></div>",
-                    unsafe_allow_html=True)
+        grid = st.columns(3)
+        for i, fn in enumerate(files):
+            path = os.path.join(CARDS_DIR, fn)
+            meta = CARD_META.get(os.path.splitext(fn)[0], {})
+            with grid[i % 3]:
+                st.image(path, use_container_width=True)
+                title = (meta.get("award", "") + (" — " if meta.get("award") else "")
+                         + (meta.get("player", "") or _nice(fn)))
+                sub = meta.get("team", "")
+                stats = meta.get("stats", "")
+                block = (f"<div style=\'text-align:center; margin-top:4px;\'>"
+                         f"<b style=\'color:#fff;\'>{title}</b>")
+                if sub:
+                    block += f"<br><span style=\'color:#888;font-size:12px;\'>{sub}</span>"
+                if stats:
+                    block += f"<br><span style=\'color:#d4af37;font-size:12px;\'>{stats}</span>"
+                block += "</div>"
+                st.markdown(block, unsafe_allow_html=True)
+                with open(path, "rb") as fh:
+                    st.download_button("⬇️", fh.read(), file_name=fn, mime="image/png",
+                                       use_container_width=True, key=f"dlcard_{fn}")
 
 
 # ------------------------------------------------------- ANALYTICS LAB -------
