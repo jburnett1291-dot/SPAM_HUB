@@ -1124,10 +1124,13 @@ if view_mode == "🏠 League Home & Awards":
         cols = st.columns(3)
         for i, (_, r) in enumerate(sorted_df.head(3).iterrows()):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+            _img = player_card_uri(r['Player/Team'])
+            img_html = (f"<img src='{_img}' style='max-height:180px; max-width:100%; object-fit:contain; "
+                        f"border-radius:8px; margin-bottom:10px;'>" if _img else "")
             with cols[i]:
                 st.markdown(
-                    f"<div class='award-card'><h3>{medal} {r['Player/Team']}</h3>"
-                    f"<p style='color:#aaa;'>{r['Team']}</p>"
+                    f"<div class='award-card'>{img_html}<h3>{medal} {r['Player/Team']}</h3>"
+                    f"<p style='color:#aaa;'>{team_logo_html(r['Team'], px=18)}{r['Team']}</p>"
                     f"<h2 style='color:#d4af37;'>{r[stat_col]:.1f} {label}</h2>"
                     f"<p>{r['PTS']:.1f} PTS | {r['REB']:.1f} REB | {r['AST']:.1f} AST</p></div>",
                     unsafe_allow_html=True)
@@ -2115,29 +2118,33 @@ elif view_mode == "\U0001f3c5 Awards & Rewards":
                     st.image(uf, use_container_width=True)
                     st.caption(_nice(uf.name))
 
-    # ---- static trophy wall (browse + download, with logos) ----
-    if files:
-        st.markdown(f"#### \U0001f5bc\ufe0f Trophy Wall \u2014 {len(files)} card(s)")
+    # ---- flip-card trophy wall (front = art, hover to flip to details) ----
+    if cards_data:
+        st.markdown(f"#### \U0001f5bc\ufe0f Trophy Wall \u2014 {len(cards_data)} card(s)")
+        st.caption("Hover / tap a card to flip it over for the details.")
         grid = st.columns(3)
-        for i, fn in enumerate(files):
-            meta = CARD_META.get(os.path.splitext(fn)[0], {})
+        for i, c in enumerate(cards_data):
             with grid[i % 3]:
-                st.image(os.path.join(CARDS_DIR, fn), use_container_width=True)
-                award = meta.get("award", "") or _nice(fn)
-                player = meta.get("player", "") or _nice(fn)
-                team = meta.get("team", "")
-                stats = meta.get("stats", "")
-                logo = _logo_uri(team)
-                cap = (f"<div style='text-align:center; margin-top:4px;'>"
-                       f"<b style='color:#fff;'>{award} \u2014 {player}</b>")
-                if team:
-                    limg = (f"<img src='{logo}' style='width:18px;height:18px;"
-                            f"vertical-align:middle;margin-right:5px;border-radius:3px;'>" if logo else "")
-                    cap += f"<br>{limg}<span style='color:#888;font-size:12px;'>{team}</span>"
-                if stats:
-                    cap += f"<br><span style='color:#d4af37;font-size:12px;'>{stats}</span>"
-                cap += "</div>"
-                st.markdown(cap, unsafe_allow_html=True)
+                logo_img = (f"<img src='{c['logo']}' style='width:20px;height:20px;object-fit:contain;"
+                            f"vertical-align:middle;margin-right:6px;border-radius:3px;'>" if c['logo'] else "")
+                back = (f"<h3 style='color:#d4af37;margin:0 0 6px;letter-spacing:1px;'>{c['award']}</h3>"
+                        f"<h2 style='color:#fff;margin:0 0 8px;font-size:22px;'>{c['player']}</h2>")
+                if c['team']:
+                    back += f"<div style='color:#bbb;margin-bottom:10px;'>{logo_img}{c['team']}</div>"
+                if c['stats']:
+                    back += (f"<div style='color:#d4af37;font-weight:700;border-top:1px dashed #333;"
+                             f"padding-top:8px;'>{c['stats']}</div>")
+                html = (
+                    "<div class='flip-card' style='height:430px;'>"
+                    "<div class='flip-card-inner'>"
+                    "<div class='flip-card-front' style='padding:8px;'>"
+                    f"<img src='{c['img']}' style='max-width:100%;max-height:100%;"
+                    "object-fit:contain;border-radius:10px;'>"
+                    "</div>"
+                    "<div class='flip-card-back'>"
+                    f"{back}"
+                    "</div></div></div>")
+                st.markdown(html, unsafe_allow_html=True)
 
 
 # ------------------------------------------------------- ANALYTICS LAB -------
