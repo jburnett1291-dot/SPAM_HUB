@@ -2025,6 +2025,8 @@ elif view_mode == "\U0001f3c5 Awards & Rewards":
             "team": meta.get("team", ""),
             "stats": meta.get("stats", ""),
             "logo": _logo_uri(meta.get("team", "")),
+            "blurb": meta.get("blurb", ""),
+            "highlights": meta.get("highlights", []) if isinstance(meta.get("highlights"), list) else [],
         })
 
     # ---- ROTATING CAROUSEL ----
@@ -2134,6 +2136,15 @@ elif view_mode == "\U0001f3c5 Awards & Rewards":
                 if c['stats']:
                     back += (f"<div style='color:#d4af37;font-weight:700;border-top:1px dashed #333;"
                              f"padding-top:8px;'>{c['stats']}</div>")
+                if c.get('blurb'):
+                    back += (f"<div style='color:#ddd;margin-top:10px;font-size:13px;"
+                             f"line-height:1.45;'>{c['blurb']}</div>")
+                if c.get('highlights'):
+                    _items = "".join(f"<li style='margin-bottom:3px;'>{h}</li>" for h in c['highlights'])
+                    back += ("<div style='color:#8b949e;margin-top:10px;font-size:11px;"
+                             "text-transform:uppercase;letter-spacing:1px;'>Highlights</div>"
+                             f"<ul style='color:#d4af37;margin:4px 0 0;padding-left:18px;"
+                             f"font-size:13px;'>{_items}</ul>")
                 html = (
                     "<div class='flip-card' style='height:430px;'>"
                     "<div class='flip-card-inner'>"
