@@ -527,6 +527,202 @@ def american_odds(p):
 
 
 # =============================================================================
+# 5.5 ASSETS + ROTATING SEASON CARD
+# =============================================================================
+try:
+    _ASSET_BASE = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    _ASSET_BASE = os.getcwd()
+CARDS_DIR = os.path.join(_ASSET_BASE, "cards")
+LOGOS_DIR = os.path.join(_ASSET_BASE, "logos")
+_ASSET_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif")
+
+
+def _asset_slug(s):
+    return re.sub(r"[^a-z0-9]+", "", str(s or "").lower())
+
+
+def _data_uri(path):
+    try:
+        ext = os.path.splitext(path)[1].lower().lstrip(".")
+        mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext or 'png'}"
+        with open(path, "rb") as fh:
+            return f"data:{mime};base64," + base64.b64encode(fh.read()).decode("utf-8")
+    except Exception:
+        return ""
+
+
+@st.cache_data(ttl=60)
+def _load_card_meta():
+    mf = os.path.join(CARDS_DIR, "meta.json")
+    if os.path.exists(mf):
+        try:
+            with open(mf, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def _list_card_files():
+    try:
+        return [f for f in os.listdir(CARDS_DIR) if f.lower().endswith(_ASSET_EXT)]
+    except Exception:
+        return []
+
+
+def find_player_card_uris(player):
+    """Every custom card image tied to a player (via meta 'player' or filename)."""
+    want = _asset_slug(player)
+    if not want:
+        return []
+    meta = _load_card_meta()
+    files = _list_card_files()
+    stem_map = {os.path.splitext(f)[0]: f for f in files}
+    uris, seen = [], set()
+    for stem, info in meta.items():
+        if _asset_slug(info.get("player", "")) == want and stem in stem_map:
+            u = _data_uri(os.path.join(CARDS_DIR, stem_map[stem]))
+            if u and u not in seen:
+                seen.add(u); uris.append(u)
+    for stem, f in stem_map.items():
+        if want in _asset_slug(stem):
+            u = _data_uri(os.path.join(CARDS_DIR, f))
+            if u and u not in seen:
+                seen.add(u); uris.append(u)
+    return uris
+
+
+def find_team_logo_uri(team):
+    want = _asset_slug(team)
+    if not want:
+        return ""
+    try:
+        for lf in os.listdir(LOGOS_DIR):
+            if lf.lower().endswith(_ASSET_EXT) and _asset_slug(os.path.splitext(lf)[0]) == want:
+                return _data_uri(os.path.join(LOGOS_DIR, lf))
+    except Exception:
+        pass
+    return ""
+
+
+def player_season_lines(player):
+    """Career + per-season average stat lines for a player, pulled from full_df."""
+    d = full_df[(full_df['Type'].astype(str).str.lower() == 'player')
+                & (full_df['Player/Team'] == player)]
+    if d.empty:
+        return []
+
+    def line(frame, label):
+        def m(c):
+            return float(pd.to_numeric(frame[c], errors='coerce').mean()) if c in frame.columns else 0.0
+        gp = int(frame['GKey'].nunique()) if 'GKey' in frame.columns else len(frame)
+        team = ""
+        if 'Team Name' in frame.columns and frame['Team Name'].notna().any():
+            team = str(frame['Team Name'].dropna().iloc[-1])
+        return {"label": label, "gp": gp, "team": team,
+                "pts": m('PTS'), "reb": m('REB'), "ast": m('AST'),
+                "stl": m('STL'), "blk": m('BLK'), "pie": m('PIE_Raw'), "tpm": m('3PM')}
+
+    out = [line(d, "CAREER")]
+    for s in sorted({int(x) for x in pd.to_numeric(d['Season'], errors='coerce').dropna().unique()},
+                    reverse=True):
+        out.append(line(d[pd.to_numeric(d['Season'], errors='coerce') == s], f"SEASON {s}"))
+    return out
+
+
+_ROT_TPL = r"""
+<div id="rc">
+  <div class="face"></div>
+  <div class="panel">
+    <div class="pl"></div>
+    <div class="szn"></div>
+    <div class="grid"></div>
+    <div class="dots"></div>
+  </div>
+</div>
+<style>
+  #rc { display:flex; width:100%; height:__H__px; background:#0c0c0c; border:2px solid #d4af37;
+        border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.6);
+        font-family:'Helvetica Neue',sans-serif; }
+  #rc .face { flex:1; display:flex; align-items:center; justify-content:center;
+              background:radial-gradient(circle at 30% 20%,#1a1a1a,#000); padding:12px; position:relative; }
+  #rc .face img { max-width:100%; max-height:100%; object-fit:contain; border-radius:10px;
+                  box-shadow:0 6px 20px rgba(0,0,0,.7); }
+  #rc .face.gen { flex-direction:column; background:linear-gradient(145deg,#1c2128,#0a0a0a); }
+  #rc .face.gen .lg { width:70px; height:70px; object-fit:contain; margin-bottom:10px; border-radius:8px; background:#111; }
+  #rc .face.gen .nm { color:#fff; font-size:26px; font-weight:900; text-align:center; padding:0 10px; }
+  #rc .face.gen .pie { color:#d4af37; font-size:20px; font-weight:800; margin-top:6px; }
+  #rc .panel { flex:1; display:flex; flex-direction:column; justify-content:center; padding:20px 24px;
+               background:linear-gradient(145deg,#141414,#0a0a0a); border-left:1px solid #222; }
+  #rc .pl { color:#fff; font-size:24px; font-weight:900; }
+  #rc .szn { color:#d4af37; font-size:14px; font-weight:800; letter-spacing:2px; text-transform:uppercase; margin:2px 0 14px; }
+  #rc .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  #rc .grid.fade { animation:rcf .5s ease; }
+  @keyframes rcf { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+  #rc .c { background:#0d1117; border:1px solid #262b33; border-radius:8px; padding:8px 4px; text-align:center; }
+  #rc .c .v { color:#fff; font-size:19px; font-weight:900; }
+  #rc .c .l { color:#8b949e; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+  #rc .dots { margin-top:14px; }
+  #rc .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px;
+             background:#444; cursor:pointer; }
+  #rc .dot.on { background:#d4af37; }
+  @media (max-width:640px){ #rc{flex-direction:column;} #rc .grid{grid-template-columns:repeat(4,1fr);} }
+</style>
+<script>
+  const D = __DATA__;
+  const SPEED = __SPEED__;
+  const face = document.querySelector('#rc .face');
+  if (D.imgs && D.imgs.length) {
+    face.innerHTML = '<img src="' + D.imgs[0] + '">';
+  } else {
+    face.classList.add('gen');
+    const s0 = D.seasons[0] || {pie:0};
+    face.innerHTML = (D.logo ? '<img class="lg" src="' + D.logo + '">' : '')
+      + '<div class="nm">' + D.player + '</div>'
+      + '<div class="pie">' + (s0.pie).toFixed(1) + ' PIE</div>';
+  }
+  document.querySelector('#rc .pl').textContent = D.player;
+  const szn = document.querySelector('#rc .szn');
+  const grid = document.querySelector('#rc .grid');
+  const dots = document.querySelector('#rc .dots');
+  let i = 0, t = null;
+  function cell(l, v){ return '<div class="c"><div class="v">' + v + '</div><div class="l">' + l + '</div></div>'; }
+  function render(){
+    const s = D.seasons[i];
+    szn.textContent = s.label + (s.team ? '  \u2022  ' + s.team : '');
+    grid.innerHTML = cell('PPG', s.pts.toFixed(1)) + cell('RPG', s.reb.toFixed(1))
+      + cell('APG', s.ast.toFixed(1)) + cell('STK', (s.stl + s.blk).toFixed(1))
+      + cell('3PM', s.tpm.toFixed(1)) + cell('PIE', s.pie.toFixed(1)) + cell('GP', s.gp);
+    grid.classList.remove('fade'); void grid.offsetWidth; grid.classList.add('fade');
+    dots.innerHTML = D.seasons.map(function(_, k){
+      return '<span class="dot ' + (k === i ? 'on' : '') + '" data-i="' + k + '"></span>'; }).join('');
+    dots.querySelectorAll('.dot').forEach(function(d){
+      d.onclick = function(){ i = +d.dataset.i; render(); reset(); }; });
+  }
+  function reset(){ clearInterval(t); if (D.seasons.length > 1){ t = setInterval(function(){ i = (i + 1) % D.seasons.length; render(); }, SPEED); } }
+  render(); reset();
+</script>
+"""
+
+
+def render_rotating_card(player, key="rc", team=None, height=440, speed_ms=4000):
+    """Rotating card: art (if any) + a season-by-season stat panel that cycles."""
+    seasons = player_season_lines(player)
+    if not seasons:
+        st.info("No season data for this player yet.")
+        return
+    data = {"player": player,
+            "logo": find_team_logo_uri(team) if team else "",
+            "imgs": find_player_card_uris(player),
+            "seasons": seasons}
+    html = (_ROT_TPL.replace("__DATA__", json.dumps(data))
+                    .replace("__SPEED__", str(int(speed_ms)))
+                    .replace("__H__", str(int(height))))
+    components.html(html, height=int(height) + 30, scrolling=False)
+
+
+# =============================================================================
 # 6. SESSION STATE
 # =============================================================================
 if 'watchlist' not in st.session_state:
@@ -1143,6 +1339,12 @@ elif view_mode == "🏢 Franchise Hub":
                 if q:
                     team_p = team_p[team_p['Player/Team'].str.contains(q, case=False, na=False)]
                 team_p = team_p.reset_index(drop=True)
+                _bnames = team_p['Player/Team'].tolist()
+                if _bnames:
+                    _bpick = st.selectbox("🔁 Rotating player card", _bnames, key="binder_pick")
+                    render_rotating_card(_bpick, key="binder", team=sel_team)
+                    st.markdown("<hr>", unsafe_allow_html=True)
+                st.markdown("#### 📇 Full Roster")
                 cols = st.columns(4)
                 for idx, row in team_p.iterrows():
                     with cols[idx % 4]:
@@ -1190,13 +1392,11 @@ elif view_mode == "🔦 Player Spotlight":
         row = p_stats[p_stats['Player/Team'] == sel].iloc[0]
         logs = p_df[p_df['Player/Team'] == sel].sort_values(['Season', 'Game_ID']).reset_index(drop=True)
 
-        top = st.columns([1, 3])
-        with top[0]:
-            st.markdown(generate_2k_player_card(sel, row, rank=row['League_Rank']), unsafe_allow_html=True)
-            if st.button("★ Toggle Watchlist", use_container_width=True):
-                toggle_watch(sel)
-                _rerun()
-        with top[1]:
+        render_rotating_card(sel, key="spotlight", team=row.get('Team'))
+        if st.button("★ Toggle Watchlist", use_container_width=True):
+            toggle_watch(sel)
+            _rerun()
+        with st.container():
             m = st.columns(5)
             for col, (lab, val) in zip(m, [("PPG", f"{row['PTS']:.1f}"), ("RPG", f"{row['REB']:.1f}"),
                                            ("APG", f"{row['AST']:.1f}"), ("STOCKS", f"{row['DEF']:.1f}"),
