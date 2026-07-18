@@ -722,6 +722,20 @@ def render_rotating_card(player, key="rc", team=None, height=440, speed_ms=4000)
     components.html(html, height=int(height) + 30, scrolling=False)
 
 
+@st.cache_data(ttl=120)
+def _cached_logo_uri(team):
+    return find_team_logo_uri(team)
+
+
+def team_logo_html(team, px=22, radius=4, ml=0, mr=6):
+    """Inline <img> badge for a team wherever its name is shown ('' if no logo)."""
+    u = _cached_logo_uri(team)
+    if not u:
+        return ""
+    return (f"<img src='{u}' style='height:{px}px;width:{px}px;object-fit:contain;"
+            f"vertical-align:middle;border-radius:{radius}px;margin-left:{ml}px;margin-right:{mr}px;'>")
+
+
 # =============================================================================
 # 6. SESSION STATE
 # =============================================================================
@@ -1243,7 +1257,7 @@ elif view_mode == "🏆 Power Rankings & SOS":
         stk = streak_map.get(tname, '-')
         sc = GREEN if stk.startswith('W') else RED if stk.startswith('L') else '#888'
         nc = GREEN if r['NetRtg'] >= 0 else RED
-        html += (f"<tr><td style='font-size:16px;'>{medal}</td><td class='player-name'>{tname}{marked}</td>"
+        html += (f"<tr><td style='font-size:16px;'>{medal}</td><td class='player-name'>{team_logo_html(tname, px=20)}{tname}{marked}</td>"
                  f"<td>{int(r['Wins'])}-{int(r['GP']-r['Wins'])}</td><td>{r['Win%']:.3f}</td>"
                  f"<td style='color:{BLUE};'>{fnum(r['SOS']):.3f}</td>"
                  f"<td style='color:{nc}; font-weight:bold;'>{r['NetRtg']:+.1f}</td>"
@@ -1262,7 +1276,13 @@ elif view_mode == "🏢 Franchise Hub":
         st.info("No teams in scope.")
     else:
         sel_team = st.selectbox("Select Franchise", teams)
-        st.markdown(f"<div class='header-banner'>{sel_team}</div>", unsafe_allow_html=True)
+        _tlogo = _cached_logo_uri(sel_team)
+        if _tlogo:
+            st.markdown("<style>.stApp::before{content:'';position:fixed;inset:0;background:url('"
+                        + _tlogo + "') center/contain no-repeat;opacity:0.06;pointer-events:none;z-index:0;}</style>",
+                        unsafe_allow_html=True)
+        st.markdown(f"<div class='header-banner'>{team_logo_html(sel_team, px=34, mr=10)}{sel_team}</div>",
+                    unsafe_allow_html=True)
 
         t_data = t_df[t_df['Team Name'] == sel_team]
         p_data = p_df[p_df['Team Name'] == sel_team]
@@ -1603,8 +1623,8 @@ elif view_mode == "🥊 Rivalry Corner":
                 with st.expander(f"⚔️ {t1} vs {t2} — {riv['Games']} meetings ({t1_wins}-{t2_wins})", expanded=False):
                     st.markdown(
                         f"<div style='display:flex; justify-content:space-around; margin:10px 0;'>"
-                        f"<div style='text-align:center;'><h2 style='color:{GREEN};'>{t1_wins}</h2><p>{t1}</p></div>"
-                        f"<div style='text-align:center;'><h2 style='color:{RED};'>{t2_wins}</h2><p>{t2}</p></div></div>",
+                        f"<div style='text-align:center;'>{team_logo_html(t1, px=30, mr=0)}<h2 style='color:{GREEN};'>{t1_wins}</h2><p>{t1}</p></div>"
+                        f"<div style='text-align:center;'>{team_logo_html(t2, px=30, mr=0)}<h2 style='color:{RED};'>{t2_wins}</h2><p>{t2}</p></div></div>",
                         unsafe_allow_html=True)
                     gk = matchups[matchups['Pairing'] == riv['Pairing']][['Season', 'Game_ID']].drop_duplicates()
                     for (gs, gid) in sorted(gk.itertuples(index=False, name=None), reverse=True)[:5]:
@@ -1699,7 +1719,7 @@ elif view_mode == "🏆 Playoffs":
                     wins = int(r['Wins'])
                     losses = int(r['GP'] - r['Wins'])
                     nc = GREEN if r['NetRtg'] >= 0 else RED
-                    html += (f"<tr><td class='player-name'>{r['Team Name']}</td>"
+                    html += (f"<tr><td class='player-name'>{team_logo_html(r['Team Name'], px=18)}{r['Team Name']}</td>"
                              f"<td>{wins}-{losses}</td><td>{r['Win%']:.3f}</td>"
                              f"<td>{r['PPG']:.1f}</td><td>{fnum(r['OppPPG']):.1f}</td>"
                              f"<td>{r['ORtg']:.1f}</td><td>{r['DRtg']:.1f}</td>"
@@ -1782,7 +1802,7 @@ elif view_mode == "🔮 Oracle Predictor":
                 rc1, rc2 = st.columns(2)
                 for col, tname, rot in [(rc1, t1_sel, rot1), (rc2, t2_sel, rot2)]:
                     with col:
-                        st.markdown(f"##### 🔁 {tname} — Active Five")
+                        st.markdown(f"<h5>🔁 {team_logo_html(tname, px=20)}{tname} — Active Five</h5>", unsafe_allow_html=True)
                         html = "<table class='sleek-table'><tr><th>Player</th><th>GP</th><th>PPG</th><th>USG%</th><th>PIE</th></tr>"
                         for _, r in rot.iterrows():
                             html += (f"<tr><td class='player-name'>{r['Player/Team']}</td><td>{int(r['GP'])}</td>"
@@ -2112,7 +2132,7 @@ elif view_mode == "🔬 Advanced Analytics Lab":
         html = ("<table class='sleek-table'><tr><th>Team</th><th>eFG%</th><th>TO/G</th>"
                 "<th>Opp PPP</th><th>Pace</th></tr>")
         for _, r in t_stats.sort_values('Win%', ascending=False).iterrows():
-            html += (f"<tr><td class='player-name'>{r['Team Name']}</td><td>{r['eFG%']:.1f}%</td>"
+            html += (f"<tr><td class='player-name'>{team_logo_html(r['Team Name'], px=18)}{r['Team Name']}</td><td>{r['eFG%']:.1f}%</td>"
                      f"<td>{fnum(r['TOPG']):.1f}</td><td>{fnum(r['Opp_PPP']):.2f}</td><td>{r['Pace']:.1f}</td></tr>")
         st.markdown(html + "</table>", unsafe_allow_html=True)
 
@@ -2138,7 +2158,7 @@ elif view_mode == "🔬 Advanced Analytics Lab":
         html = "<table class='sleek-table'><tr><th>Team</th><th>ORtg</th><th>DRtg</th><th>NetRtg</th><th>Pace</th></tr>"
         for _, r in t_stats.sort_values('NetRtg', ascending=False).iterrows():
             nc = GREEN if r['NetRtg'] >= 0 else RED
-            html += (f"<tr><td class='player-name'>{r['Team Name']}</td><td>{r['ORtg']:.1f}</td>"
+            html += (f"<tr><td class='player-name'>{team_logo_html(r['Team Name'], px=18)}{r['Team Name']}</td><td>{r['ORtg']:.1f}</td>"
                      f"<td>{r['DRtg']:.1f}</td><td style='color:{nc}; font-weight:bold;'>{r['NetRtg']:+.1f}</td>"
                      f"<td>{r['Pace']:.1f}</td></tr>")
         st.markdown(html + "</table>", unsafe_allow_html=True)
