@@ -459,14 +459,26 @@ def generate_2k_player_card(player_name, stats, rank=""):
     def g(k):
         return fnum(stats.get(k, 0))
 
+    try:
+        _art = player_card_uri(player_name)
+    except Exception:
+        _art = ""
+    if _art:
+        _front = (f'<img src="{_art}" style="max-width:100%; max-height:340px; '
+                  f'object-fit:contain; border-radius:8px;">')
+    else:
+        _front = (
+            '<img src="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png" '
+            'style="width: 90px; border-radius: 50%; border: 2px solid #d4af37; margin-bottom: 10px;">'
+            f'<h3 style="margin: 0; color: white; font-size: 18px;">{player_name}</h3>'
+            f'<h2 style="color: #d4af37; margin-top: 5px; margin-bottom: 5px;">{g("PIE"):.1f} PIE</h2>'
+            f'{clubs_html}')
+
     return f'''<div class="flip-card" style="height: 380px;">
 {rank_badge}
 <div class="flip-card-inner">
 <div class="flip-card-front">
-<img src="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png" style="width: 90px; border-radius: 50%; border: 2px solid #d4af37; margin-bottom: 10px;">
-<h3 style="margin: 0; color: white; font-size: 18px;">{player_name}</h3>
-<h2 style="color: #d4af37; margin-top: 5px; margin-bottom: 5px;">{g('PIE'):.1f} PIE</h2>
-{clubs_html}
+{_front}
 </div>
 <div class="flip-card-back">
 <h4 style="color: #d4af37; border-bottom: 1px solid #333; padding-bottom: 3px; margin-top: 0; font-size: 14px;">Season Averages & Highs</h4>
@@ -734,6 +746,13 @@ def team_logo_html(team, px=22, radius=4, ml=0, mr=6):
         return ""
     return (f"<img src='{u}' style='height:{px}px;width:{px}px;object-fit:contain;"
             f"vertical-align:middle;border-radius:{radius}px;margin-left:{ml}px;margin-right:{mr}px;'>")
+
+
+@st.cache_data(ttl=120)
+def player_card_uri(player):
+    """First custom card image for a player, or '' — used on flip cards."""
+    uris = find_player_card_uris(player)
+    return uris[0] if uris else ""
 
 
 # =============================================================================
