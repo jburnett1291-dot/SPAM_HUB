@@ -34,5 +34,12 @@
     "team": "Al Ghul Academy",
     "season": 1,
     "stats": "14.2 PPG \u2022 3.4 RPG \u2022 9.5 APG \u2022 3.5 STK \u2022 2.5 3PM"
+  },
+  "Season_4_MVP_Precision_Kill": {
+    "award": "Season 4 MVP",
+    "player": "Precision Kill",
+    "team": "No Morals",
+    "season": null,
+    "stats": "30.5 PPG \u2022 0.7 RPG \u2022 11.1 APG \u2022 0.6 STK \u2022 7.0 3PM"
   }
 }
