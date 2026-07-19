@@ -33,7 +33,11 @@
     "player": "Ypfras",
     "team": "Al Ghul Academy",
     "season": 1,
-    "stats": "14.2 PPG \u2022 3.4 RPG \u2022 9.5 APG \u2022 3.5 STK \u2022 2.5 3PM"
+    "stats": "14.2 PPG \u2022 3.4 RPG \u2022 9.5 APG \u2022 3.5 STK \u2022 2.5 3PM",
+    "blurb": "Ypfras terrorized offenses with 3.5 stocks per game for Al Ghul Academy. This disruptor is undeniably your QCL DPOY.",
+    "highlights": [
+      "Stat Line vs. La Familia:  Points: 27.0  Assists: 20.0  Rebounds: 2.0  Steals: 1.0  Field Goals: 10 for 14  3-Pointers: 7 for 11  Turnovers: 1.0"
+    ]
   },
   "Season_4_MVP_Precision_Kill": {
     "award": "Season 4 MVP",
