@@ -623,17 +623,50 @@ def find_player_card_uris(player):
     return uris
 
 
-def find_team_logo_uri(team):
+def _logo_path(team):
     want = _asset_slug(team)
     if not want:
         return ""
     try:
         for lf in os.listdir(LOGOS_DIR):
             if lf.lower().endswith(_ASSET_EXT) and _asset_slug(os.path.splitext(lf)[0]) == want:
-                return _data_uri(os.path.join(LOGOS_DIR, lf))
+                return os.path.join(LOGOS_DIR, lf)
     except Exception:
         pass
     return ""
+
+
+def find_team_logo_uri(team):
+    p = _logo_path(team)
+    return _data_uri(p) if p else ""
+
+
+@st.cache_data(ttl=300)
+def _logo_accent(team):
+    """Pull a representative accent colour straight from the team's logo."""
+    p = _logo_path(team)
+    if not p:
+        return ""
+    try:
+        from PIL import Image
+        from collections import Counter
+        img = Image.open(p).convert("RGBA")
+        img.thumbnail((72, 72))
+        px = [q for q in img.getdata() if q[3] > 200]  # opaque pixels only
+        if not px:
+            return ""
+
+        def vivid(q):
+            r, g, b = q[0], q[1], q[2]
+            mx, mn = max(r, g, b), min(r, g, b)
+            return mx >= 40 and mn <= 220 and (mx - mn) >= 25   # skip black/white/gray
+
+        pool = [q for q in px if vivid(q)] or px
+        counts = Counter((q[0] // 24 * 24, q[1] // 24 * 24, q[2] // 24 * 24) for q in pool)
+        r, g, b = counts.most_common(1)[0][0]
+        return f"#{min(r+12,255):02x}{min(g+12,255):02x}{min(b+12,255):02x}"
+    except Exception:
+        return ""
 
 
 HEADSHOTS_DIR = os.path.join(_ASSET_BASE, "headshots")
@@ -826,8 +859,12 @@ def _team_entry(team):
 
 
 def team_color(team, default=GOLD):
+    # explicit override (rare) wins; otherwise pull the accent from the logo.
     c = _team_entry(team).get("color")
-    return c if (isinstance(c, str) and c.strip()) else default
+    if isinstance(c, str) and c.strip():
+        return c
+    a = _logo_accent(team)
+    return a if a else default
 
 
 def team_full(team):
@@ -2236,32 +2273,8 @@ elif view_mode == "\U0001f6e1\ufe0f League Teams":
                 html += "</div>"
                 st.markdown(html, unsafe_allow_html=True)
 
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown("### \u270f\ufe0f Edit team branding")
-    st.caption("Edit here then **Download teams.json** and drop it in the repo root \u2014 or use "
-               "**/team set** in Discord (recommended; it persists automatically).")
-    rows = []
-    for tm in all_teams:
-        e = _team_entry(tm)
-        rows.append({"Team": tm, "Full Name": e.get("full", ""), "Color": e.get("color", ""),
-                     "Division": e.get("division", ""), "Abbr": e.get("abbr", "")})
-    edited = st.data_editor(pd.DataFrame(rows, columns=["Team", "Full Name", "Color", "Division", "Abbr"]),
-                            use_container_width=True, hide_index=True, num_rows="dynamic",
-                            key="teams_editor")
-    out = {}
-    for _, r in edited.iterrows():
-        tm = str(r.get("Team", "") or "").strip()
-        if not tm:
-            continue
-        d = {}
-        for s_col, d_key in [("Full Name", "full"), ("Color", "color"),
-                             ("Division", "division"), ("Abbr", "abbr")]:
-            v = str(r.get(s_col, "") or "").strip()
-            if v:
-                d[d_key] = v
-        out[tm] = d
-    st.download_button("\u2b07\ufe0f Download teams.json", json.dumps(out, indent=2).encode("utf-8"),
-                       file_name="teams.json", mime="application/json", use_container_width=True)
+    st.caption("Branding is managed from Discord with **/teamset** (full name, division, abbr). "
+               "The accent colour is pulled automatically from each team's logo in **logos/**.")
 
 
 # ------------------------------------------------------------- CARD MARKET ---
