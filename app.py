@@ -463,6 +463,18 @@ def generate_2k_player_card(player_name, stats, rank=""):
         _art = player_card_uri(player_name)
     except Exception:
         _art = ""
+    try:
+        _col = team_color(stats.get('Team', ''))
+    except Exception:
+        _col = GOLD
+    _acc = player_accolades(player_name)
+    _acc_html = ("<div style='margin-top:8px;'>"
+                 + "".join(f"<span class='chip'>\U0001f3c5 {x}</span>" for x in _acc)
+                 + "</div>") if _acc else ""
+    _rar_name, _rar_col = card_rarity(player_name)
+    _rar_badge = (f'<div style="position:absolute; top:-10px; left:-10px; background:{_rar_col}; '
+                  f'color:#000; font-weight:900; font-size:10px; letter-spacing:1px; padding:5px 9px; '
+                  f'border-radius:10px; border:2px solid #fff; z-index:10;">{_rar_name.upper()}</div>')
     if _art:
         _front = (f'<img src="{_art}" style="max-width:100%; max-height:340px; '
                   f'object-fit:contain; border-radius:8px;">')
@@ -476,11 +488,12 @@ def generate_2k_player_card(player_name, stats, rank=""):
 
     return f'''<div class="flip-card" style="height: 380px;">
 {rank_badge}
+{_rar_badge}
 <div class="flip-card-inner">
-<div class="flip-card-front">
+<div class="flip-card-front" style="border-color:{_col};">
 {_front}
 </div>
-<div class="flip-card-back">
+<div class="flip-card-back" style="border-color:{_col};">
 <h4 style="color: #d4af37; border-bottom: 1px solid #333; padding-bottom: 3px; margin-top: 0; font-size: 14px;">Season Averages & Highs</h4>
 <div class="stat-row"><span class="stat-label">GP</span> <span class="stat-val">{int(g('GP'))}</span></div>
 <div class="stat-row"><span class="stat-label">PPG | RPG | APG</span> <span class="stat-val">{g('PTS'):.1f} | {g('REB'):.1f} | {g('AST'):.1f}</span></div>
@@ -489,6 +502,7 @@ def generate_2k_player_card(player_name, stats, rank=""):
 <div class="stat-row"><span class="stat-label">DEF HIGHS (SZN)</span> <span class="stat-val">{int(g('High_STL'))}S | {int(g('High_BLK'))}B</span></div>
 <div class="stat-row"><span class="stat-label">FG% | 3P% | TS%</span> <span class="stat-val">{g('FG%'):.1f}% | {g('3P%'):.1f}% | {g('TS%'):.1f}%</span></div>
 <div class="stat-row"><span class="stat-label">USG | NetRtg</span> <span class="stat-val">{g('USG'):.1f}% | {g('NetRtg'):+.1f}</span></div>
+{_acc_html}
 </div>
 </div>
 </div>'''
@@ -654,7 +668,7 @@ _ROT_TPL = r"""
   </div>
 </div>
 <style>
-  #rc { display:flex; width:100%; height:__H__px; background:#0c0c0c; border:2px solid #d4af37;
+  #rc { display:flex; width:100%; height:__H__px; background:#0c0c0c; border:2px solid __ACC__;
         border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.6);
         font-family:'Helvetica Neue',sans-serif; }
   #rc .face { flex:1; display:flex; align-items:center; justify-content:center;
@@ -664,11 +678,11 @@ _ROT_TPL = r"""
   #rc .face.gen { flex-direction:column; background:linear-gradient(145deg,#1c2128,#0a0a0a); }
   #rc .face.gen .lg { width:70px; height:70px; object-fit:contain; margin-bottom:10px; border-radius:8px; background:#111; }
   #rc .face.gen .nm { color:#fff; font-size:26px; font-weight:900; text-align:center; padding:0 10px; }
-  #rc .face.gen .pie { color:#d4af37; font-size:20px; font-weight:800; margin-top:6px; }
+  #rc .face.gen .pie { color:__ACC__; font-size:20px; font-weight:800; margin-top:6px; }
   #rc .panel { flex:1; display:flex; flex-direction:column; justify-content:center; padding:20px 24px;
                background:linear-gradient(145deg,#141414,#0a0a0a); border-left:1px solid #222; }
   #rc .pl { color:#fff; font-size:24px; font-weight:900; }
-  #rc .szn { color:#d4af37; font-size:14px; font-weight:800; letter-spacing:2px; text-transform:uppercase; margin:2px 0 14px; }
+  #rc .szn { color:__ACC__; font-size:14px; font-weight:800; letter-spacing:2px; text-transform:uppercase; margin:2px 0 14px; }
   #rc .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
   #rc .grid.fade { animation:rcf .5s ease; }
   @keyframes rcf { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
@@ -679,6 +693,8 @@ _ROT_TPL = r"""
   #rc .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px;
              background:#444; cursor:pointer; }
   #rc .dot.on { background:#d4af37; }
+  #rc .acc { margin-top:10px; }
+  #rc .acc .chip{display:inline-block;background:__ACC__;color:#000;font-size:10px;font-weight:800;padding:3px 8px;border-radius:10px;margin:2px 4px 0 0;}
   @media (max-width:640px){ #rc{flex-direction:column;} #rc .grid{grid-template-columns:repeat(4,1fr);} }
 </style>
 <script>
@@ -694,7 +710,9 @@ _ROT_TPL = r"""
       + '<div class="nm">' + D.player + '</div>'
       + '<div class="pie">' + (s0.pie).toFixed(1) + ' PIE</div>';
   }
+  if (D.rarity) { var _rb=document.createElement('div'); _rb.textContent=(D.rarity.name||'').toUpperCase(); _rb.style.cssText='position:absolute;top:10px;left:10px;background:'+D.rarity.color+';color:#000;font-weight:900;font-size:11px;letter-spacing:1px;padding:3px 9px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.5);'; face.appendChild(_rb); }
   document.querySelector('#rc .pl').textContent = D.player;
+  (function(){ var p=document.querySelector('#rc .panel'); var el=document.createElement('div'); el.className='acc'; el.innerHTML=(D.accolades||[]).map(function(x){return '<span class="chip">\ud83c\udfc5 '+x+'</span>';}).join(''); p.appendChild(el); })();
   const szn = document.querySelector('#rc .szn');
   const grid = document.querySelector('#rc .grid');
   const dots = document.querySelector('#rc .dots');
@@ -724,13 +742,18 @@ def render_rotating_card(player, key="rc", team=None, height=440, speed_ms=4000)
     if not seasons:
         st.info("No season data for this player yet.")
         return
+    _rn, _rc = card_rarity(player)
     data = {"player": player,
             "logo": find_team_logo_uri(team) if team else "",
             "imgs": find_player_card_uris(player),
-            "seasons": seasons}
+            "seasons": seasons,
+            "accolades": player_accolades(player),
+            "rarity": {"name": _rn, "color": _rc}}
+    accent = team_color(team) if team else GOLD
     html = (_ROT_TPL.replace("__DATA__", json.dumps(data))
                     .replace("__SPEED__", str(int(speed_ms)))
-                    .replace("__H__", str(int(height))))
+                    .replace("__H__", str(int(height)))
+                    .replace("__ACC__", accent))
     components.html(html, height=int(height) + 30, scrolling=False)
 
 
@@ -753,6 +776,160 @@ def player_card_uri(player):
     """First custom card image for a player, or '' — used on flip cards."""
     uris = find_player_card_uris(player)
     return uris[0] if uris else ""
+
+
+@st.cache_data(ttl=60)
+def _load_team_meta():
+    tf = os.path.join(_ASSET_BASE, "teams.json")
+    if os.path.exists(tf):
+        try:
+            with open(tf, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def _team_entry(team):
+    m = _load_team_meta()
+    if team in m:
+        return m[team]
+    s = _asset_slug(team)
+    for k, v in m.items():
+        if _asset_slug(k) == s:
+            return v
+    return {}
+
+
+def team_color(team, default=GOLD):
+    c = _team_entry(team).get("color")
+    return c if (isinstance(c, str) and c.strip()) else default
+
+
+def team_full(team):
+    return _team_entry(team).get("full") or team
+
+
+@st.cache_data(ttl=60)
+def _load_allleague():
+    f = os.path.join(_ASSET_BASE, "allleague.json")
+    if os.path.exists(f):
+        try:
+            with open(f, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except Exception:
+            return {}
+    return {}
+
+
+def player_accolades(player):
+    data = _load_allleague()
+    want, out = _asset_slug(player), []
+    for season, teams in data.items():
+        if not isinstance(teams, dict):
+            continue
+        for tier, players in teams.items():
+            if isinstance(players, list) and any(_asset_slug(p) == want for p in players):
+                out.append(f"{tier} (S{season})")
+    return out
+
+
+RARITY_TIERS = [(0.95, "Legendary", "#f1c40f"), (0.85, "Epic", "#9b59b6"),
+                (0.65, "Rare", "#3498db"), (0.35, "Uncommon", "#2ecc71"),
+                (0.0, "Common", "#8a929c")]
+
+
+@st.cache_data(ttl=60)
+def _career_ratings():
+    """Percentile rank of each player's career impact (PIE) across the league."""
+    d = full_df[full_df['Type'].astype(str).str.lower() == 'player']
+    if d.empty:
+        return {}
+    g = d.groupby('Player/Team').agg(PIE=('PIE_Raw', 'mean')).reset_index()
+    g['pct'] = g['PIE'].rank(pct=True)
+    return dict(zip(g['Player/Team'], g['pct']))
+
+
+def card_rarity(player):
+    """(tier_name, hex_color) from career percentile — stat-based rarity."""
+    pct = _career_ratings().get(player)
+    if pct is None:
+        return ("Common", "#8a929c")
+    for thresh, name, color in RARITY_TIERS:
+        if pct >= thresh:
+            return (name, color)
+    return ("Common", "#8a929c")
+
+
+RARITY_SUPPLY = {"Legendary": 3, "Epic": 10, "Rare": 25, "Uncommon": 60, "Common": 0}  # 0 = unlimited
+
+
+@st.cache_data(ttl=60)
+def _load_popularity():
+    f = os.path.join(_ASSET_BASE, "popularity.json")
+    if os.path.exists(f):
+        try:
+            with open(f, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except Exception:
+            return {}
+    return {}
+
+
+@st.cache_data(ttl=60)
+def _awards_score(player):
+    want, s = _asset_slug(player), 0.0
+    for _season, teams in _load_allleague().items():
+        if isinstance(teams, dict):
+            for tier, players in teams.items():
+                if isinstance(players, list) and any(_asset_slug(p) == want for p in players):
+                    s += 3.0 if "1st" in tier else 2.0 if "2nd" in tier else 1.0
+    for _stem, info in _load_card_meta().items():
+        if _asset_slug(info.get("player", "")) == want:
+            s += 2.0
+    return s
+
+
+@st.cache_data(ttl=60)
+def _popularity_raw_map():
+    pop = _load_popularity()
+    mentions = pop.get("mentions", {}) if isinstance(pop, dict) else {}
+    roles = pop.get("roles", {}) if isinstance(pop, dict) else {}
+    players = set(_career_ratings().keys()) | set(mentions.keys()) | set(roles.keys())
+    raw = {}
+    for p in players:
+        raw[p] = (_awards_score(p) * 2.0
+                  + float(mentions.get(p, 0) or 0) * 1.0
+                  + float(roles.get(p, 0) or 0) * 1.5)
+    return raw
+
+
+def player_popularity(player):
+    raw = _popularity_raw_map()
+    v = raw.get(player, _awards_score(player) * 2.0)
+    mx = max(raw.values()) if raw else 0
+    return (v / mx) if mx > 0 else 0.0
+
+
+def player_price(player, w_stat=0.5, w_pop=0.5, cap=3.0):
+    stat = _career_ratings().get(player, 0.0)
+    pop = player_popularity(player)
+    tot = max(w_stat + w_pop, 0.01)
+    return round(cap * ((w_stat * stat) + (w_pop * pop)) / tot, 2)
+
+
+def player_form(player):
+    d = full_df[(full_df['Type'].astype(str).str.lower() == 'player')
+                & (full_df['Player/Team'] == player)].sort_values(['Season', 'Game_ID'])
+    pie = pd.to_numeric(d['PIE_Raw'], errors='coerce')
+    if len(pie.dropna()) < 4:
+        return 0
+    recent, base = pie.tail(3).mean(), pie.mean()
+    if recent > base * 1.05:
+        return 1
+    if recent < base * 0.95:
+        return -1
+    return 0
 
 
 # =============================================================================
@@ -783,6 +960,7 @@ VIEWS = [
     "🏅 Awards & Rewards",
     "🏆 Power Rankings & SOS",
     "🏢 Franchise Hub",
+    "🛡️ League Teams",
     "🔦 Player Spotlight",
     "🗃️ Full Player Database",
     "⚔️ Head-to-Head Radar",
@@ -792,6 +970,7 @@ VIEWS = [
     "🔮 Oracle Predictor",
     "🔬 Advanced Analytics Lab",
     "🏦 The Vault",
+    "📈 Card Market",
     "📖 Record Book & Milestones",
 ]
 view_mode = st.sidebar.radio("Navigation", VIEWS)
@@ -1191,23 +1370,63 @@ if view_mode == "🏠 League Home & Awards":
                             unsafe_allow_html=True)
                 dl(mip[['Player/Team', 'PIE_Prev', 'PIE', 'Jump']], "⬇️ MIP race CSV", "mip_race.csv", "dl_mip")
     with a_tabs[5]:
-        st.markdown("#### 🏅 All-League Teams (by PIE)")
-        al = qual_p.sort_values('PIE', ascending=False).head(15).reset_index(drop=True)
+        st.markdown("#### 🏅 All-League Teams")
+        _al_data = _load_allleague().get(str(target_season), {})
+
+        def _squad_df(names):
+            rws = []
+            for n in names:
+                mm = p_stats[p_stats['Player/Team'] == n]
+                if not mm.empty:
+                    rr = mm.iloc[0]
+                    rws.append({"Player/Team": n, "Team": rr['Team'], "PIE": rr['PIE']})
+                else:
+                    rws.append({"Player/Team": n, "Team": "", "PIE": float('nan')})
+            return pd.DataFrame(rws, columns=["Player/Team", "Team", "PIE"])
+
+        if _al_data:
+            st.caption("Curated selections (set via /allleague or the editor below).")
+            sq1 = _squad_df(_al_data.get("1st Team", []))
+            sq2 = _squad_df(_al_data.get("2nd Team", []))
+            sq3 = _squad_df(_al_data.get("3rd Team", []))
+        else:
+            st.caption("Auto-picked by PIE for now \u2014 curate your own below or with /allleague.")
+            al = qual_p.sort_values('PIE', ascending=False).head(15).reset_index(drop=True)
+            sq1, sq2, sq3 = al.head(5), al.iloc[5:10], al.iloc[10:15]
 
         def render_all_league(col, title, squad, border):
             with col:
                 html = (f"<div style='background:#161b22; border:2px solid {border}; border-radius:8px; padding:15px;'>"
                         f"<h4 style='color:{border}; text-align:center; text-transform:uppercase; margin-top:0;'>{title}</h4>")
+                if squad.empty:
+                    html += "<p style='color:#666; text-align:center;'>\u2014</p>"
                 for _, r in squad.iterrows():
-                    html += (f"<div class='stat-row'><span style='color:#fff; font-weight:bold;'>{r['Player/Team']}</span>"
-                             f"<span class='stat-label'>{r['Team']}</span>"
-                             f"<span class='stat-val'>{r['PIE']:.1f}</span></div>")
+                    html += (f"<div class='stat-row'><span style='color:#fff; font-weight:bold;'>"
+                             f"{team_logo_html(r['Team'], px=16)}{r['Player/Team']}</span>"
+                             f"<span class='stat-val'>{fnum(r['PIE']):.1f}</span></div>")
                 st.markdown(html + "</div>", unsafe_allow_html=True)
 
         a1, a2, a3 = st.columns(3)
-        render_all_league(a1, "1st Team", al.head(5), GOLD)
-        render_all_league(a2, "2nd Team", al.iloc[5:10], SILVER)
-        render_all_league(a3, "3rd Team", al.iloc[10:15], BRONZE)
+        render_all_league(a1, "1st Team", sq1, GOLD)
+        render_all_league(a2, "2nd Team", sq2, SILVER)
+        render_all_league(a3, "3rd Team", sq3, BRONZE)
+
+        with st.expander("\u270f\ufe0f Curate All-League (Season " + str(target_season) + ")"):
+            _names_all = sorted(p_stats['Player/Team'].tolist())
+            _p1 = st.multiselect("1st Team", _names_all,
+                                 default=[x for x in _al_data.get("1st Team", []) if x in _names_all], key="al1")
+            _p2 = st.multiselect("2nd Team", _names_all,
+                                 default=[x for x in _al_data.get("2nd Team", []) if x in _names_all], key="al2")
+            _p3 = st.multiselect("3rd Team", _names_all,
+                                 default=[x for x in _al_data.get("3rd Team", []) if x in _names_all], key="al3")
+            _payload = dict(_load_allleague())
+            _payload[str(target_season)] = {t: v for t, v in
+                                            [("1st Team", _p1), ("2nd Team", _p2), ("3rd Team", _p3)] if v}
+            st.download_button("\u2b07\ufe0f Download allleague.json",
+                               json.dumps(_payload, indent=2).encode("utf-8"),
+                               file_name="allleague.json", mime="application/json",
+                               use_container_width=True)
+            st.caption("Commit allleague.json to the repo root, or use /allleague in Discord to persist.")
 
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown("### 🔥 Streak Trends")
@@ -1943,6 +2162,125 @@ elif view_mode == "🔮 Oracle Predictor":
                                            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(mfig, use_container_width=True)
                         dl(mvp, "⬇️ MVP odds CSV", "mvp_odds.csv", "dl_mvp")
+
+
+# ------------------------------------------------------------ LEAGUE TEAMS ---
+elif view_mode == "\U0001f6e1\ufe0f League Teams":
+    st.subheader("\U0001f6e1\ufe0f League Teams")
+    st.markdown("Every franchise in one place. Branding (full name, colour, division) lives in "
+                "**`teams.json`** \u2014 set it from Discord with **/team set**, or edit + download below. "
+                "The colour drives each team's accent on player cards.")
+
+    tmeta = _load_team_meta()
+    sheet_teams = {str(t) for t in (set(t_stats['Team Name'].dropna()) | set(p_stats['Team'].dropna()))
+                   if str(t) not in ('', '0')}
+    all_teams = sorted(sheet_teams | set(tmeta.keys()))
+
+    rec = {r['Team Name']: (int(r['Wins']), int(r['GP'] - r['Wins'])) for _, r in t_stats.iterrows()}
+    roster_ct = p_stats.groupby('Team')['Player/Team'].nunique().to_dict()
+
+    st.markdown(f"#### {len(all_teams)} teams")
+    if not all_teams:
+        st.info("No teams found yet.")
+    else:
+        grid = st.columns(3)
+        for i, tm in enumerate(all_teams):
+            ent = _team_entry(tm)
+            col = team_color(tm)
+            logo = _cached_logo_uri(tm)
+            w, l = rec.get(tm, (0, 0))
+            rc = int(roster_ct.get(tm, 0))
+            _tp = p_stats[p_stats['Team'] == tm].sort_values('PIE', ascending=False)
+            top = (f"{_tp.iloc[0]['Player/Team']} ({_tp.iloc[0]['PIE']:.1f} PIE)"
+                   if not _tp.empty else "")
+            with grid[i % 3]:
+                logo_html = (f"<img src='{logo}' style='width:52px;height:52px;object-fit:contain;"
+                             f"border-radius:8px;background:#111;'>" if logo else
+                             "<div style='width:52px;height:52px;border-radius:8px;background:#111;"
+                             "display:flex;align-items:center;justify-content:center;color:#555;'>\u2014</div>")
+                html = (
+                    f"<div style='background:#161b22;border-radius:10px;border-left:6px solid {col};"
+                    f"padding:14px;margin-bottom:12px;'>"
+                    f"<div style='display:flex;align-items:center;gap:12px;'>{logo_html}"
+                    f"<div><div style='color:#fff;font-weight:900;font-size:17px;'>{team_full(tm)}</div>"
+                    f"<div style='color:#888;font-size:12px;'>{ent.get('division', '') or tm}</div></div></div>"
+                    f"<div style='display:flex;justify-content:space-between;margin-top:10px;color:#ccc;"
+                    f"font-size:13px;'><span>Record <b style='color:#fff;'>{w}-{l}</b></span>"
+                    f"<span>Roster <b style='color:#fff;'>{rc}</b></span></div>")
+                if top:
+                    html += f"<div style='color:{col};font-size:12px;margin-top:6px;'>Top: {top}</div>"
+                html += "</div>"
+                st.markdown(html, unsafe_allow_html=True)
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("### \u270f\ufe0f Edit team branding")
+    st.caption("Edit here then **Download teams.json** and drop it in the repo root \u2014 or use "
+               "**/team set** in Discord (recommended; it persists automatically).")
+    rows = []
+    for tm in all_teams:
+        e = _team_entry(tm)
+        rows.append({"Team": tm, "Full Name": e.get("full", ""), "Color": e.get("color", ""),
+                     "Division": e.get("division", ""), "Abbr": e.get("abbr", "")})
+    edited = st.data_editor(pd.DataFrame(rows, columns=["Team", "Full Name", "Color", "Division", "Abbr"]),
+                            use_container_width=True, hide_index=True, num_rows="dynamic",
+                            key="teams_editor")
+    out = {}
+    for _, r in edited.iterrows():
+        tm = str(r.get("Team", "") or "").strip()
+        if not tm:
+            continue
+        d = {}
+        for s_col, d_key in [("Full Name", "full"), ("Color", "color"),
+                             ("Division", "division"), ("Abbr", "abbr")]:
+            v = str(r.get(s_col, "") or "").strip()
+            if v:
+                d[d_key] = v
+        out[tm] = d
+    st.download_button("\u2b07\ufe0f Download teams.json", json.dumps(out, indent=2).encode("utf-8"),
+                       file_name="teams.json", mime="application/json", use_container_width=True)
+
+
+# ------------------------------------------------------------- CARD MARKET ---
+elif view_mode == "\U0001f4c8 Card Market":
+    st.subheader("\U0001f4c8 Card Market (preview)")
+    st.markdown("Live card values \u2014 **stat \u00d7 popularity**, capped at **$3**. Popularity = "
+                "awards + community mentions + roles. No trading yet; this is the market board.")
+    wc1, wc2 = st.columns(2)
+    w_stat = wc1.slider("Stat weight", 0.0, 1.0, 0.5, 0.05, key="mk_ws")
+    w_pop = wc2.slider("Popularity weight", 0.0, 1.0, 0.5, 0.05, key="mk_wp")
+    q = st.text_input("\U0001f50d Search player", key="mk_q")
+
+    rows = []
+    for _, r in p_stats.iterrows():
+        pl = r['Player/Team']
+        tier, col = card_rarity(pl)
+        rows.append({"Player": pl, "Team": r['Team'], "Tier": tier, "Color": col,
+                     "Stat": _career_ratings().get(pl, 0.0), "Pop": player_popularity(pl),
+                     "Price": player_price(pl, w_stat, w_pop),
+                     "Supply": RARITY_SUPPLY.get(tier, 0), "Form": player_form(pl)})
+    mk = pd.DataFrame(rows)
+    if q:
+        mk = mk[mk['Player'].str.contains(q, case=False, na=False)]
+    mk = mk.sort_values("Price", ascending=False)
+
+    html = ("<table class='sleek-table'><tr><th>Player</th><th>Team</th><th>Tier</th>"
+            "<th>Stat</th><th>Pop</th><th>Price</th><th>Print Run</th><th>Trend</th></tr>")
+    for _, r in mk.iterrows():
+        arrow = "\u25b2" if r['Form'] > 0 else "\u25bc" if r['Form'] < 0 else "\u2014"
+        acol = GREEN if r['Form'] > 0 else RED if r['Form'] < 0 else "#888"
+        supply = "\u221e" if r['Supply'] == 0 else str(r['Supply'])
+        html += (f"<tr><td class='player-name'>{team_logo_html(r['Team'], px=16)}{r['Player']}</td>"
+                 f"<td>{r['Team']}</td>"
+                 f"<td><span style='background:{r['Color']};color:#000;font-weight:800;font-size:11px;"
+                 f"padding:2px 8px;border-radius:8px;'>{r['Tier']}</span></td>"
+                 f"<td>{r['Stat'] * 100:.0f}</td><td>{r['Pop'] * 100:.0f}</td>"
+                 f"<td style='color:#d4af37;font-weight:900;'>${r['Price']:.2f}</td>"
+                 f"<td>{supply}</td><td style='color:{acol};font-weight:bold;'>{arrow}</td></tr>")
+    st.markdown(html + "</table>", unsafe_allow_html=True)
+    st.caption("Stat = career impact percentile. Pop = awards + mentions + roles (0-100). "
+               "Print run = how many of that rarity exist. Trend = recent form.")
+    dl(mk[['Player', 'Team', 'Tier', 'Stat', 'Pop', 'Price', 'Supply', 'Form']],
+       "\u2b07\ufe0f Market CSV", "card_market.csv", "dl_market")
 
 
 # -------------------------------------------------------- AWARDS & REWARDS ---
