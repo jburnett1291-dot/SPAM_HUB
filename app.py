@@ -144,6 +144,25 @@ def load_data():
     try:
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
+
+        # --- merge SPAM history (Seasons 1-6) if the CSV is in the repo ---
+        try:
+            _root = os.path.dirname(os.path.abspath(__file__))
+        except NameError:
+            _root = os.getcwd()
+        for _spam_name in ("SPAM_Raw_Data_v2.csv", "spam_history.csv"):
+            _sp_path = os.path.join(_root, _spam_name)
+            if os.path.exists(_sp_path):
+                try:
+                    _sp = pd.read_csv(_sp_path)
+                    _sp.columns = _sp.columns.str.strip()
+                    # namespace SPAM seasons -> 101..106 so they never collide with QCL 1..6
+                    _sp["Season"] = pd.to_numeric(_sp.get("Season"), errors="coerce") + 100
+                    _sp = _sp[_sp["Season"].notna()]
+                    df = pd.concat([df, _sp], ignore_index=True)
+                except Exception:
+                    pass
+                break
         health = {}
         df = df[df['Player/Team'] != 'Player/Team']
         df = df[df['Team Name'].notna()
@@ -194,6 +213,7 @@ def load_data():
         df = df[df['Game_ID'].notna() & (df['Season'] > 0)]
         health['Rows dropped (no Game_ID/Season)'] = pre - len(df)
         df['GKey'] = df['Season'].astype(int).astype(str) + '-' + df['Game_ID'].astype(int).astype(str)
+        df['Era'] = np.where(df['Season'] >= 100, 'SPAM', 'QCL')
 
         # --- DEDUPE double-entered rows (keep the fuller stat line) ---
         pre = len(df)
@@ -1037,8 +1057,18 @@ VIEWS = [
 view_mode = st.sidebar.radio("Navigation", VIEWS)
 st.sidebar.divider()
 
-scope_opts = [f"Season {s}" for s in seasons] + ["Career Stats"]
-selected_scope = st.sidebar.selectbox("Data Scope", scope_opts, index=0)
+def _season_label(s):
+    return f"SPAM S{s - 100}" if s >= 100 else f"S{s}"
+
+_qcl_seasons = sorted([s for s in seasons if s < 100], reverse=True)
+_spam_seasons = sorted([s for s in seasons if s >= 100], reverse=True)
+_ordered_seasons = _qcl_seasons + _spam_seasons
+_season_labels = [_season_label(s) for s in _ordered_seasons]
+_career_opts = ["Career (All-Time)"]
+if _qcl_seasons and _spam_seasons:
+    _career_opts += ["Career (QCL)", "Career (SPAM)"]
+scope_opts = _season_labels + _career_opts
+scope_choice = st.sidebar.selectbox("Data Scope", scope_opts, index=0)
 
 game_type_opts = ["All Games", "Regular Season", "Playoffs", "Tournament"]
 game_type = st.sidebar.selectbox("Game Type", game_type_opts, index=1)  # default: Regular Season (no playoffs)
@@ -1063,13 +1093,29 @@ if st.session_state.watchlist:
                 toggle_watch(w)
                 _rerun()
 
-target_season = seasons[0] if selected_scope == "Career Stats" else int(selected_scope.replace("Season ", ""))
-df_active = full_df if selected_scope == "Career Stats" else full_df[full_df['Season'] == target_season]
+if scope_choice == "Career (All-Time)":
+    df_active = full_df.copy()
+    selected_scope = "Career Stats"
+    target_season = _qcl_seasons[0] if _qcl_seasons else _ordered_seasons[0]
+    banner_text = "CAREER — ALL-TIME"
+elif scope_choice == "Career (QCL)":
+    df_active = full_df[full_df['Era'] == 'QCL'].copy()
+    selected_scope = "Career Stats"
+    target_season = _qcl_seasons[0] if _qcl_seasons else _ordered_seasons[0]
+    banner_text = "CAREER — QCL"
+elif scope_choice == "Career (SPAM)":
+    df_active = full_df[full_df['Era'] == 'SPAM'].copy()
+    selected_scope = "Career Stats"
+    target_season = _spam_seasons[0] if _spam_seasons else _ordered_seasons[0]
+    banner_text = "CAREER — SPAM"
+else:
+    target_season = _ordered_seasons[_season_labels.index(scope_choice)]
+    df_active = full_df[full_df['Season'] == target_season].copy()
+    selected_scope = "Season"   # sentinel: anything != "Career Stats"
+    banner_text = scope_choice
+
 if game_type != "All Games":
     df_active = df_active[df_active['Game_Type'] == game_type]
-
-banner_text = "CAREER TOTALS" if selected_scope == "Career Stats" else f"SEASON {target_season}"
-if game_type != "All Games":
     banner_text += f" • {game_type.upper()}"
 
 st.markdown(f'<div class="header-banner">🏀 QCL LEAGUE HUB — {banner_text}</div>', unsafe_allow_html=True)
