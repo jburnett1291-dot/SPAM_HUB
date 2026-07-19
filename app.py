@@ -479,12 +479,16 @@ def generate_2k_player_card(player_name, stats, rank=""):
         _front = (f'<img src="{_art}" style="max-width:100%; max-height:340px; '
                   f'object-fit:contain; border-radius:8px;">')
     else:
+        _hs = find_player_headshot_uri(player_name)
+        _face_img = (f'<img src="{_hs}" style="width:110px; height:110px; border-radius:50%; '
+                     f'object-fit:cover; border:2px solid #d4af37; margin-bottom:10px;">' if _hs else
+                     '<img src="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png" '
+                     'style="width: 90px; border-radius: 50%; border: 2px solid #d4af37; margin-bottom: 10px;">')
         _front = (
-            '<img src="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png" '
-            'style="width: 90px; border-radius: 50%; border: 2px solid #d4af37; margin-bottom: 10px;">'
-            f'<h3 style="margin: 0; color: white; font-size: 18px;">{player_name}</h3>'
-            f'<h2 style="color: #d4af37; margin-top: 5px; margin-bottom: 5px;">{g("PIE"):.1f} PIE</h2>'
-            f'{clubs_html}')
+            _face_img
+            + f'<h3 style="margin: 0; color: white; font-size: 18px;">{player_name}</h3>'
+            + f'<h2 style="color: #d4af37; margin-top: 5px; margin-bottom: 5px;">{g("PIE"):.1f} PIE</h2>'
+            + f'{clubs_html}')
 
     return f'''<div class="flip-card" style="height: 380px;">
 {rank_badge}
@@ -632,6 +636,23 @@ def find_team_logo_uri(team):
     return ""
 
 
+HEADSHOTS_DIR = os.path.join(_ASSET_BASE, "headshots")
+
+
+def find_player_headshot_uri(player):
+    """A player's onboarding photo (headshots/<name>.png), or ''."""
+    want = _asset_slug(player)
+    if not want:
+        return ""
+    try:
+        for f in os.listdir(HEADSHOTS_DIR):
+            if f.lower().endswith(_ASSET_EXT) and _asset_slug(os.path.splitext(f)[0]) == want:
+                return _data_uri(os.path.join(HEADSHOTS_DIR, f))
+    except Exception:
+        pass
+    return ""
+
+
 def player_season_lines(player):
     """Career + per-season average stat lines for a player, pulled from full_df."""
     d = full_df[(full_df['Type'].astype(str).str.lower() == 'player')
@@ -677,6 +698,7 @@ _ROT_TPL = r"""
                   box-shadow:0 6px 20px rgba(0,0,0,.7); }
   #rc .face.gen { flex-direction:column; background:linear-gradient(145deg,#1c2128,#0a0a0a); }
   #rc .face.gen .lg { width:70px; height:70px; object-fit:contain; margin-bottom:10px; border-radius:8px; background:#111; }
+  #rc .face.gen .hs { width:110px; height:110px; border-radius:50%; object-fit:cover; border:2px solid __ACC__; margin-bottom:10px; }
   #rc .face.gen .nm { color:#fff; font-size:26px; font-weight:900; text-align:center; padding:0 10px; }
   #rc .face.gen .pie { color:__ACC__; font-size:20px; font-weight:800; margin-top:6px; }
   #rc .panel { flex:1; display:flex; flex-direction:column; justify-content:center; padding:20px 24px;
@@ -706,7 +728,8 @@ _ROT_TPL = r"""
   } else {
     face.classList.add('gen');
     const s0 = D.seasons[0] || {pie:0};
-    face.innerHTML = (D.logo ? '<img class="lg" src="' + D.logo + '">' : '')
+    face.innerHTML = (D.headshot ? '<img class="hs" src="' + D.headshot + '">' : '')
+      + (D.logo ? '<img class="lg" src="' + D.logo + '">' : '')
       + '<div class="nm">' + D.player + '</div>'
       + '<div class="pie">' + (s0.pie).toFixed(1) + ' PIE</div>';
   }
@@ -746,6 +769,7 @@ def render_rotating_card(player, key="rc", team=None, height=440, speed_ms=4000)
     data = {"player": player,
             "logo": find_team_logo_uri(team) if team else "",
             "imgs": find_player_card_uris(player),
+            "headshot": find_player_headshot_uri(player),
             "seasons": seasons,
             "accolades": player_accolades(player),
             "rarity": {"name": _rn, "color": _rc}}
