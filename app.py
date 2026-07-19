@@ -943,6 +943,21 @@ def card_rarity(player):
 
 
 RARITY_SUPPLY = {"Legendary": 3, "Epic": 10, "Rare": 25, "Uncommon": 60, "Common": 0}  # 0 = unlimited
+RARITY_COLOR_BY_NAME = {name: color for _thr, name, color in RARITY_TIERS}
+
+
+@st.cache_data(ttl=45)
+def _load_market():
+    """Official serialized-card counts published by the bot (fantasy_market.json)."""
+    f = os.path.join(_ASSET_BASE, "fantasy_market.json")
+    if os.path.exists(f):
+        try:
+            with open(f, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+            return d.get("cards", {}) if isinstance(d, dict) else {}
+        except Exception:
+            return {}
+    return {}
 
 
 @st.cache_data(ttl=60)
@@ -2402,36 +2417,46 @@ elif view_mode == "\U0001f4c8 Card Market":
     w_pop = wc2.slider("Popularity weight", 0.0, 1.0, 0.5, 0.05, key="mk_wp")
     q = st.text_input("\U0001f50d Search player", key="mk_q")
 
+    market = _load_market()
     rows = []
     for _, r in p_stats.iterrows():
         pl = r['Player/Team']
         tier, col = card_rarity(pl)
+        m = market.get(pl)
+        if m:  # bot is the source of truth for serialized cards
+            tier = m.get("tier", tier)
+            col = RARITY_COLOR_BY_NAME.get(tier, col)
+            run = int(m.get("run", 0))
+            minted = int(m.get("minted", 0))
+            stock = f"{max(run - minted, 0)}/{run}"
+        else:
+            run = RARITY_SUPPLY.get(tier, 0)
+            stock = "∞" if run == 0 else str(run)
         rows.append({"Player": pl, "Team": r['Team'], "Tier": tier, "Color": col,
                      "Stat": _career_ratings().get(pl, 0.0), "Pop": player_popularity(pl),
                      "Price": player_price(pl, w_stat, w_pop),
-                     "Supply": RARITY_SUPPLY.get(tier, 0), "Form": player_form(pl)})
+                     "Stock": stock, "Form": player_form(pl)})
     mk = pd.DataFrame(rows)
     if q:
         mk = mk[mk['Player'].str.contains(q, case=False, na=False)]
     mk = mk.sort_values("Price", ascending=False)
 
     html = ("<table class='sleek-table'><tr><th>Player</th><th>Team</th><th>Tier</th>"
-            "<th>Stat</th><th>Pop</th><th>Price</th><th>Print Run</th><th>Trend</th></tr>")
+            "<th>Stat</th><th>Pop</th><th>Price</th><th>Left</th><th>Trend</th></tr>")
     for _, r in mk.iterrows():
         arrow = "\u25b2" if r['Form'] > 0 else "\u25bc" if r['Form'] < 0 else "\u2014"
         acol = GREEN if r['Form'] > 0 else RED if r['Form'] < 0 else "#888"
-        supply = "\u221e" if r['Supply'] == 0 else str(r['Supply'])
         html += (f"<tr><td class='player-name'>{team_logo_html(r['Team'], px=16)}{r['Player']}</td>"
                  f"<td>{r['Team']}</td>"
                  f"<td><span style='background:{r['Color']};color:#000;font-weight:800;font-size:11px;"
                  f"padding:2px 8px;border-radius:8px;'>{r['Tier']}</span></td>"
                  f"<td>{r['Stat'] * 100:.0f}</td><td>{r['Pop'] * 100:.0f}</td>"
                  f"<td style='color:#d4af37;font-weight:900;'>${r['Price']:.2f}</td>"
-                 f"<td>{supply}</td><td style='color:{acol};font-weight:bold;'>{arrow}</td></tr>")
+                 f"<td>{r['Stock']}</td><td style='color:{acol};font-weight:bold;'>{arrow}</td></tr>")
     st.markdown(html + "</table>", unsafe_allow_html=True)
     st.caption("Stat = career impact percentile. Pop = awards + mentions + roles (0-100). "
-               "Print run = how many of that rarity exist. Trend = recent form.")
-    dl(mk[['Player', 'Team', 'Tier', 'Stat', 'Pop', 'Price', 'Supply', 'Form']],
+               "Left = serials still available (matches Discord). Trend = recent form.")
+    dl(mk[['Player', 'Team', 'Tier', 'Stat', 'Pop', 'Price', 'Stock', 'Form']],
        "\u2b07\ufe0f Market CSV", "card_market.csv", "dl_market")
 
 
