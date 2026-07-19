@@ -1013,6 +1013,74 @@ def player_form(player):
     return 0
 
 
+# ---- 3v3 FANTASY ENGINE --------------------------------------------------
+TIER_COST = {"Legendary": 5, "Epic": 4, "Rare": 3, "Uncommon": 2, "Common": 1}
+FANTASY_CAP = 9
+
+
+def card_cost(tier):
+    return TIER_COST.get(tier, 2)
+
+
+def fantasy_points(s, role):
+    """Positional fantasy points from a player's per-game averages + role."""
+    def g(k):
+        return fnum(s.get(k))
+    pts, tpm, ast = g('PTS'), g('3PM'), g('AST')
+    reb, stl, blk, to = g('REB'), g('STL'), g('BLK'), g('TO')
+    fga, fgm = g('FGA'), g('FGM')
+    miss = max(fga - fgm, 0)
+    usg, ts = g('USG'), g('TS%')
+    role = (role or '').lower()
+    three_bonus = tpm * 2.0
+    neg = to * (-1.5) + miss * (-0.5)
+
+    if role.startswith('g'):        # Guard
+        scoring = pts * (0.75 if usg > 30 else 1.0) + three_bonus     # usage tax
+        fp = scoring + ast * 1.5 + reb * 2.0 + (stl + blk) * 4.0 + neg  # board buff, 2.0x def
+    elif role.startswith('f'):      # Forward
+        scoring = pts * 1.5 + three_bonus                             # premium touches
+        fp = scoring + ast * 1.5 + reb * 1.0 + (stl + blk) * 5.0 + neg  # 2.5x defense
+        if ts >= 60:
+            fp += 3.0                                                 # efficiency lockout
+    else:                           # Big
+        scoring = pts * 1.5 + three_bonus
+        fp = scoring + ast * 1.5 + reb * 0.75 + stl * 3.0 + blk * 1.5 + neg  # flipped weights
+        if usg < 15 and ts > 65:
+            fp += 5.0                                                 # ghost scorer
+    return round(fp, 1)
+
+
+ARCHETYPE_SIG = {
+    "Microwave Chucker": "TPM", "Glass Cleaner": "REB", "Pocket Picker": "STL",
+    "Rim Protector": "BLK", "Corner Specialist": "TP%", "Dime Dropper": "AST",
+    "Combo Guard": "PTS", "Lockdown Wing": "DEF", "Iron Man Grind": "GP",
+}
+
+
+@st.cache_data(ttl=60)
+def _archetype_map():
+    d = full_df[full_df['Type'].astype(str).str.lower() == 'player']
+    if d.empty:
+        return {}
+    g = d.groupby('Player/Team').agg(
+        PTS=('PTS', 'mean'), REB=('REB', 'mean'), AST=('AST', 'mean'),
+        STL=('STL', 'mean'), BLK=('BLK', 'mean'), TPM=('3PM', 'mean'),
+        TPA=('3PA', 'mean'), GP=('GKey', 'nunique')).reset_index()
+    g['DEF'] = g['STL'] + g['BLK']
+    g['TP%'] = np.where(g['TPA'] >= 1.0, g['TPM'] / g['TPA'].replace(0, 1) * 100, 0)  # gate low volume
+    ranks = {arch: g[col].rank(pct=True) for arch, col in ARCHETYPE_SIG.items()}
+    out = {}
+    for i in range(len(g)):
+        best = max(ARCHETYPE_SIG.keys(), key=lambda a2: ranks[a2].iloc[i])
+        out[g.iloc[i]['Player/Team']] = best
+    return out
+
+
+def player_archetype(player):
+    return _archetype_map().get(player, "Combo Guard")
+
+
 # =============================================================================
 # 6. SESSION STATE
 # =============================================================================
@@ -1052,6 +1120,7 @@ VIEWS = [
     "🔬 Advanced Analytics Lab",
     "🏦 The Vault",
     "📈 Card Market",
+    "🎮 3v3 Fantasy",
     "📖 Record Book & Milestones",
 ]
 view_mode = st.sidebar.radio("Navigation", VIEWS)
@@ -2364,6 +2433,123 @@ elif view_mode == "\U0001f4c8 Card Market":
                "Print run = how many of that rarity exist. Trend = recent form.")
     dl(mk[['Player', 'Team', 'Tier', 'Stat', 'Pop', 'Price', 'Supply', 'Form']],
        "\u2b07\ufe0f Market CSV", "card_market.csv", "dl_market")
+
+
+# --------------------------------------------------------------- 3v3 FANTASY -
+elif view_mode == "\U0001f3ae 3v3 Fantasy":
+    st.subheader("\U0001f3ae 3v3 Fantasy \u2014 Lineup Lab")
+    st.markdown("Build a 3-man unit: one **Guard**, one **Forward**, one **Big**. Positional "
+                f"fantasy scoring, a **{FANTASY_CAP}-point** tier cap, and **synergy combos** that "
+                "reward budget archetype pairings.")
+    st.caption("Tier cost \u2014 Legendary 5 \u00b7 Epic 4 \u00b7 Rare 3 \u00b7 Uncommon 2 \u00b7 Common 1.")
+
+    names = sorted(p_stats['Player/Team'].tolist())
+    sc1, sc2, sc3 = st.columns(3)
+    picks = [("Guard", sc1.selectbox("\U0001f6e1\ufe0f Guard", ["\u2014"] + names, key="f3_g")),
+             ("Forward", sc2.selectbox("\u2694\ufe0f Forward", ["\u2014"] + names, key="f3_f")),
+             ("Big", sc3.selectbox("\U0001f5fc Big", ["\u2014"] + names, key="f3_b"))]
+
+    total_cost, total_fp, filled = 0, 0.0, []
+    cards = st.columns(3)
+    for (role, nm), col in zip(picks, cards):
+        with col:
+            if not nm or nm == "\u2014":
+                st.markdown(f"<div style='border:2px dashed #444;border-radius:12px;padding:30px;"
+                            f"text-align:center;color:#666;'>Empty {role}</div>", unsafe_allow_html=True)
+                continue
+            r = p_stats[p_stats['Player/Team'] == nm].iloc[0]
+            tier, tcol = card_rarity(nm)
+            cost = card_cost(tier)
+            fp = fantasy_points(r, role)
+            arche = player_archetype(nm)
+            total_cost += cost
+            total_fp += fp
+            filled.append({"role": role, "name": nm, "arch": arche, "tier": tier, "fp": fp})
+            logo = _cached_logo_uri(r['Team'])
+            logo_html = (f"<img src='{logo}' style='width:20px;height:20px;object-fit:contain;"
+                         f"vertical-align:middle;margin-right:5px;border-radius:3px;'>" if logo else "")
+            st.markdown(
+                f"<div style='background:#161b22;border-radius:12px;border:2px solid {tcol};padding:14px;'>"
+                f"<div style='color:#888;font-size:11px;letter-spacing:1px;'>{role.upper()}</div>"
+                f"<div style='color:#fff;font-weight:900;font-size:18px;margin:2px 0;'>{nm}</div>"
+                f"<div style='color:#bbb;font-size:12px;'>{logo_html}{r['Team']}</div>"
+                f"<div style='color:#00bfff;font-size:12px;margin-top:4px;'>\U0001f9ec {arche}</div>"
+                f"<div style='display:flex;justify-content:space-between;margin-top:10px;'>"
+                f"<span style='background:{tcol};color:#000;font-weight:800;font-size:11px;"
+                f"padding:2px 8px;border-radius:8px;'>{tier} \u00b7 {cost}pt</span>"
+                f"<span style='color:{GOLD};font-weight:900;'>{fp:.1f} FP</span></div></div>",
+                unsafe_allow_html=True)
+
+    # ---- synergy combos (auto from archetypes) ----
+    combos, mult = [], 1.0
+    arches = [x["arch"] for x in filled]
+    if arches.count("Microwave Chucker") >= 2:
+        mult *= 1.10
+        combos.append(("Microwave Combo", "Two hot-hand shooters \u2014 +10% team FP"))
+    _hustle = {"Pocket Picker", "Rim Protector", "Lockdown Wing", "Glass Cleaner"}
+    if sum(1 for a in arches if a in _hustle) >= 2:
+        mult *= 1.06
+        combos.append(("Specialist Synergy", "Dual hustle coverage \u2014 +6% team FP"))
+    if arches.count("Iron Man Grind") >= 2:
+        mult *= 1.05
+        combos.append(("Iron Man Duo", "Endurance core \u2014 +5% team FP"))
+    _budget = [x for x in filled if x["tier"] in ("Common", "Uncommon")]
+    for i in range(len(_budget)):
+        for j in range(i + 1, len(_budget)):
+            if _budget[i]["arch"] != _budget[j]["arch"]:
+                mult *= 1.04
+                combos.append((f"{_budget[i]['arch']} \u00d7 {_budget[j]['arch']}",
+                               "Budget synergy \u2014 +4%"))
+    mult = min(mult, 1.30)
+    fp_final = total_fp * mult
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    m1, m2, m3, m4 = st.columns(4)
+    cap_col = RED if total_cost > FANTASY_CAP else GREEN
+    m1.markdown(f"<div class='metric-box'><div class='metric-title'>Salary</div>"
+                f"<div class='metric-value' style='color:{cap_col};'>{total_cost} / {FANTASY_CAP}</div></div>",
+                unsafe_allow_html=True)
+    m2.markdown(f"<div class='metric-box'><div class='metric-title'>Base FP</div>"
+                f"<div class='metric-value'>{total_fp:.1f}</div></div>", unsafe_allow_html=True)
+    m3.markdown(f"<div class='metric-box'><div class='metric-title'>Synergy</div>"
+                f"<div class='metric-value' style='color:{GOLD};'>\u00d7{mult:.2f}</div></div>",
+                unsafe_allow_html=True)
+    m4.markdown(f"<div class='metric-box'><div class='metric-title'>Total FP</div>"
+                f"<div class='metric-value' style='color:{GOLD};'>{fp_final:.1f}</div></div>",
+                unsafe_allow_html=True)
+    if total_cost > FANTASY_CAP:
+        st.error(f"Over the {FANTASY_CAP}-point cap by {total_cost - FANTASY_CAP}. Swap in a cheaper tier.")
+
+    if combos:
+        st.markdown("#### \u26a1 Active Synergies")
+        for nm, desc in combos:
+            st.markdown(f"<div style='background:#1a2b1a;border-left:4px solid {GREEN};padding:8px 12px;"
+                        f"border-radius:6px;margin-bottom:6px;'><b style='color:#fff;'>{nm}</b> "
+                        f"<span style='color:#aaa;'>\u2014 {desc}</span></div>", unsafe_allow_html=True)
+    elif len(filled) == 3:
+        st.caption("No synergies active \u2014 pair two Common/Uncommon cards with different archetypes to unlock combos.")
+
+    # ---- best fantasy assets by role ----
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("### \U0001f3c6 Best Fantasy Assets by Role")
+    depth = st.slider("Show top N", 3, 15, 8, key="f3_depth")
+    lc = st.columns(3)
+    for role, col in zip(["Guard", "Forward", "Big"], lc):
+        with col:
+            board = p_stats.copy()
+            board['FP'] = board.apply(lambda rr: fantasy_points(rr, role), axis=1)
+            board['Cost'] = board['Player/Team'].apply(lambda n: card_cost(card_rarity(n)[0]))
+            board['Arch'] = board['Player/Team'].apply(player_archetype)
+            board = board.sort_values('FP', ascending=False).head(depth)
+            html = (f"<div style='background:#1c2128;padding:12px;border-radius:8px;border-left:4px solid {GOLD};'>"
+                    f"<h4 style='color:#fff;margin-top:0;text-transform:uppercase;'>{role}</h4>")
+            for i, (_, rr) in enumerate(board.iterrows()):
+                html += (f"<div style='font-size:13px;margin-bottom:6px;'>"
+                         f"<b style='color:#ffd700;'>{i+1}.</b> <span style='color:#ddd;'>{rr['Player/Team']}</span> "
+                         f"<span style='color:#666;'>({int(rr['Cost'])}pt)</span>"
+                         f"<span style='color:{GOLD};font-weight:bold;float:right;'>{rr['FP']:.1f}</span>"
+                         f"<br><span style='color:#00bfff;font-size:11px;'>\U0001f9ec {rr['Arch']}</span></div>")
+            st.markdown(html + "</div>", unsafe_allow_html=True)
 
 
 # -------------------------------------------------------- AWARDS & REWARDS ---
