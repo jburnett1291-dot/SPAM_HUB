@@ -1004,7 +1004,7 @@ scope_opts = [f"Season {s}" for s in seasons] + ["Career Stats"]
 selected_scope = st.sidebar.selectbox("Data Scope", scope_opts, index=0)
 
 game_type_opts = ["All Games", "Regular Season", "Playoffs", "Tournament"]
-game_type = st.sidebar.selectbox("Game Type", game_type_opts, index=0)
+game_type = st.sidebar.selectbox("Game Type", game_type_opts, index=1)  # default: Regular Season (no playoffs)
 
 min_gp_filter = st.sidebar.slider("Min Games Played (tables)", 0, 20, 1)
 
