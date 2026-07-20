@@ -80,5 +80,12 @@
     "team": "Krashout",
     "season": null,
     "stats": "19.9 PPG \u2022 13.7 RPG \u2022 5.2 APG \u2022 1.1 STK \u2022 1.8 3PM"
+  },
+  "QCL_I_BMOTY_II_WHEEL_II_s1": {
+    "award": "QCL I BMOTY",
+    "player": "II WHEEL II",
+    "team": "Krashout",
+    "season": 1,
+    "stats": "19.9 PPG \u2022 13.7 RPG \u2022 5.2 APG \u2022 1.1 STK \u2022 1.8 3PM"
   }
 }
