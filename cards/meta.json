@@ -59,5 +59,12 @@
     "team": "No Morals",
     "season": null,
     "stats": "11.3 PPG \u2022 0.7 RPG \u2022 0.7 APG \u2022 2.0 STK \u2022 2.5 3PM"
+  },
+  "QCL_Season_1_BMOTY_Wheel_Ii_s1": {
+    "award": "QCL Season 1 BMOTY",
+    "player": "Wheel Ii",
+    "team": "Krashout",
+    "season": 1,
+    "stats": "18.3 PPG \u2022 14.1 RPG \u2022 5.3 APG \u2022 1.2 STK \u2022 1.5 3PM"
   }
 }
