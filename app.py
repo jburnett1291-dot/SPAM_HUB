@@ -1135,7 +1135,7 @@ VIEWS = [
     "🔬 Advanced Analytics Lab",
     "🏦 The Vault",
     "📈 Card Market",
-    "🎮 3v3 Fantasy",
+    "🎴 Qwiks TCG",
     "📖 Record Book & Milestones",
 ]
 view_mode = st.sidebar.radio("Navigation", VIEWS)
@@ -2461,8 +2461,8 @@ elif view_mode == "\U0001f4c8 Card Market":
 
 
 # --------------------------------------------------------------- 3v3 FANTASY -
-elif view_mode == "\U0001f3ae 3v3 Fantasy":
-    st.subheader("\U0001f3ae 3v3 Fantasy \u2014 Lineup Lab")
+elif view_mode == "\U0001f3b4 Qwiks TCG":
+    st.subheader("\U0001f3b4 Qwiks TCG \u2014 Lineup Lab")
     st.markdown("Build a 3-man unit: one **Guard**, one **Forward**, one **Big**. Positional "
                 f"fantasy scoring, a **{FANTASY_CAP}-point** tier cap, and **synergy combos** that "
                 "reward budget archetype pairings.")
