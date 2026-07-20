@@ -1,5 +1,5 @@
 {
-  "updated": 1784516054,
+  "updated": 1784516353,
   "cards": {
     "At Some Point": {
       "tier": "Rare",
@@ -58,7 +58,7 @@
     },
     "IIIKari": {
       "tier": "Epic",
-      "minted": 0,
+      "minted": 1,
       "run": 10
     },
     "IIIManu": {
@@ -203,7 +203,7 @@
     },
     "iBoola": {
       "tier": "Epic",
-      "minted": 0,
+      "minted": 1,
       "run": 10
     },
     "lIHurz": {
