@@ -94,5 +94,12 @@
     "team": "",
     "season": null,
     "stats": ""
+  },
+  "K_O_B_E_2_K_s1": {
+    "award": "",
+    "player": "K-O-B-E-2-K-\ud83e\uddca",
+    "team": "Huskies",
+    "season": 1,
+    "stats": "11.5 PPG \u2022 0.8 RPG \u2022 0.9 APG \u2022 1.6 STK \u2022 2.7 3PM"
   }
 }
