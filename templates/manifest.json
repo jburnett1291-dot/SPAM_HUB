@@ -2,7 +2,7 @@
     "name": "Blue",
     "tier": "core",
     "rarity": "common",
-    "file": "blue.png",
+    "file": "Blue.png",
     "canvas": [1080, 1920],
     "stat_style": "float",
     
