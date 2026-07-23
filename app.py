@@ -112,7 +112,7 @@ def logo_uri(alpha=1.0, max_px=900):
         return "data:image/png;base64," + base64.b64encode(raw).decode()
 
 
-def render_brand(splash=False, watermark=True, wm_opacity=0.06, splash_ms=1500):
+def render_brand(splash=False, watermark=False, wm_opacity=0.06, splash_ms=1500):
     """Call ONCE, right after your main CSS block in Section 2."""
 
     # ---- watermark: baked alpha, layered over the existing gradient ----
