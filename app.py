@@ -143,9 +143,12 @@ def build_market_table(p_stats, full_p_df, allleague, card_meta, popularity, mar
     return out.drop(columns=["_aw", "_men", "_rol"])
 
 
-def render_card_market(p_stats, full_p_df, _load_allleague(), _load_card_meta(),
-                   _load_popularity(), _load_market(), team_logo_html)
+def def render_card_market(p_stats, full_p_df, allleague, card_meta, popularity,
+                       market, team_logo_html=None):
     """Drop-in replacement for the Card Market view."""
+elif view_mode == "📈 Card Market":
+    render_card_market(p_stats, full_p_df, _load_allleague(), _load_card_meta(),
+                       _load_popularity(), _load_market(), team_logo_html)
     st.subheader("\U0001f4c8 Card Market")
     st.markdown("Live card values \u2014 **stat \u00d7 popularity**, capped at **$3**. "
                 "Popularity = awards + community mentions + roles.")
