@@ -1,0 +1,67 @@
+{
+ "top 10": {
+  "text": "TOP 10 ALL-TIME",
+  "class": "persistent",
+  "priority": 100
+ },
+ "top 25": {
+  "text": "TOP 25 ALL-TIME",
+  "class": "persistent",
+  "priority": 90
+ },
+ "top 50": {
+  "text": "TOP 50 ALL-TIME",
+  "class": "persistent",
+  "priority": 80
+ },
+ "top 75": {
+  "text": "TOP 75 ALL-TIME",
+  "class": "persistent",
+  "priority": 70
+ },
+ "hall of fame": {
+  "text": "HALL OF FAME",
+  "class": "persistent",
+  "priority": 110
+ },
+ "dirty 30": {
+  "text": "DIRTY 30 CLUB",
+  "class": "persistent",
+  "priority": 55
+ },
+ "champion": {
+  "text": "CHAMPION",
+  "class": "seasonal",
+  "priority": 95
+ },
+ "finals mvp": {
+  "text": "FINALS MVP",
+  "class": "seasonal",
+  "priority": 96
+ },
+ "mvp": {
+  "text": "MVP",
+  "class": "seasonal",
+  "priority": 94
+ },
+ "all-qcl": {
+  "text": "ALL-QCL",
+  "class": "seasonal",
+  "priority": 60
+ },
+ "all-defensive": {
+  "text": "ALL-DEFENSIVE",
+  "class": "seasonal",
+  "priority": 58
+ },
+ "captain": {
+  "text": "CAPTAIN",
+  "class": "persistent",
+  "priority": 40
+ },
+ "veteran": {
+  "text": "VETERAN",
+  "class": "persistent",
+  "priority": 30
+ }
+}
