@@ -1,1 +1,21 @@
-{}
+{
+ "Blue": {
+  "name": "Blue",
+  "tier": "core",
+  "rarity": "common",
+  "file": "Blue.png",
+  "canvas": [
+   896,
+   1200
+  ],
+  "stat_style": "boxed",
+  "colorways": {
+   "Default": [
+    255,
+    205,
+    70
+   ]
+  },
+  "layouts": {}
+ }
+}
