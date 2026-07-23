@@ -143,7 +143,7 @@ def build_market_table(p_stats, full_p_df, allleague, card_meta, popularity, mar
     return out.drop(columns=["_aw", "_men", "_rol"])
 
 
-def def render_card_market(p_stats, full_p_df, allleague, card_meta, popularity,
+    def render_card_market(p_stats, full_p_df, allleague, card_meta, popularity,
                        market, team_logo_html=None):
     """Drop-in replacement for the Card Market view."""
 elif view_mode == "📈 Card Market":
