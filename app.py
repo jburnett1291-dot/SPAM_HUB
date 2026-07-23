@@ -1141,6 +1141,9 @@ VIEWS = [
 view_mode = st.sidebar.radio("Navigation", VIEWS)
 st.sidebar.divider()
 
+# right after: st.sidebar.title("⚙️ Hub Controls")
+st.sidebar.image("Logo.png", width=140)
+
 def _season_label(s):
     return f"SPAM S{s - 100}" if s >= 100 else f"S{s}"
 
