@@ -1,26 +1,21 @@
-"blue": {
-    "name": "Blue",
-    "tier": "core",
-    "rarity": "common",
-    "file": "Blue.png",
-    "canvas": [1080, 1920],
-    "stat_style": "float",
-    
-    "colorways": {
-      "Default": [90, 200, 255]
-    },
-
-    "layouts": {
-      "Solo": {
-        "images": [
-          {"slot": 1, "x": 0.45, "y": 0.52, "z": "front", "scale": 0.85}
-        ],
-        "stats": [
-          {"x": 0.78, "y": 0.38, "key": "pts", "label": "PPG"},
-          {"x": 0.78, "y": 0.48, "key": "reb", "label": "RPG"},
-          {"x": 0.78, "y": 0.58, "key": "ast", "label": "APG"}
-        ],
-        "identity": {"x": 0.50, "y": 0.88, "band": false}
-      }
-    }
-  }
+{
+ "Blue": {
+  "name": "Blue",
+  "tier": "core",
+  "rarity": "common",
+  "file": "Blue.png",
+  "canvas": [
+   896,
+   1200
+  ],
+  "stat_style": "boxed",
+  "colorways": {
+   "Default": [
+    255,
+    205,
+    70
+   ]
+  },
+  "layouts": {}
+ }
+}
