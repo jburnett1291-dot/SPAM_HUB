@@ -1207,6 +1207,9 @@ if game_type != "All Games":
 
 st.markdown(f'<div class="header-banner">🏀 QCL LEAGUE HUB — {banner_text}</div>', unsafe_allow_html=True)
 
+# optional, right after the header-banner markdown
+st.image("Logo.png", width=120)
+
 if df_active.empty:
     st.warning("No games match the current scope / game-type filter.")
     st.stop()
