@@ -87,5 +87,12 @@
     "team": "Krashout",
     "season": 1,
     "stats": "19.9 PPG \u2022 13.7 RPG \u2022 5.2 APG \u2022 1.1 STK \u2022 1.8 3PM"
+  },
+  "QTCG": {
+    "award": "",
+    "player": "QTCG",
+    "team": "",
+    "season": null,
+    "stats": ""
   }
 }
