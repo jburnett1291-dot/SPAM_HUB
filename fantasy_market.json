@@ -1,5 +1,5 @@
 {
-  "updated": 1784842848,
+  "updated": 1784859047,
   "cards": {
     "At Some Point": {
       "tier": "Rare",
@@ -163,7 +163,7 @@
     },
     "ThaGap": {
       "tier": "Epic",
-      "minted": 0,
+      "minted": 1,
       "run": 10
     },
     "TheDynamicWolf": {
