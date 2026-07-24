@@ -1,245 +1,710 @@
 {
-  "updated": 1784859047,
+  "updated": 1784865815,
   "cards": {
     "At Some Point": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "AyToken": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "Big Clip Ron": {
       "tier": "Epic",
       "minted": 0,
-      "run": 10
+      "run": 10,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "BlameLocks": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "CrippledGangsta": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "Dawgiest": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "DktheDon_": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "DynastyOnTop": {
       "tier": "Epic",
       "minted": 0,
-      "run": 10
+      "run": 10,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "Emanuel-tv": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "FreeMePls": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "GK7 Yoshi": {
       "tier": "Epic",
       "minted": 0,
-      "run": 10
+      "run": 9,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "GeeLock": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "HuddyBield": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "I Andyy": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "I Kyree": {
       "tier": "Legendary",
       "minted": 0,
-      "run": 3
+      "run": 3,
+      "price": 200,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "I exum-": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "II WHEEL II": {
       "tier": "Epic",
       "minted": 0,
-      "run": 10
+      "run": 9,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "IIHopeMikaelson": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "IIHurz": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "IIIHurz": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "IIIKari": {
       "tier": "Epic",
       "minted": 1,
-      "run": 10
+      "run": 10,
+      "price": 252,
+      "heat": 1.0,
+      "trades": 0
     },
     "IIIManu": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "IIIPennieIII": {
       "tier": "Epic",
       "minted": 0,
-      "run": 10
+      "run": 10,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
     },
     "IIKyree": {
       "tier": "Epic",
       "minted": 0,
-      "run": 10
+      "run": 9,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "IILoadingII": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "IITrifecta": {
       "tier": "Epic",
       "minted": 0,
-      "run": 10
+      "run": 10,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
     },
     "IIlkari": {
       "tier": "Legendary",
       "minted": 0,
-      "run": 3
+      "run": 3,
+      "price": 200,
+      "heat": 1.0,
+      "trades": 0
     },
     "Igymo": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "IlHog": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "IlKyree": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "IlPurge-": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "IllKari": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "IllManu": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "Ilxmollyll": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "J-Kvino": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "Javalanche": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "Jujubuckss": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "JulesBeHonestt": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "Kyglo_": {
       "tier": "Epic",
       "minted": 0,
-      "run": 10
+      "run": 9,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
     },
     "LogoLarry": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "MagicIsD1": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 22,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "MagiclsD1": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "MyOllies": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "OIdman_tommy": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "OJCASSO2K": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "Oldman tommy": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "Oldman_tommy": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "Precision Kill": {
       "tier": "Legendary",
       "minted": 0,
-      "run": 3
+      "run": 3,
+      "price": 200,
+      "heat": 1.0,
+      "trades": 0
     },
     "Precisionkill": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "Pxlo Uncut": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 22,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "RhinoDiMaria": {
       "tier": "Legendary",
       "minted": 0,
-      "run": 3
+      "run": 3,
+      "price": 200,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "Sohtoxxic": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "T2E xLOUx X6": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "T2E xLOux X6": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "T2E xLOuxX6": {
       "tier": "Epic",
       "minted": 0,
-      "run": 10
+      "run": 10,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "TBucx4L": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "TayGilgeous": {
       "tier": "Legendary",
       "minted": 0,
-      "run": 3
+      "run": 3,
+      "price": 200,
+      "heat": 1.0,
+      "trades": 0
     },
     "ThaGap": {
       "tier": "Epic",
       "minted": 1,
-      "run": 10
+      "run": 10,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
     },
     "TheDynamicWolf": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 22,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "Trifecta": {
       "tier": "Epic",
       "minted": 0,
-      "run": 10
+      "run": 9,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
     },
     "WhatttHappenedd": {
       "tier": "Rare",
       "minted": 1,
-      "run": 25
+      "run": 25,
+      "price": 184,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "Wolfnossl": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "YPFRAS": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "cardinalfive": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "dawgiest": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
     },
     "dewsbkipp": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "hankgbit": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "iBoola": {
       "tier": "Epic",
       "minted": 1,
-      "run": 10
+      "run": 9,
+      "price": 252,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "jujubuckss": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "lIHurz": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "lILoadingIl": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "lIZoell": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "lIlManu": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "lgymo": {
       "tier": "Legendary",
       "minted": 0,
-      "run": 3
+      "run": 3,
+      "price": 200,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "liLurkedYouI": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "liLurkedYoul": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "llHurz": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "llKyree": {
       "tier": "Epic",
       "minted": 0,
-      "run": 10
+      "run": 10,
+      "price": 160,
+      "heat": 1.0,
+      "trades": 0
     },
     "llTrifecta": {
       "tier": "Legendary",
       "minted": 0,
-      "run": 3
+      "run": 3,
+      "price": 200,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "llZoell": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "lllHurz": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "lllKari": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "lllManu": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "lllNaloo": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "llxmollyll": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     },
     "nen": {
       "tier": "Rare",
       "minted": 0,
-      "run": 25
+      "run": 25,
+      "price": 120,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "uuh7": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 60,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "vFrontFades": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 54,
+      "price": 80,
+      "heat": 1.0,
+      "trades": 0
     }
-  }
+  },
+  "moments": {}
 }
