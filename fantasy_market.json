@@ -1,11 +1,11 @@
 {
-  "updated": 1784954433,
+  "updated": 1784954730,
   "cards": {
     "Big Clip Ron": {
       "tier": "Rare",
       "minted": 0,
       "run": 31,
-      "price": 160,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -13,7 +13,7 @@
       "tier": "Epic",
       "minted": 0,
       "run": 14,
-      "price": 80,
+      "price": 160,
       "heat": 1.0,
       "trades": 0
     },
@@ -21,7 +21,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 93,
-      "price": 120,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -29,7 +29,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 38,
-      "price": 50,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -37,7 +37,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 81,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -53,7 +53,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 48,
-      "price": 160,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -85,7 +85,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 69,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -93,7 +93,7 @@
       "tier": "Epic",
       "minted": 0,
       "run": 14,
-      "price": 80,
+      "price": 160,
       "heat": 1.0,
       "trades": 0
     },
@@ -101,7 +101,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 26,
-      "price": 200,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -117,7 +117,7 @@
       "tier": "Legendary",
       "minted": 0,
       "run": 4,
-      "price": 160,
+      "price": 200,
       "heat": 1.0,
       "trades": 0
     },
@@ -125,7 +125,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 65,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -147,9 +147,9 @@
     },
     "IIIKari": {
       "tier": "Rare",
-      "minted": 1,
+      "minted": 0,
       "run": 26,
-      "price": 252,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -165,7 +165,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 78,
-      "price": 160,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -181,7 +181,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 26,
-      "price": 160,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -189,7 +189,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 26,
-      "price": 200,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -197,7 +197,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 63,
-      "price": 120,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -205,7 +205,7 @@
       "tier": "Epic",
       "minted": 0,
       "run": 10,
-      "price": 120,
+      "price": 160,
       "heat": 1.0,
       "trades": 0
     },
@@ -213,7 +213,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 66,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -221,7 +221,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 26,
-      "price": 80,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -237,7 +237,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 69,
-      "price": 120,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -245,7 +245,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 31,
-      "price": 80,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -253,7 +253,7 @@
       "tier": "Epic",
       "minted": 0,
       "run": 15,
-      "price": 80,
+      "price": 160,
       "heat": 1.0,
       "trades": 0
     },
@@ -269,7 +269,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 78,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -277,7 +277,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 39,
-      "price": 80,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -285,7 +285,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 99,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -293,7 +293,7 @@
       "tier": "Legendary",
       "minted": 0,
       "run": 4,
-      "price": 160,
+      "price": 200,
       "heat": 1.0,
       "trades": 0
     },
@@ -309,7 +309,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 81,
-      "price": 120,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -317,7 +317,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 90,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -325,7 +325,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 38,
-      "price": 80,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -333,7 +333,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 63,
-      "price": 120,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -349,7 +349,7 @@
       "tier": "Epic",
       "minted": 0,
       "run": 14,
-      "price": 50,
+      "price": 160,
       "heat": 1.0,
       "trades": 0
     },
@@ -365,7 +365,7 @@
       "tier": "Legendary",
       "minted": 0,
       "run": 3,
-      "price": 120,
+      "price": 200,
       "heat": 1.0,
       "trades": 0
     },
@@ -373,7 +373,7 @@
       "tier": "Epic",
       "minted": 0,
       "run": 13,
-      "price": 120,
+      "price": 160,
       "heat": 1.0,
       "trades": 0
     },
@@ -381,7 +381,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 26,
-      "price": 200,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -397,7 +397,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 63,
-      "price": 120,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -405,7 +405,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 63,
-      "price": 160,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -413,7 +413,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 36,
-      "price": 80,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -421,15 +421,15 @@
       "tier": "Rare",
       "minted": 0,
       "run": 26,
-      "price": 200,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
     "ThaGap": {
       "tier": "Legendary",
-      "minted": 1,
+      "minted": 0,
       "run": 4,
-      "price": 160,
+      "price": 200,
       "heat": 1.0,
       "trades": 0
     },
@@ -437,7 +437,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 76,
-      "price": 120,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -445,7 +445,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 89,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -453,15 +453,15 @@
       "tier": "Legendary",
       "minted": 0,
       "run": 4,
-      "price": 160,
+      "price": 200,
       "heat": 1.0,
       "trades": 0
     },
     "WhatttHappenedd": {
       "tier": "Uncommon",
-      "minted": 1,
+      "minted": 0,
       "run": 63,
-      "price": 184,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -477,7 +477,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 93,
-      "price": 120,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -493,15 +493,15 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 63,
-      "price": 120,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
     "iBoola": {
       "tier": "Legendary",
-      "minted": 1,
+      "minted": 0,
       "run": 4,
-      "price": 252,
+      "price": 200,
       "heat": 1.0,
       "trades": 0
     },
@@ -517,7 +517,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 63,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -525,7 +525,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 63,
-      "price": 120,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -549,7 +549,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 29,
-      "price": 80,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -557,7 +557,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 26,
-      "price": 200,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -573,7 +573,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 81,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -589,7 +589,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 66,
-      "price": 160,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -597,7 +597,7 @@
       "tier": "Epic",
       "minted": 0,
       "run": 10,
-      "price": 200,
+      "price": 160,
       "heat": 1.0,
       "trades": 0
     },
@@ -613,7 +613,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 72,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -629,7 +629,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 28,
-      "price": 80,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -637,7 +637,7 @@
       "tier": "Epic",
       "minted": 0,
       "run": 12,
-      "price": 80,
+      "price": 160,
       "heat": 1.0,
       "trades": 0
     },
@@ -653,7 +653,7 @@
       "tier": "Rare",
       "minted": 0,
       "run": 34,
-      "price": 80,
+      "price": 120,
       "heat": 1.0,
       "trades": 0
     },
@@ -661,7 +661,7 @@
       "tier": "Epic",
       "minted": 0,
       "run": 11,
-      "price": 120,
+      "price": 160,
       "heat": 1.0,
       "trades": 0
     },
@@ -669,7 +669,7 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 93,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     },
@@ -677,7 +677,7 @@
       "tier": "Epic",
       "minted": 0,
       "run": 16,
-      "price": 80,
+      "price": 160,
       "heat": 1.0,
       "trades": 0
     },
@@ -685,7 +685,7 @@
       "tier": "Epic",
       "minted": 0,
       "run": 12,
-      "price": 80,
+      "price": 160,
       "heat": 1.0,
       "trades": 0
     },
@@ -693,275 +693,10 @@
       "tier": "Uncommon",
       "minted": 0,
       "run": 72,
-      "price": 50,
+      "price": 80,
       "heat": 1.0,
       "trades": 0
     }
   },
-  "moments": {
-    "TRIPDUB_iiipennieiii_s1_g101": {
-      "name": "Triple-Double",
-      "player": "IIIPennieIII",
-      "minted": 0,
-      "run": 10
-    },
-    "FIFTY_blamelocks_s1_g106": {
-      "name": "50-Piece",
-      "player": "BlameLocks",
-      "minted": 1,
-      "run": 5
-    },
-    "SNIPER_blamelocks_s1_g106": {
-      "name": "Sniper",
-      "player": "BlameLocks",
-      "minted": 0,
-      "run": 8
-    },
-    "TRIPDUB_dynastyontop_s1_g107": {
-      "name": "Triple-Double",
-      "player": "DynastyOnTop",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_bigclipron_s1_g108": {
-      "name": "Sniper",
-      "player": "Big Clip Ron",
-      "minted": 0,
-      "run": 8
-    },
-    "FORTY_trifecta_s1_g110": {
-      "name": "40 Bomb",
-      "player": "Trifecta",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_trifecta_s1_g110": {
-      "name": "Sniper",
-      "player": "Trifecta",
-      "minted": 0,
-      "run": 8
-    },
-    "GLASS_iiwheelii_s1_g111": {
-      "name": "Glass Eater",
-      "player": "II WHEEL II",
-      "minted": 0,
-      "run": 8
-    },
-    "TRIPDUB_dynastyontop_s1_g113": {
-      "name": "Triple-Double",
-      "player": "DynastyOnTop",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_iboola_s1_g113": {
-      "name": "Sniper",
-      "player": "iBoola",
-      "minted": 0,
-      "run": 8
-    },
-    "FORTY_kyglo_s1_g115": {
-      "name": "40 Bomb",
-      "player": "Kyglo_",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_kyglo_s1_g115": {
-      "name": "Sniper",
-      "player": "Kyglo_",
-      "minted": 0,
-      "run": 8
-    },
-    "TRIPDUB_magicisd1_s1_g115": {
-      "name": "Triple-Double",
-      "player": "MagicIsD1",
-      "minted": 0,
-      "run": 10
-    },
-    "FORTY_kyglo_s1_g118": {
-      "name": "40 Bomb",
-      "player": "Kyglo_",
-      "minted": 0,
-      "run": 10
-    },
-    "PICKPKT_ypfras_s1_g118": {
-      "name": "Pickpocket",
-      "player": "YPFRAS",
-      "minted": 0,
-      "run": 8
-    },
-    "FORTY_kyglo_s1_g117": {
-      "name": "40 Bomb",
-      "player": "Kyglo_",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_kyglo_s1_g117": {
-      "name": "Sniper",
-      "player": "Kyglo_",
-      "minted": 0,
-      "run": 8
-    },
-    "FORTY_iboola_s1_g120": {
-      "name": "40 Bomb",
-      "player": "iBoola",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_iboola_s1_g120": {
-      "name": "Sniper",
-      "player": "iBoola",
-      "minted": 0,
-      "run": 8
-    },
-    "SNIPER_thagap_s1_g123": {
-      "name": "Sniper",
-      "player": "ThaGap",
-      "minted": 0,
-      "run": 8
-    },
-    "TRIPDUB_dynastyontop_s1_g125": {
-      "name": "Triple-Double",
-      "player": "DynastyOnTop",
-      "minted": 0,
-      "run": 10
-    },
-    "FIFTY_ikyree_s1_g125": {
-      "name": "50-Piece",
-      "player": "I Kyree",
-      "minted": 0,
-      "run": 5
-    },
-    "SNIPER_ikyree_s1_g125": {
-      "name": "Sniper",
-      "player": "I Kyree",
-      "minted": 0,
-      "run": 8
-    },
-    "TRIPDUB_dynastyontop_s1_g126": {
-      "name": "Triple-Double",
-      "player": "DynastyOnTop",
-      "minted": 0,
-      "run": 10
-    },
-    "FORTY_iboola_s1_g127": {
-      "name": "40 Bomb",
-      "player": "iBoola",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_iboola_s1_g127": {
-      "name": "Sniper",
-      "player": "iBoola",
-      "minted": 0,
-      "run": 8
-    },
-    "FORTY_rhinodimaria_s1_g131": {
-      "name": "40 Bomb",
-      "player": "RhinoDiMaria",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_rhinodimaria_s1_g131": {
-      "name": "Sniper",
-      "player": "RhinoDiMaria",
-      "minted": 0,
-      "run": 8
-    },
-    "SNIPER_iiandyy_s1_g135": {
-      "name": "Sniper",
-      "player": "IIAndyy",
-      "minted": 0,
-      "run": 8
-    },
-    "FIFTY_iboola_s1_g137": {
-      "name": "50-Piece",
-      "player": "iBoola",
-      "minted": 0,
-      "run": 5
-    },
-    "SNIPER_iboola_s1_g137": {
-      "name": "Sniper",
-      "player": "iBoola",
-      "minted": 0,
-      "run": 8
-    },
-    "FORTY_gk7yoshi_s1_g139": {
-      "name": "40 Bomb",
-      "player": "GK7 Yoshi",
-      "minted": 0,
-      "run": 10
-    },
-    "FORTY_gk7yoshi_s1_g140": {
-      "name": "40 Bomb",
-      "player": "GK7 Yoshi",
-      "minted": 0,
-      "run": 10
-    },
-    "TRIPDUB_dynastyontop_s1_g148": {
-      "name": "Triple-Double",
-      "player": "DynastyOnTop",
-      "minted": 0,
-      "run": 10
-    },
-    "FORTY_iboola_s1_g153": {
-      "name": "40 Bomb",
-      "player": "iBoola",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_iboola_s1_g153": {
-      "name": "Sniper",
-      "player": "iBoola",
-      "minted": 0,
-      "run": 8
-    },
-    "FORTY_lllkari_s1_g158": {
-      "name": "40 Bomb",
-      "player": "lllKari",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_lllkari_s1_g158": {
-      "name": "Sniper",
-      "player": "lllKari",
-      "minted": 0,
-      "run": 8
-    },
-    "SNIPER_iikyree_s1_g9003": {
-      "name": "Sniper",
-      "player": "IIKyree",
-      "minted": 0,
-      "run": 8
-    },
-    "FORTY_iikyree_s1_g9004": {
-      "name": "40 Bomb",
-      "player": "IIKyree",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_iikyree_s1_g9004": {
-      "name": "Sniper",
-      "player": "IIKyree",
-      "minted": 0,
-      "run": 8
-    },
-    "FORTY_precisionkill_s1_g9008": {
-      "name": "40 Bomb",
-      "player": "Precision Kill",
-      "minted": 0,
-      "run": 10
-    },
-    "SNIPER_precisionkill_s1_g9008": {
-      "name": "Sniper",
-      "player": "Precision Kill",
-      "minted": 0,
-      "run": 8
-    },
-    "SNIPER_trifecta_s1_g9008": {
-      "name": "Sniper",
-      "player": "Trifecta",
-      "minted": 0,
-      "run": 8
-    }
-  }
+  "moments": {}
 }
