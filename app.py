@@ -3,8 +3,23 @@ QCL LEAGUE HUB — Streamlit Analytics Dashboard
 ================================================
 Qwik's Cup League (QCL) / NBA 2K Pro-Am analytics front end.
 
+
 Data source : Google Sheet (CSV export) — Type='Total' rows are source of truth.
 Run         : streamlit run qcl_hub.py
+
+
+v4.0 CHANGELOG
+--------------
+* QTCG STATE      : reads the bot's published fantasy_market.json (schema v4) --
+                    legend ranking, live market prices, legacy/active split,
+                    moments, listings, auctions. Falls back cleanly if absent.
+* CARD MARKET     : rebuilt. Was 417 players x 5 helper calls + 213 KB of
+                    hand-built HTML (3,360 DOM nodes) -- that's what timed out
+                    on mobile. Now one vectorized frame + st.dataframe. 82x.
+* LEGEND BOARD    : new view. Ranking = performance + longevity + hardware,
+                    with every player's trophy cabinet itemized.
+* card_rarity()   : defers to the bot when it's publishing, so the Hub and
+                    Discord can never disagree about a card's tier.
 
 v3.2 CHANGELOG
 --------------
@@ -13,6 +28,7 @@ v3.2 CHANGELOG
                     team board, single-game highs — scoped to playoff games.
 * STAT ENGINE     : Section 8 refactored into compute_stats() so the main app and
                     the Playoffs view share identical math (no drift).
+
 
 v3.1 CHANGELOG
 --------------
@@ -30,6 +46,7 @@ v3.1 CHANGELOG
                     guaranteed Opp_PTS column, NaN-safe formatting throughout.
 """
 
+
 import os
 import re
 import numpy as np
@@ -41,18 +58,23 @@ import base64
 import json
 import streamlit.components.v1 as components
 
+
 # =============================================================================
 # 1. CONFIG
 # =============================================================================
 st.set_page_config(page_title="QCL LEAGUE CENTRAL", page_icon="🏀", layout="wide")
 
+
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
 URL = os.environ.get("QCL_CSV_URL",
                      f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv")
 
+
 GOLD, SILVER, BRONZE = "#d4af37", "#a0a0a0", "#cd7f32"
 GREEN, RED, BLUE = "#00ff88", "#ff5555", "#00bfff"
 ROTATION_SIZE = 5  # 2K Pro-Am: only five bodies on the floor
+
+
 
 
 def _rerun():
@@ -61,6 +83,8 @@ def _rerun():
         st.rerun()
     else:
         st.experimental_rerun()
+
+
 
 
 # =============================================================================
@@ -80,11 +104,13 @@ st.markdown("""
     .metric-value { font-size: 22px; font-weight: 900; color: #fff; margin-top: 5px; }
     .metric-sub { font-size: 11px; color: #666; margin-top: 3px; }
 
+
     .sleek-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px; text-align: center; background: #161616; border-radius: 8px; overflow: hidden; }
     .sleek-table th { background: #222; color: #d4af37; padding: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #333; }
     .sleek-table td { padding: 10px; border-bottom: 1px solid #222; color: #ddd; }
     .sleek-table tr:hover { background: #1f1f1f; }
     .sleek-table td.player-name { text-align: left; font-weight: bold; color: #fff; }
+
 
     .podium-container { display: flex; justify-content: center; align-items: flex-end; margin: 30px 0; height: 200px; gap: 10px; }
     .podium { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; text-align: center; width: 120px; border-radius: 8px 8px 0 0; }
@@ -94,10 +120,13 @@ st.markdown("""
     .podium-name { font-weight: bold; font-size: 14px; margin-bottom: 5px; padding: 0 5px; }
     .podium-stat { font-size: 20px; font-weight: 900; margin-bottom: 10px; }
 
+
     .shot-bar-container { background: #222; height: 20px; border-radius: 10px; width: 100%; position: relative; margin-top: 5px; overflow: hidden; }
     .shot-bar-fill { height: 100%; position: absolute; left: 0; top: 0; border-radius: 10px; }
 
+
     .award-card { background: #161b22; border: 1px solid #d4af37; padding: 20px; border-radius: 8px; text-align: center; height: 100%; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+
 
     .flip-card { background-color: transparent; width: 100%; perspective: 1000px; margin-bottom: 25px; }
     .flip-card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; }
@@ -110,12 +139,15 @@ st.markdown("""
     .stat-label { color: #8b949e; }
     .sim-box { background: #161b22; padding: 20px; border-radius: 10px; border: 2px solid #d4af37; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); margin-bottom: 20px; }
 
+
     .chip { display:inline-block; background:#d4af37; color:#000; font-size:11px; font-weight:bold; padding:4px 9px; border-radius:12px; margin:2px; }
     .line-box { background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:14px; text-align:center; }
     .line-label { color:#8b949e; font-size:11px; text-transform:uppercase; letter-spacing:1px; }
     .line-value { color:#fff; font-size:20px; font-weight:900; margin-top:4px; }
 </style>
 """, unsafe_allow_html=True)
+
+
 
 
 # =============================================================================
@@ -131,6 +163,8 @@ def basic_name_clean(raw_name):
     return n.strip()
 
 
+
+
 def name_match_key(name):
     """OCR-tolerant identity key: strips leading I/l/| prefix runs (2K clan-tag
     misreads), folds l<->i confusion, case-insensitive. Grouping only — display
@@ -139,11 +173,14 @@ def name_match_key(name):
     return k.strip().lower().replace('l', 'i').replace(' ', '')
 
 
+
+
 @st.cache_data(ttl=60, show_spinner="Pulling the league sheet...")
 def load_data():
     try:
         df = pd.read_csv(URL)
         df.columns = df.columns.str.strip()
+
 
         # --- merge SPAM history (Seasons 1-6) if the CSV is in the repo ---
         try:
@@ -170,12 +207,14 @@ def load_data():
                 & (df['Team Name'].astype(str) != '0')]
         health['Rows loaded'] = len(df)
 
+
         # --- TYPE NORMALIZATION ---
         raw_type = df['Type'].astype(str).str.strip().str.lower()
         total_name = df['Player/Team'].astype(str).str.strip().str.upper().isin(['TOTAL', 'TOTALS', 'TEAM TOTAL'])
         is_team_row = raw_type.isin(['team', 'total', 'team total', 'totals']) | total_name
         health['Players recovered (bad Type)'] = int((~is_team_row & (raw_type != 'player')).sum())
         df['Type'] = np.where(is_team_row, 'Team', 'Player')
+
 
         # --- CANONICAL NAMES ---
         df['Player/Team'] = df['Player/Team'].apply(basic_name_clean)
@@ -187,14 +226,17 @@ def load_data():
             if k not in canon or cnt > canon[k][1]:
                 canon[k] = (name, cnt)
 
+
         def to_canonical(n):
             if not isinstance(n, str):
                 return n
             hit = canon.get(name_match_key(n))
             return hit[0] if hit else n
 
+
         df.loc[df['Type'] == 'Player', 'Player/Team'] = df.loc[df['Type'] == 'Player', 'Player/Team'].map(to_canonical)
         health['Name variants unified'] = int(sum(1 for n in counts.index if canon[name_match_key(n)][0] != n))
+
 
         req_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA',
                     'FTA', 'FTM', 'OREB', 'DREB', 'MIN', 'Q1', 'Q2', 'Q3', 'Q4',
@@ -205,8 +247,10 @@ def load_data():
             if c not in ['Type', 'Team Name', 'Player/Team', 'Win']:
                 df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
 
+
         df['Win'] = pd.to_numeric(df['Win'], errors='coerce')   # keep NaN; derived from score later
         df['Game_ID'] = pd.to_numeric(df['Game_ID'], errors='coerce')
+
 
         # --- DROP rows with no game/season identity; cross-season-safe game key ---
         pre = len(df)
@@ -214,6 +258,7 @@ def load_data():
         health['Rows dropped (no Game_ID/Season)'] = pre - len(df)
         df['GKey'] = df['Season'].astype(int).astype(str) + '-' + df['Game_ID'].astype(int).astype(str)
         df['Era'] = np.where(df['Season'] >= 100, 'SPAM', 'QCL')
+
 
         # --- DEDUPE double-entered rows (keep the fuller stat line) ---
         pre = len(df)
@@ -224,8 +269,10 @@ def load_data():
                 .sort_index())
         health['Duplicate rows removed'] = pre - len(df)
 
+
         df['PIE_Raw'] = (df['PTS'] + df['REB'] + df['AST'] + df['STL'] + df['BLK']) - (df['FGA'] * 0.5) - df['TO']
         df['Poss_Raw'] = df['FGA'] + 0.44 * df['FTA'] + df['TO']
+
 
         # --- HOLLINGER GAME SCORE (0.42*REB fallback when OREB/DREB not tracked) ---
         reb_term = np.where((df['OREB'] + df['DREB']) > 0,
@@ -235,11 +282,13 @@ def load_data():
                             + reb_term + df['STL'] + 0.7 * df['AST'] + 0.7 * df['BLK']
                             - 0.4 * df['FOULS'] - df['TO'])
 
+
         # --- TEAM TOTALS: recorded preferred; rebuilt from players as fallback ---
         key = ['Season', 'Game_ID', 'Team Name']
         players = df[df['Type'] == 'Player'].copy()
         recorded = df[df['Type'] == 'Team'].copy()
         recorded = recorded[recorded['PTS'] > 0].drop_duplicates(subset=key, keep='last')
+
 
         sum_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FOULS', 'TO', 'FGA', 'FGM', '3PM', '3PA',
                     'FTA', 'FTM', 'OREB', 'DREB', 'Q1', 'Q2', 'Q3', 'Q4',
@@ -249,10 +298,12 @@ def load_data():
         rebuilt = rebuilt.merge(recorded[key].assign(_rec=1), on=key, how='left')
         rebuilt = rebuilt[rebuilt['_rec'].isna()].drop(columns=['_rec'])
 
+
         team_rows = pd.concat([recorded, rebuilt], ignore_index=True)
         team_rows['Type'] = 'Team'
         team_rows['Player/Team'] = team_rows['Team Name'].astype(str) + " TOTALS"
         health['Team totals (recorded / rebuilt)'] = f"{len(recorded)} / {len(rebuilt)}"
+
 
         # --- COVERAGE & CONSISTENCY ---
         q_sum = team_rows[['Q1', 'Q2', 'Q3', 'Q4']].sum(axis=1)
@@ -266,6 +317,7 @@ def load_data():
         ft_cov = int((df.loc[df['Type'] == 'Player', 'FTA'] > 0).sum())
         health['FTA coverage'] = f"{ft_cov}/{int((df['Type'] == 'Player').sum())} player rows"
 
+
         # --- WIN RECONCILIATION: fill missing Win from head-to-head score ---
         n_teams = team_rows.groupby(['Season', 'Game_ID'])['Team Name'].transform('nunique')
         max_pts = team_rows.groupby(['Season', 'Game_ID'])['PTS'].transform('max')
@@ -276,11 +328,13 @@ def load_data():
         health['Wins derived from score'] = int((team_rows['Win'].isna() & derived.notna()).sum())
         team_rows['Win'] = team_rows['Win'].fillna(derived)
 
+
         win_map = team_rows.set_index(key)['Win']
         mapped = players.set_index(key).index.map(win_map)
         players['Win'] = players['Win'].fillna(pd.Series(mapped, index=players.index))
         df = pd.concat([players, team_rows], ignore_index=True)
         df['Win'] = pd.to_numeric(df['Win'], errors='coerce').fillna(0).apply(lambda x: 1 if x > 0 else 0)
+
 
         # --- ADVANCED RATINGS (PER GAME) ---
         p_mask = df['Type'].astype(str).str.lower() == 'player'
@@ -289,12 +343,14 @@ def load_data():
         df['USG_Game'] = pd.to_numeric(df.get('USG_Game'), errors='coerce').fillna(0)
         df['ORtg_Game'] = np.where(df['Poss_Raw'] > 0, df['PTS'] / df['Poss_Raw'] * 100, 0)
 
+
         # --- PROXY STATS ---
         df['Game_Type'] = np.where(df['Game_ID'] >= 9000, 'Playoffs',
                                    np.where(df['Game_ID'] >= 8000, 'Tournament', 'Regular Season'))
         players_df = df[df['Type'].astype(str).str.lower() == 'player'].copy()
         players_df = players_df.sort_values(by=['Season', 'Game_ID', 'Team Name'])
         players_df['Position_Num'] = players_df.groupby(['Season', 'Game_ID', 'Team Name']).cumcount() + 1
+
 
         players_df['Tipped_Passes'] = np.where(players_df['Position_Num'] <= 2,
                                                (players_df['STL'] * 2.2) + (players_df['FOULS'] * 0.4),
@@ -310,11 +366,13 @@ def load_data():
                                            ).round().astype(int)
         players_df['FB_Points'] = players_df[['FB_Points', 'PTS']].min(axis=1)
 
+
         df = df.merge(players_df[['Season', 'Game_ID', 'Team Name', 'Player/Team',
                                   'Tipped_Passes', 'Shots_Affected', 'FB_Points', 'Position_Num']],
                       on=['Season', 'Game_ID', 'Team Name', 'Player/Team'], how='left')
         for c in ['Tipped_Passes', 'Shots_Affected', 'FB_Points', 'Position_Num']:
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+
 
         t_proxy = (df[df['Type'] == 'Player']
                    .groupby(['Season', 'Game_ID', 'Team Name'])[['Tipped_Passes', 'Shots_Affected', 'FB_Points']]
@@ -325,16 +383,19 @@ def load_data():
                                                  .map(t_proxy.set_index(['Season', 'Game_ID', 'Team Name'])[col])
                                                  ).fillna(0)
 
+
         # --- MATCHUP LOGIC & SOS ---
         t_logs = df[df['Type'] == 'Team'][['Game_ID', 'Team Name', 'PTS', 'FGM', 'FGA', '3PM', '3PA',
                                            'TO', 'FTA', 'Win', 'Season']].copy()
         t_logs['Team_Win_Pct'] = t_logs.groupby(['Season', 'Team Name'])['Win'].transform('mean')
+
 
         n_in_game = t_logs.groupby(['Season', 'Game_ID'])['Team Name'].transform('nunique')
         pairable = t_logs[n_in_game == 2]
         opps = pd.merge(pairable, pairable, on=['Season', 'Game_ID'], suffixes=('', '_Opp'))
         opps = opps[opps['Team Name'] != opps['Team Name_Opp']]
         opps = opps.drop_duplicates(subset=['Season', 'Game_ID', 'Team Name'])
+
 
         if not opps.empty:
             opps['Point_Diff'] = opps['PTS'] - opps['PTS_Opp']
@@ -357,9 +418,12 @@ def load_data():
             df['Opp_Name'] = None
             df['Opp_PTS'] = np.nan
 
+
         return {'df': df, 'health': health}
     except Exception as e:
         return f"{type(e).__name__}: {e}"
+
+
 
 
 _loaded = load_data()
@@ -367,12 +431,16 @@ if isinstance(_loaded, str):
     st.error(f"⚠️ DATA ERROR: {_loaded}")
     st.stop()
 
+
 full_df = _loaded['df']
 DATA_HEALTH = _loaded['health']
+
 
 if full_df is None or full_df.empty:
     st.warning("Sheet loaded but contains no usable rows.")
     st.stop()
+
+
 
 
 # =============================================================================
@@ -382,6 +450,7 @@ if full_df is None or full_df.empty:
 def build_clubs(df):
     gp = df[df['Type'].astype(str).str.lower() == 'player'].copy()
     season_totals = gp.groupby(['Player/Team', 'Season']).sum(numeric_only=True).reset_index()
+
 
     def calc_clubs(row):
         clubs = []
@@ -395,6 +464,7 @@ def build_clubs(df):
             clubs.append("100 Pts / 100 Reb")
         return clubs
 
+
     season_totals['Clubs'] = season_totals.apply(calc_clubs, axis=1)
     pc = season_totals.groupby('Player/Team')['Clubs'].agg(
         lambda x: [i for sub in x for i in sub if i]).reset_index()
@@ -402,7 +472,11 @@ def build_clubs(df):
     return pc
 
 
+
+
 player_clubs = build_clubs(full_df)
+
+
 
 
 # =============================================================================
@@ -414,10 +488,14 @@ def dl(df, label, fname, key):
                        file_name=fname, mime='text/csv', key=key, use_container_width=True)
 
 
+
+
 def norm(val, mx):
     if pd.isna(val) or pd.isna(mx):
         return 0
     return min(100, (max(0, val) / mx) * 100) if mx > 0 else 0
+
+
 
 
 def fnum(v, default=0.0):
@@ -429,6 +507,8 @@ def fnum(v, default=0.0):
     except (TypeError, ValueError):
         v = default
     return v
+
+
 
 
 def draw_shot_profile(fgm, fga, tpm, tpa):
@@ -443,6 +523,8 @@ def draw_shot_profile(fgm, fga, tpm, tpa):
     """
 
 
+
+
 def generate_sleek_box_score(df_game):
     df_game = df_game.sort_values(by='PTS', ascending=False)
     html = ("<table class='sleek-table'><tr><th>Player</th><th>PTS</th><th>REB</th><th>AST</th>"
@@ -453,6 +535,8 @@ def generate_sleek_box_score(df_game):
                  f"<td>{int(r['BLK'])}</td><td>{int(r['FGM'])}/{int(r['FGA'])}</td>"
                  f"<td>{int(r['3PM'])}/{int(r['3PA'])}</td><td>{r['PIE_Raw']:.1f}</td></tr>")
     return html + "</table>"
+
+
 
 
 def render_podium(title, top3_df, stat_col):
@@ -467,6 +551,8 @@ def render_podium(title, top3_df, stat_col):
     return html + "</div>"
 
 
+
+
 def generate_2k_player_card(player_name, stats, rank=""):
     rank_badge = (f'<div style="position:absolute; top:-10px; right:-10px; background:#d4af37; color:#000; '
                   f'font-weight:bold; padding:8px; border-radius:50%; border:2px solid #fff; z-index:10;">#{rank}</div>'
@@ -476,8 +562,10 @@ def generate_2k_player_card(player_name, stats, rank=""):
         badges = "".join([f"<span class='chip'>{c}</span>" for c in stats['Clubs']])
         clubs_html = f"<div style='margin-top:10px; padding-top:8px; border-top:1px dashed #444; width:100%;'>{badges}</div>"
 
+
     def g(k):
         return fnum(stats.get(k, 0))
+
 
     try:
         _art = player_card_uri(player_name)
@@ -510,6 +598,7 @@ def generate_2k_player_card(player_name, stats, rank=""):
             + f'<h2 style="color: #d4af37; margin-top: 5px; margin-bottom: 5px;">{g("PIE"):.1f} PIE</h2>'
             + f'{clubs_html}')
 
+
     return f'''<div class="flip-card" style="height: 380px;">
 {rank_badge}
 {_rar_badge}
@@ -530,6 +619,8 @@ def generate_2k_player_card(player_name, stats, rank=""):
 </div>
 </div>
 </div>'''
+
+
 
 
 def generate_mini_leaderboard(title, df, stat_col, color=GOLD, top_n=5, name_col=None):
@@ -554,6 +645,8 @@ def generate_mini_leaderboard(title, df, stat_col, color=GOLD, top_n=5, name_col
     return html + "</div>"
 
 
+
+
 def draw_dynamic_radar(p1_name, r1_vals, p2_name, r2_vals, categories, title):
     r1_vals = list(r1_vals) + [r1_vals[0]]
     r2_vals = list(r2_vals) + [r2_vals[0]]
@@ -571,9 +664,13 @@ def draw_dynamic_radar(p1_name, r1_vals, p2_name, r2_vals, categories, title):
     return fig
 
 
+
+
 def american_odds(p):
     p = min(max(p, 0.01), 0.99)
     return f"-{int(round(100 * p / (1 - p)))}" if p >= 0.5 else f"+{int(round(100 * (1 - p) / p))}"
+
+
 
 
 # =============================================================================
@@ -588,8 +685,12 @@ LOGOS_DIR = os.path.join(_ASSET_BASE, "logos")
 _ASSET_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 
 
+
+
 def _asset_slug(s):
     return re.sub(r"[^a-z0-9]+", "", str(s or "").lower())
+
+
 
 
 def _data_uri(path):
@@ -600,6 +701,8 @@ def _data_uri(path):
             return f"data:{mime};base64," + base64.b64encode(fh.read()).decode("utf-8")
     except Exception:
         return ""
+
+
 
 
 @st.cache_data(ttl=60)
@@ -614,11 +717,15 @@ def _load_card_meta():
     return {}
 
 
+
+
 def _list_card_files():
     try:
         return [f for f in os.listdir(CARDS_DIR) if f.lower().endswith(_ASSET_EXT)]
     except Exception:
         return []
+
+
 
 
 def find_player_card_uris(player):
@@ -643,6 +750,8 @@ def find_player_card_uris(player):
     return uris
 
 
+
+
 def _logo_path(team):
     want = _asset_slug(team)
     if not want:
@@ -656,9 +765,13 @@ def _logo_path(team):
     return ""
 
 
+
+
 def find_team_logo_uri(team):
     p = _logo_path(team)
     return _data_uri(p) if p else ""
+
+
 
 
 @st.cache_data(ttl=300)
@@ -676,10 +789,12 @@ def _logo_accent(team):
         if not px:
             return ""
 
+
         def vivid(q):
             r, g, b = q[0], q[1], q[2]
             mx, mn = max(r, g, b), min(r, g, b)
             return mx >= 40 and mn <= 220 and (mx - mn) >= 25   # skip black/white/gray
+
 
         pool = [q for q in px if vivid(q)] or px
         counts = Counter((q[0] // 24 * 24, q[1] // 24 * 24, q[2] // 24 * 24) for q in pool)
@@ -689,7 +804,11 @@ def _logo_accent(team):
         return ""
 
 
+
+
 HEADSHOTS_DIR = os.path.join(_ASSET_BASE, "headshots")
+
+
 
 
 def find_player_headshot_uri(player):
@@ -706,12 +825,15 @@ def find_player_headshot_uri(player):
     return ""
 
 
+
+
 def player_season_lines(player):
     """Career + per-season average stat lines for a player, pulled from full_df."""
     d = full_df[(full_df['Type'].astype(str).str.lower() == 'player')
                 & (full_df['Player/Team'] == player)]
     if d.empty:
         return []
+
 
     def line(frame, label):
         def m(c):
@@ -724,11 +846,14 @@ def player_season_lines(player):
                 "pts": m('PTS'), "reb": m('REB'), "ast": m('AST'),
                 "stl": m('STL'), "blk": m('BLK'), "pie": m('PIE_Raw'), "tpm": m('3PM')}
 
+
     out = [line(d, "CAREER")]
     for s in sorted({int(x) for x in pd.to_numeric(d['Season'], errors='coerce').dropna().unique()},
                     reverse=True):
         out.append(line(d[pd.to_numeric(d['Season'], errors='coerce') == s], f"SEASON {s}"))
     return out
+
+
 
 
 _ROT_TPL = r"""
@@ -812,6 +937,8 @@ _ROT_TPL = r"""
 """
 
 
+
+
 def render_rotating_card(player, key="rc", team=None, height=440, speed_ms=4000):
     """Rotating card: art (if any) + a season-by-season stat panel that cycles."""
     seasons = player_season_lines(player)
@@ -834,9 +961,13 @@ def render_rotating_card(player, key="rc", team=None, height=440, speed_ms=4000)
     components.html(html, height=int(height) + 30, scrolling=False)
 
 
+
+
 @st.cache_data(ttl=120)
 def _cached_logo_uri(team):
     return find_team_logo_uri(team)
+
+
 
 
 def team_logo_html(team, px=22, radius=4, ml=0, mr=6):
@@ -848,11 +979,15 @@ def team_logo_html(team, px=22, radius=4, ml=0, mr=6):
             f"vertical-align:middle;border-radius:{radius}px;margin-left:{ml}px;margin-right:{mr}px;'>")
 
 
+
+
 @st.cache_data(ttl=120)
 def player_card_uri(player):
     """First custom card image for a player, or '' — used on flip cards."""
     uris = find_player_card_uris(player)
     return uris[0] if uris else ""
+
+
 
 
 @st.cache_data(ttl=60)
@@ -867,6 +1002,8 @@ def _load_team_meta():
     return {}
 
 
+
+
 def _team_entry(team):
     m = _load_team_meta()
     if team in m:
@@ -878,6 +1015,8 @@ def _team_entry(team):
     return {}
 
 
+
+
 def team_color(team, default=GOLD):
     # explicit override (rare) wins; otherwise pull the accent from the logo.
     c = _team_entry(team).get("color")
@@ -887,8 +1026,12 @@ def team_color(team, default=GOLD):
     return a if a else default
 
 
+
+
 def team_full(team):
     return _team_entry(team).get("full") or team
+
+
 
 
 @st.cache_data(ttl=60)
@@ -903,6 +1046,8 @@ def _load_allleague():
     return {}
 
 
+
+
 def player_accolades(player):
     data = _load_allleague()
     want, out = _asset_slug(player), []
@@ -915,9 +1060,13 @@ def player_accolades(player):
     return out
 
 
+
+
 RARITY_TIERS = [(0.95, "Legendary", "#f1c40f"), (0.85, "Epic", "#9b59b6"),
                 (0.65, "Rare", "#3498db"), (0.35, "Uncommon", "#2ecc71"),
                 (0.0, "Common", "#8a929c")]
+
+
 
 
 @st.cache_data(ttl=60)
@@ -931,6 +1080,8 @@ def _career_ratings():
     return dict(zip(g['Player/Team'], g['pct']))
 
 
+
+
 def card_rarity(player):
     """(tier_name, hex_color) from career percentile — stat-based rarity."""
     pct = _career_ratings().get(player)
@@ -942,8 +1093,12 @@ def card_rarity(player):
     return ("Common", "#8a929c")
 
 
+
+
 RARITY_SUPPLY = {"Legendary": 3, "Epic": 10, "Rare": 25, "Uncommon": 60, "Common": 0}  # 0 = unlimited
 RARITY_COLOR_BY_NAME = {name: color for _thr, name, color in RARITY_TIERS}
+
+
 
 
 @st.cache_data(ttl=45)
@@ -960,6 +1115,8 @@ def _load_market():
     return {}
 
 
+
+
 @st.cache_data(ttl=60)
 def _load_popularity():
     f = os.path.join(_ASSET_BASE, "popularity.json")
@@ -970,6 +1127,8 @@ def _load_popularity():
         except Exception:
             return {}
     return {}
+
+
 
 
 @st.cache_data(ttl=60)
@@ -986,6 +1145,8 @@ def _awards_score(player):
     return s
 
 
+
+
 @st.cache_data(ttl=60)
 def _popularity_raw_map():
     pop = _load_popularity()
@@ -1000,6 +1161,8 @@ def _popularity_raw_map():
     return raw
 
 
+
+
 def player_popularity(player):
     raw = _popularity_raw_map()
     v = raw.get(player, _awards_score(player) * 2.0)
@@ -1007,11 +1170,15 @@ def player_popularity(player):
     return (v / mx) if mx > 0 else 0.0
 
 
+
+
 def player_price(player, w_stat=0.5, w_pop=0.5, cap=3.0):
     stat = _career_ratings().get(player, 0.0)
     pop = player_popularity(player)
     tot = max(w_stat + w_pop, 0.01)
     return round(cap * ((w_stat * stat) + (w_pop * pop)) / tot, 2)
+
+
 
 
 def player_form(player):
@@ -1028,13 +1195,115 @@ def player_form(player):
     return 0
 
 
+
+
+
+import time as _qt_time      # app.py does NOT import time -- this patch needs it
+
+
+@st.cache_data(ttl=45)
+def _qtcg_state():
+    """The bot's published QTCG state (fantasy_market.json, schema v4).
+
+    Returns {} when the bot hasn't pushed yet, so every caller degrades to the
+    Hub's own maths instead of blowing up.
+    """
+    f = os.path.join(_ASSET_BASE, "fantasy_market.json")
+    if not os.path.exists(f):
+        return {}
+    try:
+        with open(f, "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def _qtcg_live():
+    """True once the bot is publishing the full state."""
+    return int(_qtcg_state().get("v", 0)) >= 4
+
+
+@st.cache_data(ttl=45)
+def _qtcg_frame():
+    """The whole published card table as ONE DataFrame.
+
+    This is the entire reason the market page is fast now: the old code made
+    ~2,085 python calls (five helpers x 417 players, one of which scanned the
+    full game log per player). This does a single dict -> DataFrame build.
+    """
+    st8 = _qtcg_state()
+    cards = st8.get("cards") or {}
+    if not cards:
+        return pd.DataFrame()
+    rows = []
+    for name, c in cards.items():
+        rows.append({
+            "Player": name,
+            "Tier": c.get("tier", "Common"),
+            "Class": c.get("cls", "active"),
+            "Price": int(c.get("price", 0)),
+            "Fair": int(c.get("fair", 0)),
+            "Heat": float(c.get("heat", 1.0)),
+            "Trades": int(c.get("trades", 0)),
+            "Legend": float(c.get("legend", 0.0)),
+            "Perf": float(c.get("perf", 0.0)),
+            "Long": float(c.get("long", 0.0)),
+            "Hard": float(c.get("hard", 0.0)),
+            "HW": float(c.get("hw_pts", 0.0)),
+            "Cabinet": c.get("hw", {}) or {},
+            "Run": int(c.get("run", 0)),
+            "Minted": int(c.get("minted", 0)),
+            "Left": c.get("left"),
+            "Why": c.get("why", ""),
+            "Arch": c.get("arch", ""),
+            "Trend": float(c.get("trend", 0.0)),
+            "GP": int(c.get("gp", 0)),
+        })
+    df = pd.DataFrame(rows)
+    df = df.sort_values("Legend", ascending=False).reset_index(drop=True)
+    df["Rank"] = df.index + 1
+    return df
+
+
+def _qtcg_stock(row):
+    if row["Run"] <= 0:
+        return "\u221e"
+    return f"{int(row['Left']) if pd.notna(row['Left']) else 0}/{int(row['Run'])}"
+
+
+def _qtcg_cabinet(cab):
+    if not isinstance(cab, dict) or not cab:
+        return ""
+    return " \u00b7 ".join(f"{k.replace('_', ' ').title()}"
+                           + (f" x{v}" if int(v) > 1 else "")
+                           for k, v in cab.items())
+
+
+# card_rarity now defers to the bot when the bot is publishing, so the Hub and
+# Discord can never disagree about what tier a card is.
+_hub_orig_card_rarity = card_rarity
+
+
+def card_rarity(player):
+    st8 = _qtcg_state()
+    c = (st8.get("cards") or {}).get(player)
+    if c and c.get("tier"):
+        return (c["tier"], RARITY_COLOR_BY_NAME.get(c["tier"], "#8a929c"))
+    return _hub_orig_card_rarity(player)
+
+
 # ---- 3v3 FANTASY ENGINE --------------------------------------------------
 TIER_COST = {"Legendary": 5, "Epic": 4, "Rare": 3, "Uncommon": 2, "Common": 1}
 FANTASY_CAP = 9
 
 
+
+
 def card_cost(tier):
     return TIER_COST.get(tier, 2)
+
+
 
 
 def fantasy_points(s, role):
@@ -1049,6 +1318,7 @@ def fantasy_points(s, role):
     role = (role or '').lower()
     three_bonus = tpm * 2.0
     neg = to * (-1.5) + miss * (-0.5)
+
 
     if role.startswith('g'):        # Guard
         scoring = pts * (0.75 if usg > 30 else 1.0) + three_bonus     # usage tax
@@ -1066,11 +1336,15 @@ def fantasy_points(s, role):
     return round(fp, 1)
 
 
+
+
 ARCHETYPE_SIG = {
     "Microwave Chucker": "TPM", "Glass Cleaner": "REB", "Pocket Picker": "STL",
     "Rim Protector": "BLK", "Corner Specialist": "TP%", "Dime Dropper": "AST",
     "Combo Guard": "PTS", "Lockdown Wing": "DEF", "Iron Man Grind": "GP",
 }
+
+
 
 
 @st.cache_data(ttl=60)
@@ -1092,8 +1366,12 @@ def _archetype_map():
     return out
 
 
+
+
 def player_archetype(player):
     return _archetype_map().get(player, "Combo Guard")
+
+
 
 
 # =============================================================================
@@ -1103,11 +1381,15 @@ if 'watchlist' not in st.session_state:
     st.session_state.watchlist = []
 
 
+
+
 def toggle_watch(name):
     if name in st.session_state.watchlist:
         st.session_state.watchlist.remove(name)
     else:
         st.session_state.watchlist.append(name)
+
+
 
 
 # =============================================================================
@@ -1117,6 +1399,7 @@ seasons = sorted([int(s) for s in full_df['Season'].dropna().unique() if int(s) 
 if not seasons:
     st.warning("No seasons with valid data found.")
     st.stop()
+
 
 st.sidebar.title("⚙️ Hub Controls")
 VIEWS = [
@@ -1135,17 +1418,21 @@ VIEWS = [
     "🔬 Advanced Analytics Lab",
     "🏦 The Vault",
     "📈 Card Market",
+    "🏅 Legend Board",
     "🎴 Qwiks TCG",
     "📖 Record Book & Milestones",
 ]
 view_mode = st.sidebar.radio("Navigation", VIEWS)
 st.sidebar.divider()
 
+
 # right after: st.sidebar.title("⚙️ Hub Controls")
 st.sidebar.image("Logo.png", width=140)
 
+
 def _season_label(s):
     return f"SPAM S{s - 100}" if s >= 100 else f"S{s}"
+
 
 _qcl_seasons = sorted([s for s in seasons if s < 100], reverse=True)
 _spam_seasons = sorted([s for s in seasons if s >= 100], reverse=True)
@@ -1157,19 +1444,24 @@ if _qcl_seasons and _spam_seasons:
 scope_opts = _season_labels + _career_opts
 scope_choice = st.sidebar.selectbox("Data Scope", scope_opts, index=0)
 
+
 game_type_opts = ["All Games", "Regular Season", "Playoffs", "Tournament"]
 game_type = st.sidebar.selectbox("Game Type", game_type_opts, index=1)  # default: Regular Season (no playoffs)
 
+
 min_gp_filter = st.sidebar.slider("Min Games Played (tables)", 0, 20, 1)
+
 
 if st.sidebar.button("🔄 Refresh Sheet", use_container_width=True):
     st.cache_data.clear()
     _rerun()
 
+
 if DATA_HEALTH:
     with st.sidebar.expander("🩺 Data Health"):
         for hk, hv in DATA_HEALTH.items():
             st.markdown(f"**{hk}:** {hv}")
+
 
 if st.session_state.watchlist:
     with st.sidebar.expander(f"⭐ Watchlist ({len(st.session_state.watchlist)})", expanded=True):
@@ -1179,6 +1471,7 @@ if st.session_state.watchlist:
             if wc2.button("✕", key=f"unwatch_{w}"):
                 toggle_watch(w)
                 _rerun()
+
 
 if scope_choice == "Career (All-Time)":
     df_active = full_df.copy()
@@ -1201,24 +1494,32 @@ else:
     selected_scope = "Season"   # sentinel: anything != "Career Stats"
     banner_text = scope_choice
 
+
 if game_type != "All Games":
     df_active = df_active[df_active['Game_Type'] == game_type]
     banner_text += f" • {game_type.upper()}"
 
+
 st.markdown(f'<div class="header-banner">🏀 QCL LEAGUE HUB — {banner_text}</div>', unsafe_allow_html=True)
+
 
 # optional, right after the header-banner markdown
 st.image("Logo.png", width=120)
+
 
 if df_active.empty:
     st.warning("No games match the current scope / game-type filter.")
     st.stop()
 
 
+
+
 # =============================================================================
 # 8. CORE STAT ENGINE
 # =============================================================================
 full_p_df = full_df[full_df['Type'].astype(str).str.lower() == 'player'].copy()
+
+
 
 
 def compute_stats(scope_df, full_df, min_gp_filter=0):
@@ -1228,12 +1529,15 @@ def compute_stats(scope_df, full_df, min_gp_filter=0):
     t_df = scope_df[scope_df['Type'].astype(str).str.lower() == 'team'].copy()
     fp_df = full_df[full_df['Type'].astype(str).str.lower() == 'player'].copy()
 
+
     if p_df.empty or t_df.empty:
         return None
+
 
     p_all_time_highs = fp_df.groupby('Player/Team').agg(
         AT_High_PTS=('PTS', 'max'), AT_High_REB=('REB', 'max'), AT_High_AST=('AST', 'max')
     ).reset_index()
+
 
     p_stats = p_df.groupby('Player/Team').agg(**{
         'GP': ('GKey', 'nunique'),
@@ -1250,9 +1554,11 @@ def compute_stats(scope_df, full_df, min_gp_filter=0):
         'Wins': ('Win', 'sum'),
     }).reset_index()
 
+
     p_stats.rename(columns={'PIE_Raw': 'PIE'}, inplace=True)
     p_stats['DEF'] = p_stats['STL'] + p_stats['BLK']
     p_stats['Win%'] = (p_stats['Wins'] / p_stats['GP'].replace(0, 1)).round(3)
+
 
     # REAL TS% — uses actual FTA (no more 0.2*FGA proxy)
     ts_den = 2 * (p_stats['FGA'] + 0.44 * p_stats['FTA'])
@@ -1261,8 +1567,10 @@ def compute_stats(scope_df, full_df, min_gp_filter=0):
     p_stats['eFG%'] = np.where(p_stats['FGA'] > 0,
                                (p_stats['FGM'] + 0.5 * p_stats['3PM']) / p_stats['FGA'] * 100, 0)
 
+
     p_stats = p_stats.merge(player_clubs, on='Player/Team', how='left')
     p_stats['Clubs'] = p_stats['Clubs'].apply(lambda x: x if isinstance(x, list) else [])
+
 
     p_highs = p_df.groupby('Player/Team').agg(
         High_PTS=('PTS', 'max'), High_REB=('REB', 'max'), High_AST=('AST', 'max'),
@@ -1271,8 +1579,10 @@ def compute_stats(scope_df, full_df, min_gp_filter=0):
     p_stats = p_stats.merge(p_highs, on='Player/Team', how='left')
     p_stats = p_stats.merge(p_all_time_highs, on='Player/Team', how='left')
 
+
     p_stats['FG%'] = (p_stats['FGM'] / p_stats['FGA'].replace(0, 1) * 100)
     p_stats['3P%'] = (p_stats['3PM'] / p_stats['3PA'].replace(0, 1) * 100)
+
 
     for col in ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', '3PM', '3PA', 'FGM', 'FGA', 'FTM', 'FTA',
                 'FB_Points', 'Tipped_Passes', 'Shots_Affected', 'PIE', 'TS%', 'eFG%',
@@ -1280,8 +1590,10 @@ def compute_stats(scope_df, full_df, min_gp_filter=0):
         if col in p_stats.columns:
             p_stats[col] = p_stats[col].round(1)
 
+
     p_stats = p_stats.sort_values('PIE', ascending=False).reset_index(drop=True)
     p_stats['League_Rank'] = p_stats.index + 1
+
 
     # --- TEAM STATS ---
     t_stats = t_df.groupby('Team Name').agg(
@@ -1305,6 +1617,7 @@ def compute_stats(scope_df, full_df, min_gp_filter=0):
     t_stats['Diff'] = t_stats['Diff'].fillna(0)
     t_stats['PTS_SD'] = t_stats['PTS_SD'].fillna(7.0).clip(lower=3.5, upper=14.0)
 
+
     # --- PLAYER DRtg / NetRtg ---
     if not t_stats.empty:
         p_stats = p_stats.merge(
@@ -1317,9 +1630,13 @@ def compute_stats(scope_df, full_df, min_gp_filter=0):
         p_stats['DRtg'] = 0.0
     p_stats['NetRtg'] = (p_stats['ORtg'] - p_stats['DRtg']).round(1)
 
+
     p_view = p_stats[p_stats['GP'] >= min_gp_filter].copy()
 
+
     return {'p_df': p_df, 't_df': t_df, 'p_stats': p_stats, 't_stats': t_stats, 'p_view': p_view}
+
+
 
 
 _S = compute_stats(df_active, full_df, min_gp_filter)
@@ -1328,6 +1645,8 @@ if _S is None:
     st.stop()
 p_df, t_df = _S['p_df'], _S['t_df']
 p_stats, t_stats, p_view = _S['p_stats'], _S['t_stats'], _S['p_view']
+
+
 
 
 # =============================================================================
@@ -1343,15 +1662,20 @@ def get_rotation(team_name, size=ROTATION_SIZE, exclude=None):
     return roster.head(size).reset_index(drop=True)
 
 
+
+
 def full_roster(team_name):
     r = p_stats[p_stats['Team'] == team_name].copy()
     return r.sort_values(['GP', 'PIE'], ascending=[False, False])
+
+
 
 
 def run_monte_carlo(t1, t2, rot1, rot2, n_sims=2000, hca=1.5, star_conc=6.0,
                     variance=1.0, seed=None):
     """
     Vectorized Monte Carlo over the two FIVE-MAN rotations.
+
 
     Team score model:
         expected = PPG x opponent-defense factor x SOS adjustment
@@ -1360,24 +1684,30 @@ def run_monte_carlo(t1, t2, rot1, rot2, n_sims=2000, hca=1.5, star_conc=6.0,
     (sum of PPG of the default healthy five). Scratch a star, the projected
     score drops accordingly.
 
+
     Player distribution: Dirichlet over the five rotation players' scoring
     shares. `star_conc` controls how tightly the ball sticks to the usage
     hierarchy (low = chaotic, high = the star always gets his).
     """
     rng = np.random.default_rng(seed)
 
+
     d1 = t_stats[t_stats['Team Name'] == t1].iloc[0]
     d2 = t_stats[t_stats['Team Name'] == t2].iloc[0]
 
+
     lg_opp_ppp = t_stats['Opp_PPP'].mean()
     lg_opp_ppp = float(lg_opp_ppp) if pd.notna(lg_opp_ppp) and lg_opp_ppp > 0 else 1.0
+
 
     def dfac(row):
         v = row['Opp_PPP']
         return float(v / lg_opp_ppp) if pd.notna(v) and v > 0 else 1.0
 
+
     def1 = dfac(d2)   # defense that T1 faces
     def2 = dfac(d1)   # defense that T2 faces
+
 
     def avail(team, rot):
         base = get_rotation(team)  # default healthy five
@@ -1387,22 +1717,28 @@ def run_monte_carlo(t1, t2, rot1, rot2, n_sims=2000, hca=1.5, star_conc=6.0,
             return 1.0
         return float(np.clip(rot_sum / base_sum, 0.55, 1.30))
 
+
     av1, av2 = avail(t1, rot1), avail(t2, rot2)
+
 
     sos1 = float(d1['SOS']) if pd.notna(d1['SOS']) else 0.5
     sos2 = float(d2['SOS']) if pd.notna(d2['SOS']) else 0.5
 
+
     exp1 = float(d1['PPG']) * def1 * (1 + (sos1 - 0.5) * 0.5) * av1 + hca
     exp2 = float(d2['PPG']) * def2 * (1 + (sos2 - 0.5) * 0.5) * av2
 
+
     sd1 = float(d1['PTS_SD']) * variance
     sd2 = float(d2['PTS_SD']) * variance
+
 
     # ---- team scores ----
     s1 = np.rint(rng.normal(exp1, sd1, n_sims)).astype(int)
     s2 = np.rint(rng.normal(exp2, sd2, n_sims)).astype(int)
     s1 = np.clip(s1, 25, None)
     s2 = np.clip(s2, 25, None)
+
 
     # ---- overtime: break ties with a coin-flip bucket ----
     tie = s1 == s2
@@ -1412,7 +1748,9 @@ def run_monte_carlo(t1, t2, rot1, rot2, n_sims=2000, hca=1.5, star_conc=6.0,
         s1[tie] = s1[tie] + np.where(flip, bump, 0)
         s2[tie] = s2[tie] + np.where(flip, 0, bump)
 
+
     w1 = (s1 > s2)
+
 
     # ---- player scoring distribution over the five ----
     def player_pts(rot, scores):
@@ -1423,8 +1761,10 @@ def run_monte_carlo(t1, t2, rot1, rot2, n_sims=2000, hca=1.5, star_conc=6.0,
         shares = rng.dirichlet(alpha, size=n_sims)           # (n_sims, k)
         return shares * scores[:, None]
 
+
     pp1 = player_pts(rot1, s1)
     pp2 = player_pts(rot2, s2)
+
 
     # ---- MVP: scoring + baseline impact + winner bonus ----
     def impact(rot):
@@ -1433,6 +1773,7 @@ def run_monte_carlo(t1, t2, rot1, rot2, n_sims=2000, hca=1.5, star_conc=6.0,
                 + 2.0 * rot['STL'].to_numpy(dtype=float)
                 + 2.0 * rot['BLK'].to_numpy(dtype=float))
 
+
     m1 = pp1 + impact(rot1)[None, :] + np.where(w1, 4.0, 0.0)[:, None]
     m2 = pp2 + impact(rot2)[None, :] + np.where(~w1, 4.0, 0.0)[:, None]
     mvp_matrix = np.hstack([m1, m2])
@@ -1440,6 +1781,7 @@ def run_monte_carlo(t1, t2, rot1, rot2, n_sims=2000, hca=1.5, star_conc=6.0,
     teams = [t1] * len(rot1) + [t2] * len(rot2)
     mvp_idx = mvp_matrix.argmax(axis=1)
     mvp_counts = np.bincount(mvp_idx, minlength=len(names))
+
 
     return {
         'n': n_sims,
@@ -1453,6 +1795,8 @@ def run_monte_carlo(t1, t2, rot1, rot2, n_sims=2000, hca=1.5, star_conc=6.0,
                             ).sort_values('MVP %', ascending=False).reset_index(drop=True),
         'avail': (av1, av2),
     }
+
+
 
 
 def projected_box(rot, pp):
@@ -1473,9 +1817,12 @@ def projected_box(rot, pp):
     })
 
 
+
+
 # =============================================================================
 # 10. VIEWS
 # =============================================================================
+
 
 # ------------------------------------------------------------------ HOME -----
 if view_mode == "🏠 League Home & Awards":
@@ -1486,10 +1833,12 @@ if view_mode == "🏠 League Home & Awards":
     hc4.markdown(f"<div class='metric-box'><div class='metric-title'>League PPG</div><div class='metric-value'>{fnum(t_stats['PPG'].mean()):.1f}</div></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
+
     qual_pct = st.slider("Award eligibility — % of league-leading GP required", 30, 90, 60, 5) / 100
     qual_p = p_stats[p_stats['GP'] >= (p_stats['GP'].max() * qual_pct)]
     st.caption(f"{len(qual_p)} of {len(p_stats)} players qualify "
                f"({int(np.ceil(p_stats['GP'].max() * qual_pct))}+ games).")
+
 
     def render_award_row(title, sorted_df, stat_col, label=None):
         st.markdown(f"#### {title}")
@@ -1515,7 +1864,9 @@ if view_mode == "🏠 League Home & Awards":
                     toggle_watch(r['Player/Team'])
                     _rerun()
 
+
     a_tabs = st.tabs(["MVP", "DPOY", "Big Man", "6th Man", "Most Improved", "All-League"])
+
 
     with a_tabs[0]:
         render_award_row("Most Valuable Player", qual_p.sort_values('PIE', ascending=False), 'PIE')
@@ -1540,11 +1891,13 @@ if view_mode == "🏠 League Home & Awards":
         else:
             prev_s = max(prev_seasons)
 
+
             def season_line(s):
                 d = full_p_df[full_p_df['Season'] == s]
                 return d.groupby('Player/Team').agg(GP=('GKey', 'nunique'),
                                                     PIE=('PIE_Raw', 'mean'),
                                                     PTS=('PTS', 'mean')).reset_index()
+
 
             mip = season_line(target_season).merge(season_line(prev_s), on='Player/Team',
                                                    suffixes=('', '_Prev'))
@@ -1570,6 +1923,7 @@ if view_mode == "🏠 League Home & Awards":
         st.markdown("#### 🏅 All-League Teams")
         _al_data = _load_allleague().get(str(target_season), {})
 
+
         def _squad_df(names):
             rws = []
             for n in names:
@@ -1581,6 +1935,7 @@ if view_mode == "🏠 League Home & Awards":
                     rws.append({"Player/Team": n, "Team": "", "PIE": float('nan')})
             return pd.DataFrame(rws, columns=["Player/Team", "Team", "PIE"])
 
+
         if _al_data:
             st.caption("Curated selections (set via /allleague or the editor below).")
             sq1 = _squad_df(_al_data.get("1st Team", []))
@@ -1590,6 +1945,7 @@ if view_mode == "🏠 League Home & Awards":
             st.caption("Auto-picked by PIE for now \u2014 curate your own below or with /allleague.")
             al = qual_p.sort_values('PIE', ascending=False).head(15).reset_index(drop=True)
             sq1, sq2, sq3 = al.head(5), al.iloc[5:10], al.iloc[10:15]
+
 
         def render_all_league(col, title, squad, border):
             with col:
@@ -1603,10 +1959,12 @@ if view_mode == "🏠 League Home & Awards":
                              f"<span class='stat-val'>{fnum(r['PIE']):.1f}</span></div>")
                 st.markdown(html + "</div>", unsafe_allow_html=True)
 
+
         a1, a2, a3 = st.columns(3)
         render_all_league(a1, "1st Team", sq1, GOLD)
         render_all_league(a2, "2nd Team", sq2, SILVER)
         render_all_league(a3, "3rd Team", sq3, BRONZE)
+
 
         with st.expander("\u270f\ufe0f Curate All-League (Season " + str(target_season) + ")"):
             _names_all = sorted(p_stats['Player/Team'].tolist())
@@ -1625,6 +1983,7 @@ if view_mode == "🏠 League Home & Awards":
                                use_container_width=True)
             st.caption("Commit allleague.json to the repo root, or use /allleague in Discord to persist.")
 
+
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown("### 🔥 Streak Trends")
     look = st.slider("Form window (games)", 2, 8, 3)
@@ -1633,6 +1992,7 @@ if view_mode == "🏠 League Home & Awards":
     trend = p_stats.merge(recent_stats, on='Player/Team')
     trend = trend[trend['GP'] >= max(look, 2)]
     trend['Swing'] = trend['Recent_PIE'] - trend['PIE']
+
 
     tc1, tc2 = st.columns(2)
     with tc1:
@@ -1649,10 +2009,13 @@ if view_mode == "🏠 League Home & Awards":
                         f"{r['Swing']:.1f} PIE under avg</div>", unsafe_allow_html=True)
 
 
+
+
 # --------------------------------------------------------- POWER RANKINGS ----
 elif view_mode == "🏆 Power Rankings & SOS":
     st.subheader("📊 League Power Index")
     st.markdown("Tune the weights — the board re-sorts live.")
+
 
     wc1, wc2, wc3 = st.columns(3)
     w_win = wc1.slider("Win% weight", 0.0, 1.0, 0.50, 0.05)
@@ -1660,11 +2023,13 @@ elif view_mode == "🏆 Power Rankings & SOS":
     w_net = wc3.slider("NetRtg weight", 0.0, 1.0, 0.25, 0.05)
     tot_w = max(w_win + w_sos + w_net, 0.01)
 
+
     ranks = t_stats.copy()
     net_span = max(float(ranks['NetRtg'].max() - ranks['NetRtg'].min()), 0.01)
     net_norm = (ranks['NetRtg'] - ranks['NetRtg'].min()) / net_span
     ranks['True_Power'] = ((ranks['Win%'] * w_win) + (ranks['SOS'].fillna(0.5) * w_sos) + (net_norm * w_net)) / tot_w
     ranks = ranks.sort_values('True_Power', ascending=False).reset_index(drop=True)
+
 
     form_map, streak_map, win_streak_len = {}, {}, {}
     for team, g in t_df.sort_values(['Season', 'Game_ID']).groupby('Team Name'):
@@ -1683,6 +2048,7 @@ elif view_mode == "🏆 Power Rankings & SOS":
                 break
         streak_map[team] = f"{'W' if seq[-1] else 'L'}{s}"
         win_streak_len[team] = s if seq[-1] else 0
+
 
     html = ("<table class='sleek-table'><tr><th>Rank</th><th>Team</th><th>Record</th><th>Win%</th>"
             "<th>SOS</th><th>NetRtg</th><th>Pt Diff</th><th>Form (L5)</th><th>Streak</th></tr>")
@@ -1707,6 +2073,8 @@ elif view_mode == "🏆 Power Rankings & SOS":
        "⬇️ Power rankings CSV", "power_rankings.csv", "dl_pr")
 
 
+
+
 # ----------------------------------------------------------- FRANCHISE HUB ---
 elif view_mode == "🏢 Franchise Hub":
     teams = sorted([t for t in p_stats['Team'].dropna().unique() if str(t) != '0'])
@@ -1722,9 +2090,11 @@ elif view_mode == "🏢 Franchise Hub":
         st.markdown(f"<div class='header-banner'>{team_logo_html(sel_team, px=34, mr=10)}{sel_team}</div>",
                     unsafe_allow_html=True)
 
+
         t_data = t_df[t_df['Team Name'] == sel_team]
         p_data = p_df[p_df['Team Name'] == sel_team]
         t_hit = t_stats[t_stats['Team Name'] == sel_team]
+
 
         if t_hit.empty:
             st.warning(f"{sel_team} has player rows but no team-game totals in this scope.")
@@ -1732,6 +2102,7 @@ elif view_mode == "🏢 Franchise Hub":
             t_row = t_hit.iloc[0]
             tab_dash, tab_rot, tab_binder, tab_box = st.tabs(
                 ["📋 Dashboard", "🔁 Rotation", "📇 Player Binder", "📓 Box Scores"])
+
 
             with tab_dash:
                 c1, c2, c3, c4 = st.columns(4)
@@ -1741,6 +2112,7 @@ elif view_mode == "🏢 Franchise Hub":
                 c2.markdown(f"<div class='metric-box'><div class='metric-title'>Point Diff</div><div class='metric-value'>{fnum(t_row['Diff']):+.1f}</div></div>", unsafe_allow_html=True)
                 c3.markdown(f"<div class='metric-box'><div class='metric-title'>Net Rating</div><div class='metric-value'>{t_row['NetRtg']:+.1f}</div><div class='metric-sub'>ORtg {t_row['ORtg']:.1f} / DRtg {t_row['DRtg']:.1f}</div></div>", unsafe_allow_html=True)
                 c4.markdown(f"<div class='metric-box'><div class='metric-title'>Strength of Sched</div><div class='metric-value'>{fnum(t_row['SOS']):.3f}</div></div>", unsafe_allow_html=True)
+
 
                 sc1, sc2 = st.columns(2)
                 with sc1:
@@ -1769,6 +2141,7 @@ elif view_mode == "🏢 Franchise Hub":
                                       paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig, use_container_width=True)
 
+
             with tab_rot:
                 st.markdown("### 🔁 Five-Man Rotation (by Games Played)")
                 st.caption("This is the exact five the Oracle simulates. GP is the primary sort — "
@@ -1776,6 +2149,7 @@ elif view_mode == "🏢 Franchise Hub":
                 rot = get_rotation(sel_team)
                 bench = full_roster(sel_team)
                 bench = bench[~bench['Player/Team'].isin(rot['Player/Team'])]
+
 
                 html = ("<table class='sleek-table'><tr><th>#</th><th>Player</th><th>GP</th><th>PPG</th>"
                         "<th>RPG</th><th>APG</th><th>USG%</th><th>PIE</th></tr>")
@@ -1786,10 +2160,12 @@ elif view_mode == "🏢 Franchise Hub":
                              f"<td>{r['USG']:.1f}</td><td style='color:{GOLD}; font-weight:bold;'>{r['PIE']:.1f}</td></tr>")
                 st.markdown(html + "</table>", unsafe_allow_html=True)
 
+
                 if not bench.empty:
                     st.markdown("#### 🪑 Depth (outside the five)")
                     st.dataframe(bench[['Player/Team', 'GP', 'PTS', 'REB', 'AST', 'PIE']],
                                  use_container_width=True, hide_index=True)
+
 
             with tab_binder:
                 q = st.text_input("Search roster", "", key="binder_q")
@@ -1808,6 +2184,7 @@ elif view_mode == "🏢 Franchise Hub":
                     with cols[idx % 4]:
                         st.markdown(generate_2k_player_card(row['Player/Team'], row, rank=row['League_Rank']),
                                     unsafe_allow_html=True)
+
 
             with tab_box:
                 game_opts = sorted(p_data[['Season', 'Game_ID']].dropna().drop_duplicates()
@@ -1837,6 +2214,8 @@ elif view_mode == "🏢 Franchise Hub":
                                     unsafe_allow_html=True)
 
 
+
+
 # -------------------------------------------------------- PLAYER SPOTLIGHT ---
 elif view_mode == "🔦 Player Spotlight":
     st.subheader("🔦 Player Spotlight")
@@ -1849,6 +2228,7 @@ elif view_mode == "🔦 Player Spotlight":
         sel = st.selectbox("Player", names, index=default_i)
         row = p_stats[p_stats['Player/Team'] == sel].iloc[0]
         logs = p_df[p_df['Player/Team'] == sel].sort_values(['Season', 'Game_ID']).reset_index(drop=True)
+
 
         render_rotating_card(sel, key="spotlight", team=row.get('Team'))
         if st.button("★ Toggle Watchlist", use_container_width=True):
@@ -1863,6 +2243,7 @@ elif view_mode == "🔦 Player Spotlight":
                              f"<div class='metric-value'>{val}</div></div>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
 
+
             metric = st.selectbox("Trend metric", ['PIE_Raw', 'PTS', 'REB', 'AST', 'STL', 'BLK',
                                                    'Game_Score', 'USG_Game'], index=0)
             logs['G'] = logs.index + 1
@@ -1876,6 +2257,7 @@ elif view_mode == "🔦 Player Spotlight":
             fig.update_layout(template='plotly_dark', height=320, paper_bgcolor='rgba(0,0,0,0)',
                               plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=10, r=10, t=30, b=10))
             st.plotly_chart(fig, use_container_width=True)
+
 
         st.markdown("### 🔀 Splits")
         s1, s2 = st.columns(2)
@@ -1896,6 +2278,7 @@ elif view_mode == "🔦 Player Spotlight":
             else:
                 st.info("No opponent data yet.")
 
+
         st.markdown("### 📓 Game Log")
         cols = [c for c in ['Season', 'Game_ID', 'Opp_Name', 'Win', 'PTS', 'REB', 'AST', 'STL', 'BLK',
                             'FGM', 'FGA', '3PM', '3PA', 'TO', 'PIE_Raw', 'Game_Score'] if c in logs.columns]
@@ -1905,9 +2288,12 @@ elif view_mode == "🔦 Player Spotlight":
         dl(show, "⬇️ Game log CSV", f"{sel}_gamelog.csv", "dl_log")
 
 
+
+
 # ------------------------------------------------------------- DATABASE ------
 elif view_mode == "🗃️ Full Player Database":
     st.subheader("🗃️ Interactive Player Universe")
+
 
     f1, f2, f3 = st.columns([2, 2, 2])
     q = f1.text_input("🔍 Search player")
@@ -1915,12 +2301,14 @@ elif view_mode == "🗃️ Full Player Database":
     sort_by = f3.selectbox("Sort by", ['PIE', 'PTS', 'REB', 'AST', 'DEF', 'GmSc', 'NetRtg',
                                        'USG', 'TS%', 'GP'], index=0)
 
+
     view = p_view.copy()
     if q:
         view = view[view['Player/Team'].str.contains(q, case=False, na=False)]
     if team_filter:
         view = view[view['Team'].isin(team_filter)]
     view = view.sort_values(sort_by, ascending=False)
+
 
     if view.empty:
         st.info("No players match the current filters.")
@@ -1933,11 +2321,14 @@ elif view_mode == "🗃️ Full Player Database":
         fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig, use_container_width=True)
 
+
         st.markdown(f"### 📊 Master Roster — {len(view)} players")
         cols = ['Player/Team', 'Team', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TO',
                 'FG%', '3P%', 'TS%', 'eFG%', 'USG', 'ORtg', 'DRtg', 'NetRtg', 'GmSc', 'PIE']
         st.dataframe(view[cols], use_container_width=True, hide_index=True)
         dl(view[cols], "⬇️ Roster CSV", "qcl_roster.csv", "dl_roster")
+
+
 
 
 # ------------------------------------------------------------------ H2H ------
@@ -1951,15 +2342,18 @@ elif view_mode == "⚔️ Head-to-Head Radar":
         p1_sel = c1.selectbox("Player 1 (Gold)", player_list)
         p2_sel = c2.selectbox("Player 2 (Red)", player_list, index=1)
 
+
         d1 = p_stats[p_stats['Player/Team'] == p1_sel].iloc[0]
         d2 = p_stats[p_stats['Player/Team'] == p2_sel].iloc[0]
         mx = p_stats.max(numeric_only=True)
+
 
         cats = ['Scoring', 'Playmaking', 'Rebounding', 'Defense', 'Efficiency', 'Usage']
         r1 = [norm(d1['PTS'], mx['PTS']), norm(d1['AST'], mx['AST']), norm(d1['REB'], mx['REB']),
               norm(d1['DEF'], mx['DEF']), norm(d1['TS%'], 75), norm(d1['USG'], mx['USG'])]
         r2 = [norm(d2['PTS'], mx['PTS']), norm(d2['AST'], mx['AST']), norm(d2['REB'], mx['REB']),
               norm(d2['DEF'], mx['DEF']), norm(d2['TS%'], 75), norm(d2['USG'], mx['USG'])]
+
 
         cA, cB = st.columns([3, 2])
         with cA:
@@ -1981,10 +2375,13 @@ elif view_mode == "⚔️ Head-to-Head Radar":
             st.markdown(html + "</table>", unsafe_allow_html=True)
 
 
+
+
 # ------------------------------------------------------------- LINEUP LAB ----
 elif view_mode == "🧪 Lineup Lab":
     st.subheader("🧪 Lineup Lab — Build Any Five")
     st.markdown("Assemble two five-man units from anywhere in the league and see which unit wins on paper.")
+
 
     names = sorted(p_stats['Player/Team'].tolist())
     if len(names) < 10:
@@ -1996,16 +2393,19 @@ elif view_mode == "🧪 Lineup Lab":
         with lc2:
             u2 = st.multiselect("Unit B (Red) — pick 5", names, default=names[5:10])
 
+
         if len(u1) != 5 or len(u2) != 5:
             st.info(f"Pick exactly five per unit. Unit A has {len(u1)}, Unit B has {len(u2)}.")
         else:
             a = p_stats[p_stats['Player/Team'].isin(u1)]
             b = p_stats[p_stats['Player/Team'].isin(u2)]
 
+
             def unit_line(u):
                 return dict(PTS=u['PTS'].sum(), REB=u['REB'].sum(), AST=u['AST'].sum(),
                             DEF=u['DEF'].sum(), TS=u['TS%'].mean(), PIE=u['PIE'].sum(),
                             TO=u['TO'].sum())
+
 
             la, lb = unit_line(a), unit_line(b)
             mx = {k: max(la[k], lb[k]) for k in la}
@@ -2014,6 +2414,7 @@ elif view_mode == "🧪 Lineup Lab":
                   norm(la['DEF'], mx['DEF']), norm(la['TS'], mx['TS']), norm(la['PIE'], mx['PIE'])]
             rb = [norm(lb['PTS'], mx['PTS']), norm(lb['REB'], mx['REB']), norm(lb['AST'], mx['AST']),
                   norm(lb['DEF'], mx['DEF']), norm(lb['TS'], mx['TS']), norm(lb['PIE'], mx['PIE'])]
+
 
             r1, r2 = st.columns([3, 2])
             with r1:
@@ -2029,6 +2430,7 @@ elif view_mode == "🧪 Lineup Lab":
                             f"<p style='color:#888; margin-top:8px;'>A {la['PTS']:.1f} PPG "
                             f"vs B {lb['PTS']:.1f} PPG</p></div>", unsafe_allow_html=True)
 
+
             st.markdown("#### Unit Sheets")
             uc1, uc2 = st.columns(2)
             cols = ['Player/Team', 'Team', 'GP', 'PTS', 'REB', 'AST', 'DEF', 'TS%', 'PIE']
@@ -2036,10 +2438,13 @@ elif view_mode == "🧪 Lineup Lab":
             uc2.dataframe(b[cols], use_container_width=True, hide_index=True)
 
 
+
+
 # ---------------------------------------------------------- RIVALRY CORNER ---
 elif view_mode == "🥊 Rivalry Corner":
     st.subheader("🥊 Rivalry Corner")
     min_meets = st.slider("Minimum meetings to qualify as a rivalry", 2, 10, 4)
+
 
     matchups = full_df[full_df['Type'].astype(str).str.lower() == 'team'].copy()
     if 'Opp_Name' not in matchups.columns or matchups['Opp_Name'].isna().all():
@@ -2050,6 +2455,7 @@ elif view_mode == "🥊 Rivalry Corner":
             lambda r: " vs ".join(sorted([str(r['Team Name']), str(r['Opp_Name'])])), axis=1)
         rivals = matchups.groupby('Pairing').agg(Games=('GKey', 'nunique')).reset_index()
         rivals = rivals[rivals['Games'] >= min_meets].sort_values('Games', ascending=False)
+
 
         if rivals.empty:
             st.info(f"No teams have played {min_meets}+ games against each other yet.")
@@ -2076,6 +2482,8 @@ elif view_mode == "🥊 Rivalry Corner":
                                         unsafe_allow_html=True)
 
 
+
+
 # ------------------------------------------------------------- PLAYOFFS ------
 elif view_mode == "🏆 Playoffs":
     st.subheader("🏆 Playoff Central")
@@ -2083,12 +2491,15 @@ elif view_mode == "🏆 Playoffs":
                 "season, run over postseason games in the current scope. (Ignores the sidebar "
                 "Game Type filter.)")
 
+
     if selected_scope == "Career Stats":
         po_scope = full_df
     else:
         po_scope = full_df[full_df['Season'] == target_season]
 
+
     po_src = po_scope[(po_scope['Game_ID'] >= 9001) & (po_scope['Game_ID'] <= 9999)]
+
 
     if po_src.empty:
         st.info("No playoff games logged in this scope yet (playoffs = Game_ID 9001–9999).")
@@ -2100,6 +2511,7 @@ elif view_mode == "🏆 Playoffs":
             po_p_stats, po_t_stats = PO['p_stats'], PO['t_stats']
             po_p_df, po_t_df = PO['p_df'], PO['t_df']
 
+
             m1, m2, m3, m4 = st.columns(4)
             m1.markdown(f"<div class='metric-box'><div class='metric-title'>Playoff Games</div><div class='metric-value'>{po_src['GKey'].nunique()}</div></div>", unsafe_allow_html=True)
             m2.markdown(f"<div class='metric-box'><div class='metric-title'>Players</div><div class='metric-value'>{po_p_stats['Player/Team'].nunique()}</div></div>", unsafe_allow_html=True)
@@ -2107,7 +2519,9 @@ elif view_mode == "🏆 Playoffs":
             m4.markdown(f"<div class='metric-box'><div class='metric-title'>Playoff PPG</div><div class='metric-value'>{fnum(po_t_stats['PPG'].mean()):.1f}</div></div>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
 
+
             po_tabs = st.tabs(["🏆 Leaders", "📊 Player Stats", "🏟️ Team Stats", "🔥 Single-Game Highs"])
+
 
             # ---- LEADERS (per-game + totals) ----
             with po_tabs[0]:
@@ -2124,12 +2538,14 @@ elif view_mode == "🏆 Playoffs":
                     st.markdown(generate_mini_leaderboard("APG", po_p_stats, 'AST', "#00bfff", depth, "Player/Team"), unsafe_allow_html=True)
                     st.markdown(generate_mini_leaderboard("GmSc", po_p_stats, 'GmSc', "#8a2be2", depth, "Player/Team"), unsafe_allow_html=True)
 
+
                 st.markdown("#### Totals")
                 po_tot = po_p_df.groupby('Player/Team').sum(numeric_only=True).reset_index()
                 tc1, tc2, tc3 = st.columns(3)
                 tc1.markdown(generate_mini_leaderboard("Total PTS", po_tot, 'PTS', "#cc0000", depth, "Player/Team"), unsafe_allow_html=True)
                 tc2.markdown(generate_mini_leaderboard("Total REB", po_tot, 'REB', "#32cd32", depth, "Player/Team"), unsafe_allow_html=True)
                 tc3.markdown(generate_mini_leaderboard("Total AST", po_tot, 'AST', "#00bfff", depth, "Player/Team"), unsafe_allow_html=True)
+
 
             # ---- PLAYER STATS (same columns as Full Player Database) ----
             with po_tabs[1]:
@@ -2147,6 +2563,7 @@ elif view_mode == "🏆 Playoffs":
                 st.markdown(f"##### Playoff Player Stats — {len(view)} players")
                 st.dataframe(view[cols], use_container_width=True, hide_index=True)
                 dl(view[cols], "⬇️ Playoff stats CSV", "qcl_playoff_players.csv", "dl_po_players")
+
 
             # ---- TEAM STATS ----
             with po_tabs[2]:
@@ -2166,6 +2583,7 @@ elif view_mode == "🏆 Playoffs":
                 st.markdown(html + "</table>", unsafe_allow_html=True)
                 dl(po_t_stats, "⬇️ Playoff team stats CSV", "qcl_playoff_teams.csv", "dl_po_teams")
 
+
                 st.markdown("##### 💥 Biggest Playoff Blowouts")
                 blow = po_t_df[po_t_df['Point_Diff'].notna() & (po_t_df['Point_Diff'] > 0)] \
                     .sort_values('Point_Diff', ascending=False).head(10)
@@ -2180,6 +2598,7 @@ elif view_mode == "🏆 Playoffs":
                                  f"<td>{int(r['PTS'])} — {opp_pts}</td>"
                                  f"<td style='color:{GOLD}; font-weight:bold;'>+{int(r['Point_Diff'])}</td></tr>")
                     st.markdown(html + "</table>", unsafe_allow_html=True)
+
 
             # ---- SINGLE-GAME HIGHS ----
             with po_tabs[3]:
@@ -2197,11 +2616,14 @@ elif view_mode == "🏆 Playoffs":
                     st.markdown(generate_mini_leaderboard("3-Pointers", po_p_df, '3PM', GOLD, depth, "Player/Team"), unsafe_allow_html=True)
 
 
+
+
 # ------------------------------------------------------- ORACLE PREDICTOR ----
 elif view_mode == "🔮 Oracle Predictor":
     st.subheader("🔮 QCL Oracle — Monte Carlo Matchup Engine")
     st.markdown("**Five men on the floor.** The Oracle simulates only each team's top-5 rotation "
                 "by games played — not the whole roster. Scratch a starter and the projection moves.")
+
 
     fieldable = [t for t in t_stats['Team Name'] if not get_rotation(t).empty]
     if len(fieldable) < 2:
@@ -2212,6 +2634,7 @@ elif view_mode == "🔮 Oracle Predictor":
         c1, c2 = st.columns(2)
         t1_sel = c1.selectbox("🏠 Home Team", team_names, index=0)
         t2_sel = c2.selectbox("✈️ Away Team", team_names, index=min(1, len(team_names) - 1))
+
 
         if t1_sel == t2_sel:
             st.warning("Pick two different teams.")
@@ -2225,14 +2648,17 @@ elif view_mode == "🔮 Oracle Predictor":
                 star_conc = sc4.slider("Ball-hog factor", 2.0, 15.0, 6.0, 0.5,
                                        help="High = the star always eats. Low = points spread randomly.")
 
+
                 ec1, ec2 = st.columns(2)
                 r1_full = full_roster(t1_sel)['Player/Team'].tolist()
                 r2_full = full_roster(t2_sel)['Player/Team'].tolist()
                 out1 = ec1.multiselect(f"🚑 Scratches — {t1_sel}", r1_full, key="out1")
                 out2 = ec2.multiselect(f"🚑 Scratches — {t2_sel}", r2_full, key="out2")
 
+
             rot1 = get_rotation(t1_sel, exclude=out1)
             rot2 = get_rotation(t2_sel, exclude=out2)
+
 
             if rot1.empty or rot2.empty:
                 st.error("Not enough available players to field a rotation. Un-scratch somebody.")
@@ -2250,16 +2676,19 @@ elif view_mode == "🔮 Oracle Predictor":
                         if len(rot) < ROTATION_SIZE:
                             st.warning(f"Only {len(rot)} available — shorthanded.")
 
+
                 if st.button("🔮 RUN SIMULATION", type="primary", use_container_width=True):
                     with st.spinner(f"Running {n_sims:,} games..."):
                         res = run_monte_carlo(t1_sel, t2_sel, rot1, rot2, n_sims=n_sims, hca=hca,
                                               star_conc=star_conc, variance=variance)
+
 
                     p1, p2 = res['win1'], res['win2']
                     med1, med2 = int(np.median(res['s1'])), int(np.median(res['s2']))
                     spread = float(np.mean(res['margin']))
                     total = float(np.mean(res['s1'] + res['s2']))
                     fav = t1_sel if spread > 0 else t2_sel
+
 
                     st.markdown(
                         f"<div class='sim-box'>"
@@ -2270,6 +2699,7 @@ elif view_mode == "🔮 Oracle Predictor":
                         f"<span style='color:{GREEN if med2 > med1 else '#fff'};'>{med2}</span></h1>"
                         f"<p style='color:#aaa; margin:0;'>{t1_sel} (H) vs {t2_sel} (A)</p></div>",
                         unsafe_allow_html=True)
+
 
                     fig = go.Figure()
                     fig.add_trace(go.Bar(y=['Win Probability'], x=[p1 * 100], orientation='h',
@@ -2286,6 +2716,7 @@ elif view_mode == "🔮 Oracle Predictor":
                                       margin=dict(l=0, r=0, t=10, b=10))
                     st.plotly_chart(fig, use_container_width=True)
 
+
                     b1, b2, b3, b4 = st.columns(4)
                     b1.markdown(f"<div class='line-box'><div class='line-label'>Spread</div>"
                                 f"<div class='line-value'>{fav} {-abs(spread):.1f}</div></div>", unsafe_allow_html=True)
@@ -2297,8 +2728,10 @@ elif view_mode == "🔮 Oracle Predictor":
                                 f"<div class='line-value'>{american_odds(p2)}</div></div>", unsafe_allow_html=True)
                     st.caption("Lines are model output, not a sportsbook. Feed them to the casino module at your own risk.")
 
+
                     st.markdown("<br>", unsafe_allow_html=True)
                     o_tabs = st.tabs(["📊 Distributions", "📋 Projected Box Scores", "🏆 MVP Odds"])
+
 
                     with o_tabs[0]:
                         dc1, dc2 = st.columns(2)
@@ -2320,6 +2753,7 @@ elif view_mode == "🔮 Oracle Predictor":
                                                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                             st.plotly_chart(sfig, use_container_width=True)
 
+
                         blow = float((np.abs(res['margin']) >= 15).mean() * 100)
                         close = float((np.abs(res['margin']) <= 5).mean() * 100)
                         k1, k2, k3 = st.columns(3)
@@ -2330,6 +2764,7 @@ elif view_mode == "🔮 Oracle Predictor":
                         k3.markdown(f"<div class='line-box'><div class='line-label'>Roster Health</div>"
                                     f"<div class='line-value'>{res['avail'][0]*100:.0f}% / {res['avail'][1]*100:.0f}%</div></div>",
                                     unsafe_allow_html=True)
+
 
                     with o_tabs[1]:
                         bx1 = projected_box(rot1, res['pp1'])
@@ -2344,6 +2779,7 @@ elif view_mode == "🔮 Oracle Predictor":
                             st.dataframe(bx2, use_container_width=True, hide_index=True)
                             dl(bx2, "⬇️ CSV", f"{t2_sel}_proj.csv", "dl_bx2")
                         st.caption("PROJ PTS = median simulated points. Range = 20th–80th percentile outcomes.")
+
 
                     with o_tabs[2]:
                         mvp = res['mvp']
@@ -2361,6 +2797,8 @@ elif view_mode == "🔮 Oracle Predictor":
                         dl(mvp, "⬇️ MVP odds CSV", "mvp_odds.csv", "dl_mvp")
 
 
+
+
 # ------------------------------------------------------------ LEAGUE TEAMS ---
 elif view_mode == "\U0001f6e1\ufe0f League Teams":
     st.subheader("\U0001f6e1\ufe0f League Teams")
@@ -2368,13 +2806,16 @@ elif view_mode == "\U0001f6e1\ufe0f League Teams":
                 "**`teams.json`** \u2014 set it from Discord with **/team set**, or edit + download below. "
                 "The colour drives each team's accent on player cards.")
 
+
     tmeta = _load_team_meta()
     sheet_teams = {str(t) for t in (set(t_stats['Team Name'].dropna()) | set(p_stats['Team'].dropna()))
                    if str(t) not in ('', '0')}
     all_teams = sorted(sheet_teams | set(tmeta.keys()))
 
+
     rec = {r['Team Name']: (int(r['Wins']), int(r['GP'] - r['Wins'])) for _, r in t_stats.iterrows()}
     roster_ct = p_stats.groupby('Team')['Player/Team'].nunique().to_dict()
+
 
     st.markdown(f"#### {len(all_teams)} teams")
     if not all_teams:
@@ -2409,64 +2850,136 @@ elif view_mode == "\U0001f6e1\ufe0f League Teams":
                 html += "</div>"
                 st.markdown(html, unsafe_allow_html=True)
 
+
     st.caption("Branding is managed from Discord with **/teamset** (full name, division, abbr). "
                "The accent colour is pulled automatically from each team's logo in **logos/**.")
 
 
+
+
 # ------------------------------------------------------------- CARD MARKET ---
+
 elif view_mode == "\U0001f4c8 Card Market":
-    st.subheader("\U0001f4c8 Card Market (preview)")
-    st.markdown("Live card values \u2014 **stat \u00d7 popularity**, capped at **$3**. Popularity = "
-                "awards + community mentions + roles. No trading yet; this is the market board.")
-    wc1, wc2 = st.columns(2)
-    w_stat = wc1.slider("Stat weight", 0.0, 1.0, 0.5, 0.05, key="mk_ws")
-    w_pop = wc2.slider("Popularity weight", 0.0, 1.0, 0.5, 0.05, key="mk_wp")
-    q = st.text_input("\U0001f50d Search player", key="mk_q")
+    st.subheader("\U0001f4c8 Card Market")
 
-    market = _load_market()
-    rows = []
-    for _, r in p_stats.iterrows():
-        pl = r['Player/Team']
-        tier, col = card_rarity(pl)
-        m = market.get(pl)
-        if m:  # bot is the source of truth for serialized cards
-            tier = m.get("tier", tier)
-            col = RARITY_COLOR_BY_NAME.get(tier, col)
-            run = int(m.get("run", 0))
-            minted = int(m.get("minted", 0))
-            stock = f"{max(run - minted, 0)}/{run}"
-        else:
-            run = RARITY_SUPPLY.get(tier, 0)
-            stock = "∞" if run == 0 else str(run)
-        rows.append({"Player": pl, "Team": r['Team'], "Tier": tier, "Color": col,
-                     "Stat": _career_ratings().get(pl, 0.0), "Pop": player_popularity(pl),
-                     "Price": player_price(pl, w_stat, w_pop),
-                     "Stock": stock, "Form": player_form(pl)})
-    mk = pd.DataFrame(rows)
-    if q:
-        mk = mk[mk['Player'].str.contains(q, case=False, na=False)]
-    mk = mk.sort_values("Price", ascending=False)
+    if not _qtcg_live():
+        st.warning("The bot hasn't published its market yet \u2014 showing the Hub's own "
+                   "estimate. Run **/qtcg admin publish** in Discord to sync.")
+        _mkdf = pd.DataFrame()
+    else:
+        _mkdf = _qtcg_frame()
 
-    html = ("<table class='sleek-table'><tr><th>Player</th><th>Team</th><th>Tier</th>"
-            "<th>Stat</th><th>Pop</th><th>Price</th><th>Left</th><th>Trend</th></tr>")
-    for _, r in mk.iterrows():
-        arrow = "\u25b2" if r['Form'] > 0 else "\u25bc" if r['Form'] < 0 else "\u2014"
-        acol = GREEN if r['Form'] > 0 else RED if r['Form'] < 0 else "#888"
-        html += (f"<tr><td class='player-name'>{team_logo_html(r['Team'], px=16)}{r['Player']}</td>"
-                 f"<td>{r['Team']}</td>"
-                 f"<td><span style='background:{r['Color']};color:#000;font-weight:800;font-size:11px;"
-                 f"padding:2px 8px;border-radius:8px;'>{r['Tier']}</span></td>"
-                 f"<td>{r['Stat'] * 100:.0f}</td><td>{r['Pop'] * 100:.0f}</td>"
-                 f"<td style='color:#d4af37;font-weight:900;'>${r['Price']:.2f}</td>"
-                 f"<td>{r['Stock']}</td><td style='color:{acol};font-weight:bold;'>{arrow}</td></tr>")
-    st.markdown(html + "</table>", unsafe_allow_html=True)
-    st.caption("Stat = career impact percentile. Pop = awards + mentions + roles (0-100). "
-               "Left = serials still available (matches Discord). Trend = recent form.")
-    dl(mk[['Player', 'Team', 'Tier', 'Stat', 'Pop', 'Price', 'Stock', 'Form']],
-       "\u2b07\ufe0f Market CSV", "card_market.csv", "dl_market")
+    if _mkdf.empty:
+        # ---- fallback: the old estimate, but vectorized so it can't hang ----
+        _cr = _career_ratings()
+        _base = p_stats[["Player/Team", "Team"]].copy()
+        _base["Stat"] = _base["Player/Team"].map(_cr).fillna(0.0)
+        _base["Tier"] = _base["Stat"].map(
+            lambda p: next(n for t, n, _c in RARITY_TIERS if p >= t))
+        _base["Price"] = (3.0 * _base["Stat"]).round(2)
+        st.dataframe(_base.rename(columns={"Player/Team": "Player"}),
+                     hide_index=True, height=520)
+        st.caption("Estimate only \u2014 not the live market.")
+    else:
+        _s8 = _qtcg_state()
+        m1, m2, m3, m4 = st.columns(4)
+        m1.markdown(f"<div class='metric-box'><div class='metric-title'>Cards</div>"
+                    f"<div class='metric-value'>{len(_mkdf)}</div></div>", unsafe_allow_html=True)
+        m2.markdown(f"<div class='metric-box'><div class='metric-title'>Active</div>"
+                    f"<div class='metric-value'>{_s8.get('active', 0)}</div></div>",
+                    unsafe_allow_html=True)
+        m3.markdown(f"<div class='metric-box'><div class='metric-title'>Legacy</div>"
+                    f"<div class='metric-value' style='color:{BLUE};'>{_s8.get('legacy', 0)}"
+                    f"</div><div class='metric-sub'>supply closed</div></div>",
+                    unsafe_allow_html=True)
+        m4.markdown(f"<div class='metric-box'><div class='metric-title'>League fee</div>"
+                    f"<div class='metric-value'>{int(_s8.get('fee_pct', 0.2) * 100)}%</div></div>",
+                    unsafe_allow_html=True)
+        _age = max(0, int(_qt_time.time()) - int(_s8.get("updated", 0))) // 60
+        st.caption(f"Live from the bot \u00b7 updated {_age} min ago \u00b7 prices in coins")
+        st.markdown("<br>", unsafe_allow_html=True)
 
+        f1, f2, f3 = st.columns([2, 2, 3])
+        _cls = f1.selectbox("Class", ["All", "Active", "Legacy"], key="mk_cls")
+        _tier = f2.selectbox("Tier", ["All", "Legendary", "Epic", "Rare", "Uncommon", "Common"],
+                             key="mk_tier")
+        _q = f3.text_input("\U0001f50d Search player", key="mk_q")
 
-# --------------------------------------------------------------- 3v3 FANTASY -
+        view = _mkdf
+        if _cls != "All":
+            view = view[view["Class"] == _cls.lower()]
+        if _tier != "All":
+            view = view[view["Tier"] == _tier]
+        if _q:
+            view = view[view["Player"].str.contains(_q, case=False, na=False)]
+
+        show = view.copy()
+        show["Stock"] = show.apply(_qtcg_stock, axis=1)
+        show["Market"] = show["Heat"].map(
+            lambda h: "\U0001f525 hot" if h > 1.05 else "\U0001f9ca cold" if h < 0.95 else "\u2696\ufe0f")
+        show["Form"] = show["Trend"].map(
+            lambda t: "\u25b2" if t > 0.5 else "\u25bc" if t < -0.5 else "\u2014")
+        cols = ["Rank", "Player", "Tier", "Class", "Price", "Fair", "Market",
+                "Stock", "Trades", "Form", "Legend"]
+        st.dataframe(show[cols], hide_index=True, height=520)
+        st.caption(f"{len(show)} of {len(_mkdf)} cards. Price = the bot's live quote "
+                   "(formula blended with real trades). Fair = formula only.")
+        dl(show[cols], "\u2b07\ufe0f Market CSV", "card_market.csv", "dl_market")
+
+        # ---- live listings + auctions straight off the bot ----
+        _lst = _s8.get("listings") or []
+        _auc = _s8.get("auctions") or []
+        if _lst or _auc:
+            lc1, lc2 = st.columns(2)
+            with lc1:
+                st.markdown("#### \U0001f4b0 For sale")
+                if _lst:
+                    st.dataframe(pd.DataFrame(_lst)[["player", "price", "serial"]]
+                                 .rename(columns={"player": "Player", "price": "Price",
+                                                  "serial": "#"}),
+                                 hide_index=True, height=240)
+                else:
+                    st.caption("_nothing listed_")
+            with lc2:
+                st.markdown("#### \U0001f528 Auctions")
+                if _auc:
+                    _a = pd.DataFrame(_auc)
+                    _a["ends in"] = ((_a["ends"] - int(_qt_time.time())) // 60).clip(lower=0).astype(str) + "m"
+                    st.dataframe(_a[["player", "bid", "bids", "ends in"]]
+                                 .rename(columns={"player": "Player", "bid": "Bid",
+                                                  "bids": "Bids"}),
+                                 hide_index=True, height=240)
+                else:
+                    st.caption("_no live auctions_")
+
+        # ---- moment drops ----
+        _mom = _s8.get("moments") or {}
+        if _mom:
+            st.markdown("#### \U0001f4a5 Moment drops")
+            _md = pd.DataFrame([
+                {"Moment": v.get("name"), "Player": v.get("player"),
+                 "Left": f"{int(v.get('run', 0)) - int(v.get('minted', 0))}/{int(v.get('run', 0))}",
+                 "Season": v.get("season"), "Game": v.get("game"),
+                 "Line": f"{int((v.get('stat_line') or {}).get('PTS', 0))}p/"
+                         f"{int((v.get('stat_line') or {}).get('REB', 0))}r/"
+                         f"{int((v.get('stat_line') or {}).get('AST', 0))}a"}
+                for v in _mom.values()])
+            _sold = _md["Left"].str.split("/").str[0].astype(int) > 0
+            st.dataframe(_md[_sold].head(60), hide_index=True, height=280)
+            st.caption(f"{int(_sold.sum())} of {len(_md)} moments still claimable. "
+                       "Minted by real performances \u2014 never reprinted.")
+
+        # ---- recent tape ----
+        _tape = _s8.get("tape") or []
+        if _tape:
+            with st.expander(f"\U0001f9fe Recent trades ({len(_tape)})"):
+                _t = pd.DataFrame(_tape)
+                _t["when"] = _t["t"].map(
+                    lambda x: f"{max(0, (int(_qt_time.time()) - int(x)) // 60)}m ago")
+                st.dataframe(_t[["p", "price", "when"]]
+                             .rename(columns={"p": "Player", "price": "Price"}),
+                             hide_index=True, height=300)
+
 elif view_mode == "\U0001f3b4 Qwiks TCG":
     st.subheader("\U0001f3b4 Qwiks TCG \u2014 Lineup Lab")
     st.markdown("Build a 3-man unit: one **Guard**, one **Forward**, one **Big**. Positional "
@@ -2474,11 +2987,13 @@ elif view_mode == "\U0001f3b4 Qwiks TCG":
                 "reward budget archetype pairings.")
     st.caption("Tier cost \u2014 Legendary 5 \u00b7 Epic 4 \u00b7 Rare 3 \u00b7 Uncommon 2 \u00b7 Common 1.")
 
+
     names = sorted(p_stats['Player/Team'].tolist())
     sc1, sc2, sc3 = st.columns(3)
     picks = [("Guard", sc1.selectbox("\U0001f6e1\ufe0f Guard", ["\u2014"] + names, key="f3_g")),
              ("Forward", sc2.selectbox("\u2694\ufe0f Forward", ["\u2014"] + names, key="f3_f")),
              ("Big", sc3.selectbox("\U0001f5fc Big", ["\u2014"] + names, key="f3_b"))]
+
 
     total_cost, total_fp, filled = 0, 0.0, []
     cards = st.columns(3)
@@ -2511,6 +3026,7 @@ elif view_mode == "\U0001f3b4 Qwiks TCG":
                 f"<span style='color:{GOLD};font-weight:900;'>{fp:.1f} FP</span></div></div>",
                 unsafe_allow_html=True)
 
+
     # ---- synergy combos (auto from archetypes) ----
     combos, mult = [], 1.0
     arches = [x["arch"] for x in filled]
@@ -2534,6 +3050,7 @@ elif view_mode == "\U0001f3b4 Qwiks TCG":
     mult = min(mult, 1.30)
     fp_final = total_fp * mult
 
+
     st.markdown("<br>", unsafe_allow_html=True)
     m1, m2, m3, m4 = st.columns(4)
     cap_col = RED if total_cost > FANTASY_CAP else GREEN
@@ -2551,6 +3068,7 @@ elif view_mode == "\U0001f3b4 Qwiks TCG":
     if total_cost > FANTASY_CAP:
         st.error(f"Over the {FANTASY_CAP}-point cap by {total_cost - FANTASY_CAP}. Swap in a cheaper tier.")
 
+
     if combos:
         st.markdown("#### \u26a1 Active Synergies")
         for nm, desc in combos:
@@ -2559,6 +3077,7 @@ elif view_mode == "\U0001f3b4 Qwiks TCG":
                         f"<span style='color:#aaa;'>\u2014 {desc}</span></div>", unsafe_allow_html=True)
     elif len(filled) == 3:
         st.caption("No synergies active \u2014 pair two Common/Uncommon cards with different archetypes to unlock combos.")
+
 
     # ---- best fantasy assets by role ----
     st.markdown("<hr>", unsafe_allow_html=True)
@@ -2583,11 +3102,14 @@ elif view_mode == "\U0001f3b4 Qwiks TCG":
             st.markdown(html + "</div>", unsafe_allow_html=True)
 
 
+
+
 # -------------------------------------------------------- AWARDS & REWARDS ---
 elif view_mode == "\U0001f3c5 Awards & Rewards":
     st.subheader("\U0001f3c5 Awards & Rewards")
     st.markdown("Award-winner cards rotate automatically below. Drop images in **`cards/`** and "
                 "team badges in **`logos/`** (in the repo) and they show up on their own.")
+
 
     try:
         _BASE = os.path.dirname(os.path.abspath(__file__))
@@ -2601,13 +3123,17 @@ elif view_mode == "\U0001f3c5 Awards & Rewards":
         except Exception:
             pass
 
+
     IMG_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif")
+
 
     def _nice(fn):
         return os.path.splitext(fn)[0].replace("_", " ").replace("-", " ").title()
 
+
     def _slug(s):
         return re.sub(r"[^a-z0-9]+", "", str(s or "").lower())
+
 
     def _data_uri(path):
         try:
@@ -2617,6 +3143,7 @@ elif view_mode == "\U0001f3c5 Awards & Rewards":
                 return f"data:{mime};base64," + base64.b64encode(fh.read()).decode("utf-8")
         except Exception:
             return ""
+
 
     # OPTIONAL: stat line / real names per file (key = filename without extension).
     CARD_META = {
@@ -2634,6 +3161,7 @@ elif view_mode == "\U0001f3c5 Awards & Rewards":
         except Exception:
             pass
 
+
     # ---- index team logos: logos/<team>.png  ->  matched by squashed team name ----
     _logo_index = {}
     try:
@@ -2643,15 +3171,18 @@ elif view_mode == "\U0001f3c5 Awards & Rewards":
     except Exception:
         pass
 
+
     def _logo_uri(team):
         p = _logo_index.get(_slug(team))
         return _data_uri(p) if p else ""
+
 
     # ---- gather winner cards ----
     try:
         files = sorted(f for f in os.listdir(CARDS_DIR) if f.lower().endswith(IMG_EXT))
     except Exception:
         files = []
+
 
     cards_data = []
     for fn in files:
@@ -2666,6 +3197,7 @@ elif view_mode == "\U0001f3c5 Awards & Rewards":
             "blurb": meta.get("blurb", ""),
             "highlights": meta.get("highlights", []) if isinstance(meta.get("highlights"), list) else [],
         })
+
 
     # ---- ROTATING CAROUSEL ----
     if cards_data:
@@ -2747,6 +3279,7 @@ elif view_mode == "\U0001f3c5 Awards & Rewards":
         st.info("No cards yet. Post one in Discord with **/award card**, or drop images into the "
                 "**cards/** folder in the repo. Team badges go in **logos/** (named after the team).")
 
+
     # ---- phone uploader (quick view, this session) ----
     with st.expander("\U0001f4e4 Upload a card from your phone (quick view)"):
         ups = st.file_uploader("Card images", type=["png", "jpg", "jpeg", "webp"],
@@ -2757,6 +3290,7 @@ elif view_mode == "\U0001f3c5 Awards & Rewards":
                 with ug[i % 3]:
                     st.image(uf, use_container_width=True)
                     st.caption(_nice(uf.name))
+
 
     # ---- flip-card trophy wall (front = art, hover to flip to details) ----
     if cards_data:
@@ -2796,11 +3330,15 @@ elif view_mode == "\U0001f3c5 Awards & Rewards":
                 st.markdown(html, unsafe_allow_html=True)
 
 
+
+
 # ------------------------------------------------------- ANALYTICS LAB -------
 elif view_mode == "🔬 Advanced Analytics Lab":
     st.subheader("🔬 The Analytics Lab")
 
+
     lab = st.tabs(["Four Factors", "Pace & Space", "Team Ratings", "Player Ratings", "Correlations"])
+
 
     with lab[0]:
         st.markdown("### 📈 Four Factors")
@@ -2810,6 +3348,7 @@ elif view_mode == "🔬 Advanced Analytics Lab":
             html += (f"<tr><td class='player-name'>{team_logo_html(r['Team Name'], px=18)}{r['Team Name']}</td><td>{r['eFG%']:.1f}%</td>"
                      f"<td>{fnum(r['TOPG']):.1f}</td><td>{fnum(r['Opp_PPP']):.2f}</td><td>{r['Pace']:.1f}</td></tr>")
         st.markdown(html + "</table>", unsafe_allow_html=True)
+
 
     with lab[1]:
         st.markdown("### 🏃 Offense vs Defense Quadrants")
@@ -2827,6 +3366,7 @@ elif view_mode == "🔬 Advanced Analytics Lab":
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=520)
             st.plotly_chart(fig, use_container_width=True)
 
+
     with lab[2]:
         st.markdown("### 🧮 Team Ratings Board")
         st.caption("Points scored / allowed per 100 possessions. Pace = possessions per game.")
@@ -2839,6 +3379,7 @@ elif view_mode == "🔬 Advanced Analytics Lab":
         st.markdown(html + "</table>", unsafe_allow_html=True)
         dl(t_stats, "⬇️ Team ratings CSV", "team_ratings.csv", "dl_tr")
 
+
     with lab[3]:
         st.markdown("### 🎖️ Player Ratings Engine")
         st.caption("USG% = share of team possessions used. ORtg = pts per 100 individual possessions. "
@@ -2846,6 +3387,7 @@ elif view_mode == "🔬 Advanced Analytics Lab":
         st.dataframe(p_view[['Player/Team', 'Team', 'GP', 'USG', 'ORtg', 'DRtg', 'NetRtg', 'GmSc', 'PIE']]
                      .sort_values('NetRtg', ascending=False),
                      use_container_width=True, hide_index=True)
+
 
     with lab[4]:
         st.markdown("### 🔗 What Actually Wins Games?")
@@ -2867,10 +3409,13 @@ elif view_mode == "🔬 Advanced Analytics Lab":
             st.info("Need at least 3 teams for correlation analysis.")
 
 
+
+
 # ---------------------------------------------------------------- VAULT ------
 elif view_mode == "🏦 The Vault":
     st.subheader("🏦 THE VAULT — Master Ledger & Hall of Fame")
     p_tot = p_df.groupby('Player/Team').sum(numeric_only=True).reset_index()
+
 
     st.markdown("### 🏆 Hall of Fame Podiums")
     stat_pick = st.multiselect("Podiums to show", ['PTS', 'AST', 'REB', 'STL', 'BLK', '3PM'],
@@ -2885,6 +3430,7 @@ elif view_mode == "🏦 The Vault":
                                           p_tot.sort_values(s, ascending=False), s),
                             unsafe_allow_html=True)
 
+
     st.markdown("### 🗃️ The Master Ledger")
     q = st.text_input("🔍 Search the ledger")
     cols = [c for c in ['Player/Team', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'FGM', 'FGA', '3PM', '3PA',
@@ -2897,10 +3443,13 @@ elif view_mode == "🏦 The Vault":
     dl(ledger, "⬇️ Master ledger CSV", "qcl_master_ledger.csv", "dl_vault")
 
 
+
+
 # ----------------------------------------------------------- RECORD BOOK -----
 elif view_mode == "📖 Record Book & Milestones":
     st.subheader(f"📖 {banner_text} Record Book")
     tab_game, tab_miles, tab_team = st.tabs(["🔥 Single Game", "🏔️ Career Totals", "🏟️ Team Records"])
+
 
     with tab_game:
         depth = st.slider("Show top N", 3, 15, 5, key="rb_depth")
@@ -2916,6 +3465,7 @@ elif view_mode == "📖 Record Book & Milestones":
             st.markdown(generate_mini_leaderboard("Assists", p_df, 'AST', "#00bfff", depth, "Player/Team"), unsafe_allow_html=True)
             st.markdown(generate_mini_leaderboard("3-Pointers", p_df, '3PM', GOLD, depth, "Player/Team"), unsafe_allow_html=True)
 
+
         if selected_scope != "Career Stats":
             st.markdown("<hr>", unsafe_allow_html=True)
             st.markdown("### 🏛️ All-Time Single Game Highs (Franchise History)")
@@ -2930,6 +3480,7 @@ elif view_mode == "📖 Record Book & Milestones":
                 st.markdown(generate_mini_leaderboard("All-Time Assists", full_p_df, 'AST', "#00bfff", depth, "Player/Team"), unsafe_allow_html=True)
                 st.markdown(generate_mini_leaderboard("All-Time 3PM", full_p_df, '3PM', GOLD, depth, "Player/Team"), unsafe_allow_html=True)
 
+
     with tab_miles:
         p_totals = p_df.groupby('Player/Team').sum(numeric_only=True).reset_index()
         mc1, mc2, mc3 = st.columns(3)
@@ -2940,6 +3491,7 @@ elif view_mode == "📖 Record Book & Milestones":
         mc4.markdown(generate_mini_leaderboard("Total Steals", p_totals, 'STL', "#ff8c00", 10, "Player/Team"), unsafe_allow_html=True)
         mc5.markdown(generate_mini_leaderboard("Total Blocks", p_totals, 'BLK', "#8a2be2", 10, "Player/Team"), unsafe_allow_html=True)
         mc6.markdown(generate_mini_leaderboard("Total 3PM", p_totals, '3PM', GOLD, 10, "Player/Team"), unsafe_allow_html=True)
+
 
         st.markdown("### 🎖️ Club Memberships")
         clubbed = p_stats[p_stats['Clubs'].apply(len) > 0]
@@ -2953,6 +3505,7 @@ elif view_mode == "📖 Record Book & Milestones":
                             f"<span style='color:#888;'>({r['Team']})</span><br>{chips}</div>",
                             unsafe_allow_html=True)
 
+
     with tab_team:
         t_totals = t_df.groupby('Team Name').sum(numeric_only=True).reset_index()
         if t_totals.empty:
@@ -2961,6 +3514,7 @@ elif view_mode == "📖 Record Book & Milestones":
             tc1, tc2 = st.columns(2)
             tc1.markdown(generate_mini_leaderboard("Most Wins", t_totals, 'Win', "#ffd700", 8, "Team Name"), unsafe_allow_html=True)
             tc2.markdown(generate_mini_leaderboard("Total Points Scored", t_totals, 'PTS', "#cc0000", 8, "Team Name"), unsafe_allow_html=True)
+
 
             st.markdown("### 💥 Biggest Blowouts")
             blow = t_df[t_df['Point_Diff'].notna() & (t_df['Point_Diff'] > 0)] \
@@ -2978,5 +3532,80 @@ elif view_mode == "📖 Record Book & Milestones":
                 st.markdown(html + "</table>", unsafe_allow_html=True)
 
 
+
+
+
+elif view_mode == "\U0001f3c5 Legend Board":
+    st.subheader("\U0001f3c5 Legend Board")
+    st.markdown("Card tier is **not** raw stats. It's **performance + longevity + "
+                "hardware**, so a trophy cabinet outweighs a hot week.")
+
+    if not _qtcg_live():
+        st.warning("The bot hasn't published yet. Run **/qtcg admin publish** in Discord.")
+    else:
+        lb = _qtcg_frame()
+        s8 = _qtcg_state()
+        w = s8.get("weights") or {}
+        c1, c2, c3 = st.columns(3)
+        c1.markdown(f"<div class='metric-box'><div class='metric-title'>Performance</div>"
+                    f"<div class='metric-value'>{w.get('w_perf', 0.4)}</div></div>",
+                    unsafe_allow_html=True)
+        c2.markdown(f"<div class='metric-box'><div class='metric-title'>Longevity</div>"
+                    f"<div class='metric-value'>{w.get('w_long', 0.2)}</div></div>",
+                    unsafe_allow_html=True)
+        c3.markdown(f"<div class='metric-box'><div class='metric-title'>Hardware</div>"
+                    f"<div class='metric-value' style='color:{GOLD};'>{w.get('w_hard', 0.4)}"
+                    f"</div></div>", unsafe_allow_html=True)
+        st.caption("Weights are set in Discord with `/qtcg admin tune`.")
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        pick = st.selectbox("Explain one player", ["\u2014"] + lb["Player"].tolist(),
+                            key="lb_pick")
+        if pick and pick != "\u2014":
+            r = lb[lb["Player"] == pick].iloc[0]
+            tier_col = RARITY_COLOR_BY_NAME.get(r["Tier"], "#8a929c")
+            st.markdown(
+                f"<div style='background:#161b22;border-left:6px solid {tier_col};"
+                f"border-radius:10px;padding:16px;margin-bottom:14px;'>"
+                f"<div style='color:#fff;font-size:22px;font-weight:900;'>#{int(r['Rank'])} "
+                f"{r['Player']}</div>"
+                f"<div style='color:{tier_col};font-weight:800;letter-spacing:1px;'>"
+                f"{r['Tier'].upper()} \u00b7 legend {r['Legend']:.3f} \u00b7 {r['Class']}</div>"
+                f"<div style='margin-top:10px;color:#ccc;'>"
+                f"\U0001f3c0 performance <b>{r['Perf']:.2f}</b> &nbsp;&nbsp; "
+                f"\u23f3 longevity <b>{r['Long']:.2f}</b> &nbsp;&nbsp; "
+                f"\U0001f3c6 hardware <b>{r['Hard']:.2f}</b> ({r['HW']:.0f} pts)</div>"
+                + (f"<div style='margin-top:8px;color:{GOLD};'>"
+                   f"{_qtcg_cabinet(r['Cabinet'])}</div>" if r["HW"] else
+                   "<div style='margin-top:8px;color:#666;'>no hardware yet</div>")
+                + f"<div style='margin-top:8px;color:#888;font-size:12px;'>{r['Why']}</div>"
+                + "</div>", unsafe_allow_html=True)
+
+        board = lb.copy()
+        board["Cabinet"] = board["Cabinet"].map(_qtcg_cabinet)
+        st.dataframe(
+            board[["Rank", "Player", "Tier", "Class", "Legend", "Perf", "Long",
+                   "Hard", "HW", "Cabinet", "GP"]],
+            hide_index=True, height=560)
+        dl(board[["Rank", "Player", "Tier", "Legend", "Perf", "Long", "Hard", "HW"]],
+           "\u2b07\ufe0f Legend board CSV", "legend_board.csv", "dl_legend")
+
+        st.markdown("#### \U0001f3c6 Biggest cabinets")
+        top_hw = lb[lb["HW"] > 0].sort_values("HW", ascending=False).head(10)
+        if top_hw.empty:
+            st.info("No hardware recorded yet \u2014 add it in Discord with "
+                    "`/qtcg admin title`.")
+        else:
+            for _, r in top_hw.iterrows():
+                st.markdown(
+                    f"<div style='background:#161b22;padding:9px 12px;border-left:3px solid "
+                    f"{GOLD};margin-bottom:5px;border-radius:4px;'>"
+                    f"<b style='color:#fff;'>#{int(r['Rank'])} {r['Player']}</b> "
+                    f"<span style='color:{GOLD};font-weight:800;'>{r['HW']:.0f} pts</span>"
+                    f"<br><span style='color:#8b949e;font-size:12px;'>"
+                    f"{_qtcg_cabinet(r['Cabinet']) or 'hardware on file'}</span></div>",
+                    unsafe_allow_html=True)
+
+
 st.sidebar.divider()
-st.sidebar.caption("QCL HUB v3.3 • QSPN Analytics • Ball or Mute")
+st.sidebar.caption("QCL HUB v4.0 • QSPN Analytics • Ball or Mute")
