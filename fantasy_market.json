@@ -1,10 +1,10 @@
 {
-  "updated": 1784949787,
+  "updated": 1784951211,
   "cards": {
     "Big Clip Ron": {
-      "tier": "Epic",
+      "tier": "Rare",
       "minted": 0,
-      "run": 12,
+      "run": 31,
       "price": 160,
       "heat": 1.0,
       "trades": 0
@@ -26,9 +26,9 @@
       "trades": 0
     },
     "Crunch tuff": {
-      "tier": "Uncommon",
+      "tier": "Rare",
       "minted": 0,
-      "run": 90,
+      "run": 38,
       "price": 50,
       "heat": 1.0,
       "trades": 0
@@ -50,9 +50,9 @@
       "trades": 0
     },
     "DynastyOnTop": {
-      "tier": "Epic",
+      "tier": "Rare",
       "minted": 0,
-      "run": 19,
+      "run": 48,
       "price": 160,
       "heat": 1.0,
       "trades": 0
@@ -74,9 +74,9 @@
       "trades": 0
     },
     "GK7 Yoshi": {
-      "tier": "Legendary",
+      "tier": "Epic",
       "minted": 0,
-      "run": 3,
+      "run": 11,
       "price": 160,
       "heat": 1.0,
       "trades": 0
@@ -98,9 +98,9 @@
       "trades": 0
     },
     "I Kyree": {
-      "tier": "Epic",
+      "tier": "Rare",
       "minted": 0,
-      "run": 10,
+      "run": 26,
       "price": 200,
       "heat": 1.0,
       "trades": 0
@@ -114,9 +114,9 @@
       "trades": 0
     },
     "II WHEEL II": {
-      "tier": "Epic",
+      "tier": "Legendary",
       "minted": 0,
-      "run": 14,
+      "run": 4,
       "price": 160,
       "heat": 1.0,
       "trades": 0
@@ -170,9 +170,9 @@
       "trades": 0
     },
     "IIKyree": {
-      "tier": "Legendary",
+      "tier": "Epic",
       "minted": 0,
-      "run": 3,
+      "run": 11,
       "price": 160,
       "heat": 1.0,
       "trades": 0
@@ -202,9 +202,9 @@
       "trades": 0
     },
     "IlHog": {
-      "tier": "Rare",
+      "tier": "Epic",
       "minted": 0,
-      "run": 26,
+      "run": 10,
       "price": 120,
       "heat": 1.0,
       "trades": 0
@@ -249,14 +249,6 @@
       "heat": 1.0,
       "trades": 0
     },
-    "Ilxmollyll": {
-      "tier": "Uncommon",
-      "minted": 0,
-      "run": 69,
-      "price": 80,
-      "heat": 1.0,
-      "trades": 0
-    },
     "J-Kvino": {
       "tier": "Epic",
       "minted": 0,
@@ -266,10 +258,18 @@
       "trades": 0
     },
     "Javalanche": {
-      "tier": "Rare",
+      "tier": "Uncommon",
       "minted": 0,
-      "run": 36,
+      "run": 87,
       "price": 80,
+      "heat": 1.0,
+      "trades": 0
+    },
+    "JerryRiced": {
+      "tier": "Uncommon",
+      "minted": 0,
+      "run": 78,
+      "price": 50,
       "heat": 1.0,
       "trades": 0
     },
@@ -338,18 +338,18 @@
       "trades": 0
     },
     "OJCASSO2K": {
-      "tier": "Rare",
+      "tier": "Uncommon",
       "minted": 0,
-      "run": 31,
+      "run": 75,
       "price": 80,
       "heat": 1.0,
       "trades": 0
     },
-    "Oldman_tommy": {
-      "tier": "Uncommon",
+    "Paint-Defender": {
+      "tier": "Epic",
       "minted": 0,
-      "run": 69,
-      "price": 80,
+      "run": 14,
+      "price": 50,
       "heat": 1.0,
       "trades": 0
     },
@@ -362,25 +362,25 @@
       "trades": 0
     },
     "Precisionkill": {
-      "tier": "Rare",
+      "tier": "Legendary",
       "minted": 0,
-      "run": 26,
+      "run": 3,
       "price": 120,
       "heat": 1.0,
       "trades": 0
     },
     "Pxlo Uncut": {
-      "tier": "Legendary",
+      "tier": "Epic",
       "minted": 0,
-      "run": 4,
+      "run": 13,
       "price": 120,
       "heat": 1.0,
       "trades": 0
     },
     "RhinoDiMaria": {
-      "tier": "Epic",
+      "tier": "Rare",
       "minted": 0,
-      "run": 10,
+      "run": 26,
       "price": 200,
       "heat": 1.0,
       "trades": 0
@@ -450,9 +450,9 @@
       "trades": 0
     },
     "Trifecta": {
-      "tier": "Epic",
+      "tier": "Legendary",
       "minted": 0,
-      "run": 13,
+      "run": 4,
       "price": 160,
       "heat": 1.0,
       "trades": 0
@@ -594,9 +594,9 @@
       "trades": 0
     },
     "llTrifecta": {
-      "tier": "Rare",
+      "tier": "Epic",
       "minted": 0,
-      "run": 26,
+      "run": 10,
       "price": 200,
       "heat": 1.0,
       "trades": 0
@@ -650,17 +650,17 @@
       "trades": 0
     },
     "llxmollyll": {
-      "tier": "Epic",
+      "tier": "Rare",
       "minted": 0,
-      "run": 14,
+      "run": 34,
       "price": 80,
       "heat": 1.0,
       "trades": 0
     },
     "nen": {
-      "tier": "Rare",
+      "tier": "Epic",
       "minted": 0,
-      "run": 28,
+      "run": 11,
       "price": 120,
       "heat": 1.0,
       "trades": 0
