@@ -81,6 +81,181 @@ def _rerun():
     else:
         st.experimental_rerun()
 
+# ==================================================================
+#  QCL login + packs + merged cards (inlined)
+# ==================================================================
+import streamlit.components.v1 as components
+# ═══════════════════════════════════════════════════════════════════════════
+#  PERSISTENT DISCORD LOGIN — stays logged in across pages, refresh, revisits
+#
+#  After Discord login we sign a token and stash it in the URL (?qcl=...).
+#  Every page load reads it back, verifies the signature, and restores the
+#  user. So login flows through ALL views and survives refresh.
+#
+#  Replaces hub_discord_login.py. Same setup (Discord app + secrets), plus one
+#  more secret for signing:
+#     .streamlit/secrets.toml
+#        DISCORD_CLIENT_ID = "..."
+#        DISCORD_CLIENT_SECRET = "..."
+#        DISCORD_REDIRECT_URI = "https://your-hub.streamlit.app"
+#        QCL_SIGNING_SECRET = "any-long-random-string"
+#
+#  In app.py, ONCE near the top (after set_page_config):
+#     from hub_persistent_login import restore_session, login_widget, current_user
+#     restore_session()      # <- this makes login persist everywhere
+#  Then anywhere:
+#     user = current_user()  # None or {"id","username","global_name","avatar"}
+#     login_widget()         # shows Login button or "logged in as ..."
+# ═══════════════════════════════════════════════════════════════════════════
+
+import requests
+import os
+import json
+import hmac
+import hashlib
+import base64
+import time
+import urllib.parse
+
+_AUTH = "https://discord.com/api/oauth2/authorize"
+_TOKEN = "https://discord.com/api/oauth2/token"
+_ME = "https://discord.com/api/users/@me"
+_TOKEN_TTL = 60 * 60 * 24 * 30      # 30 days
+
+
+def _cfg(key, default=""):
+    try:
+        return st.secrets.get(key, default)
+    except Exception:
+        return os.environ.get(key, default)
+
+
+# ── signed token: {id, name, avatar, exp} base64 + hmac ────────────────────
+def _sign(payload: dict) -> str:
+    secret = _cfg("QCL_SIGNING_SECRET", "change-me").encode()
+    body = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    sig = hmac.new(secret, body.encode(), hashlib.sha256).hexdigest()[:16]
+    return f"{body}.{sig}"
+
+
+def _verify(token: str):
+    try:
+        body, sig = token.split(".", 1)
+        secret = _cfg("QCL_SIGNING_SECRET", "change-me").encode()
+        good = hmac.new(secret, body.encode(), hashlib.sha256).hexdigest()[:16]
+        if not hmac.compare_digest(sig, good):
+            return None
+        pad = "=" * (-len(body) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(body + pad))
+        if payload.get("exp", 0) < time.time():
+            return None
+        return payload
+    except Exception:
+        return None
+
+
+def _exchange_code(code):
+    data = {"client_id": _cfg("DISCORD_CLIENT_ID"),
+            "client_secret": _cfg("DISCORD_CLIENT_SECRET"),
+            "grant_type": "authorization_code", "code": code,
+            "redirect_uri": _cfg("DISCORD_REDIRECT_URI")}
+    try:
+        r = requests.post(_TOKEN, data=data,
+                          headers={"Content-Type": "application/x-www-form-urlencoded"},
+                          timeout=8)
+        
+        # --- NEW DEBUG CODE ---
+        if r.status_code != 200:
+            st.error(f"🚨 Discord rejected the trade: {r.text}")
+            return None
+        # ----------------------
+        
+        tok = r.json().get("access_token")
+        me = requests.get(_ME, headers={"Authorization": f"Bearer {tok}"}, timeout=8)
+        return me.json() if me.status_code == 200 else None
+    except Exception as e:
+        st.error(f"🚨 Network Crash: {e}")
+        return None
+
+
+def restore_session():
+    """Restores login from URL token or completes a fresh Discord login safely."""
+    if st.session_state.get("discord_user"):
+        return
+
+    params = st.query_params
+
+    # 1. Returning from Discord with ?code=...
+    code = params.get("code")
+    if code:
+        code_str = code if isinstance(code, str) else code[0]
+        
+        # CLEAR THE CODE IMMEDIATELY so it never loops or tries to reuse a dead code
+        st.query_params.clear()
+        
+        user = _exchange_code(code_str)
+        if user:
+            u = {"id": user.get("id"), "username": user.get("username"),
+                 "global_name": user.get("global_name") or user.get("username"),
+                 "avatar": user.get("avatar")}
+            st.session_state["discord_user"] = u
+            
+            # Persist via signed token in URL
+            token = _sign({"id": u["id"], "name": u["global_name"],
+                           "avatar": u["avatar"], "exp": time.time() + _TOKEN_TTL})
+            st.query_params["qcl"] = token
+            st.rerun()
+        else:
+            st.error("🚨 Discord Login Failed! Check that your Client ID, Client Secret, and Redirect URI match perfectly in Streamlit Cloud Secrets.")
+            st.stop()
+        return
+
+    # 2. Persisted token in ?qcl=...
+    tok = params.get("qcl")
+    if tok:
+        payload = _verify(tok if isinstance(tok, str) else tok[0])
+        if payload:
+            st.session_state["discord_user"] = {
+                "id": payload["id"], "username": payload["name"],
+                "global_name": payload["name"], "avatar": payload.get("avatar")}
+
+
+def current_user():
+    return st.session_state.get("discord_user")
+
+
+def _login_url():
+    return _AUTH + "?" + urllib.parse.urlencode({
+        "client_id": _cfg("DISCORD_CLIENT_ID"),
+        "redirect_uri": _cfg("DISCORD_REDIRECT_URI"),
+        "response_type": "code", "scope": "identify"})
+
+
+def login_widget():
+    """Login button, or a 'logged in as' chip with logout."""
+    if not _cfg("DISCORD_CLIENT_ID"):
+        st.caption("\U0001f512 Discord login not configured yet.")
+        return
+    u = current_user()
+    if u:
+        c1, c2 = st.columns([3, 1])
+        av = (f"https://cdn.discordapp.com/avatars/{u['id']}/{u['avatar']}.png"
+              if u.get("avatar") else "https://cdn.discordapp.com/embed/avatars/0.png")
+        c1.markdown(f"<div style='display:flex;align-items:center;gap:8px;'>"
+                    f"<img src='{av}' width='28' style='border-radius:50%;'>"
+                    f"<span style='color:#fff;font-weight:700;'>{u['global_name']}</span>"
+                    f"<span style='color:#3ba55d;font-size:12px;'>\u2713 verified</span>"
+                    f"</div>", unsafe_allow_html=True)
+        if c2.button("Log out"):
+            st.session_state.pop("discord_user", None)
+            st.query_params.clear()
+            st.rerun()
+    else:
+        st.markdown(
+            f"<a href='{_login_url()}' target='_blank' style='display:inline-block;"
+            f"background:#5865F2;color:#fff;font-weight:800;padding:10px 20px;"
+            f"border-radius:10px;text-decoration:none;'>\U0001f517 Login with Discord</a>",
+            unsafe_allow_html=True)
 
 
 
@@ -1303,10 +1478,6 @@ if not seasons:
 
 
 st.sidebar.title("⚙️ Hub Controls")
-
-# --- RESTORE SESSION FIRST (Before sidebar menu & without try/except swallowing st.rerun) ---
-restore_session()
-
 VIEWS = [
     "🏠 League Home & Awards",
     "🏅 Awards & Rewards",
@@ -1331,9 +1502,12 @@ VIEWS = [
     "📖 Record Book & Milestones",
 ]
 view_mode = st.sidebar.radio("Navigation", VIEWS)
-
-with st.sidebar:
+try:
+    restore_session()
     login_widget()
+except Exception:
+    pass
+st.sidebar.divider()
 
 
 # right after: st.sidebar.title("⚙️ Hub Controls")
@@ -1737,189 +1911,6 @@ def projected_box(rot, pp):
 # ------------------------------------------------------------------ HOME -----
 
 
-# ==================================================================
-#  QCL login + packs + merged cards (inlined)
-# ==================================================================
-import streamlit.components.v1 as components
-# ═══════════════════════════════════════════════════════════════════════════
-#  PERSISTENT DISCORD LOGIN — stays logged in across pages, refresh, revisits
-#
-#  After Discord login we sign a token and stash it in the URL (?qcl=...).
-#  Every page load reads it back, verifies the signature, and restores the
-#  user. So login flows through ALL views and survives refresh.
-#
-#  Replaces hub_discord_login.py. Same setup (Discord app + secrets), plus one
-#  more secret for signing:
-#     .streamlit/secrets.toml
-#        DISCORD_CLIENT_ID = "..."
-#        DISCORD_CLIENT_SECRET = "..."
-#        DISCORD_REDIRECT_URI = "https://your-hub.streamlit.app"
-#        QCL_SIGNING_SECRET = "any-long-random-string"
-#
-#  In app.py, ONCE near the top (after set_page_config):
-#     from hub_persistent_login import restore_session, login_widget, current_user
-#     restore_session()      # <- this makes login persist everywhere
-#  Then anywhere:
-#     user = current_user()  # None or {"id","username","global_name","avatar"}
-#     login_widget()         # shows Login button or "logged in as ..."
-# ═══════════════════════════════════════════════════════════════════════════
-
-import requests
-import os
-import json
-import hmac
-import hashlib
-import base64
-import time
-import urllib.parse
-
-_AUTH = "https://discord.com/api/oauth2/authorize"
-_TOKEN = "https://discord.com/api/oauth2/token"
-_ME = "https://discord.com/api/users/@me"
-_TOKEN_TTL = 60 * 60 * 24 * 30      # 30 days
-
-
-def _cfg(key, default=""):
-    try:
-        return st.secrets.get(key, default)
-    except Exception:
-        return os.environ.get(key, default)
-
-
-# ── signed token: {id, name, avatar, exp} base64 + hmac ────────────────────
-def _sign(payload: dict) -> str:
-    secret = _cfg("QCL_SIGNING_SECRET", "change-me").encode()
-    body = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-    sig = hmac.new(secret, body.encode(), hashlib.sha256).hexdigest()[:16]
-    return f"{body}.{sig}"
-
-
-def _verify(token: str):
-    try:
-        body, sig = token.split(".", 1)
-        secret = _cfg("QCL_SIGNING_SECRET", "change-me").encode()
-        good = hmac.new(secret, body.encode(), hashlib.sha256).hexdigest()[:16]
-        if not hmac.compare_digest(sig, good):
-            return None
-        pad = "=" * (-len(body) % 4)
-        payload = json.loads(base64.urlsafe_b64decode(body + pad))
-        if payload.get("exp", 0) < time.time():
-            return None
-        return payload
-    except Exception:
-        return None
-
-
-def _exchange_code(code):
-    client_id = _cfg("DISCORD_CLIENT_ID") or _cfg("CLIENT_ID")
-    client_secret = _cfg("DISCORD_CLIENT_SECRET") or _cfg("CLIENT_SECRET")
-    redirect_uri = _cfg("DISCORD_REDIRECT_URI") or _cfg("REDIRECT_URI")
-
-    data = {
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": redirect_uri
-    }
-    
-    try:
-        r = requests.post(_TOKEN, data=data,
-                          headers={"Content-Type": "application/x-www-form-urlencoded"},
-                          timeout=8)
-        
-        if r.status_code != 200:
-            st.error(f"🚨 Discord Response ({r.status_code}): {r.text}")
-            st.stop()
-            return None
-        
-        tok = r.json().get("access_token")
-        me = requests.get(_ME, headers={"Authorization": f"Bearer {tok}"}, timeout=8)
-        return me.json() if me.status_code == 200 else None
-    except Exception as e:
-        st.error(f"🚨 Network Error: {e}")
-        st.stop()
-        return None
-
-
-def restore_session():
-    """Restores login from URL token or completes a fresh Discord login safely."""
-    if st.session_state.get("discord_user"):
-        return
-
-    params = st.query_params
-
-    # 1. Returning from Discord with ?code=...
-    code = params.get("code")
-    if code:
-        code_str = code if isinstance(code, str) else code[0]
-        
-        # CLEAR THE CODE IMMEDIATELY so it never loops or tries to reuse a dead code
-        st.query_params.clear()
-        
-        user = _exchange_code(code_str)
-        if user:
-            u = {"id": user.get("id"), "username": user.get("username"),
-                 "global_name": user.get("global_name") or user.get("username"),
-                 "avatar": user.get("avatar")}
-            st.session_state["discord_user"] = u
-            
-            # Persist via signed token in URL
-            token = _sign({"id": u["id"], "name": u["global_name"],
-                           "avatar": u["avatar"], "exp": time.time() + _TOKEN_TTL})
-            st.query_params["qcl"] = token
-            st.rerun()
-        else:
-            st.error("🚨 Discord Login Failed! Check that your Client ID, Client Secret, and Redirect URI match perfectly in Streamlit Cloud Secrets.")
-            st.stop()
-        return
-
-    # 2. Persisted token in ?qcl=...
-    tok = params.get("qcl")
-    if tok:
-        payload = _verify(tok if isinstance(tok, str) else tok[0])
-        if payload:
-            st.session_state["discord_user"] = {
-                "id": payload["id"], "username": payload["name"],
-                "global_name": payload["name"], "avatar": payload.get("avatar")}
-
-
-def current_user():
-    return st.session_state.get("discord_user")
-
-
-def _login_url():
-    return _AUTH + "?" + urllib.parse.urlencode({
-        "client_id": _cfg("DISCORD_CLIENT_ID"),
-        "redirect_uri": _cfg("DISCORD_REDIRECT_URI"),
-        "response_type": "code", "scope": "identify"})
-
-
-def login_widget():
-    """Login button, or a 'logged in as' chip with logout."""
-    if not _cfg("DISCORD_CLIENT_ID"):
-        st.caption("\U0001f512 Discord login not configured yet.")
-        return
-    u = current_user()
-    if u:
-        c1, c2 = st.columns([3, 1])
-        av = (f"https://cdn.discordapp.com/avatars/{u['id']}/{u['avatar']}.png"
-              if u.get("avatar") else "https://cdn.discordapp.com/embed/avatars/0.png")
-        c1.markdown(f"<div style='display:flex;align-items:center;gap:8px;'>"
-                    f"<img src='{av}' width='28' style='border-radius:50%;'>"
-                    f"<span style='color:#fff;font-weight:700;'>{u['global_name']}</span>"
-                    f"<span style='color:#3ba55d;font-size:12px;'>\u2713 verified</span>"
-                    f"</div>", unsafe_allow_html=True)
-        if c2.button("Log out"):
-            st.session_state.pop("discord_user", None)
-            st.query_params.clear()
-            st.rerun()
-    else:
-        st.markdown(
-            f"<a href='{_login_url()}' target='_blank' style='display:inline-block;"
-            f"background:#5865F2;color:#fff;font-weight:800;padding:10px 20px;"
-            f"border-radius:10px;text-decoration:none;'>\U0001f517 Login with Discord</a>",
-            unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
