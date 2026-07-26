@@ -1303,6 +1303,10 @@ if not seasons:
 
 
 st.sidebar.title("⚙️ Hub Controls")
+
+# --- RESTORE SESSION FIRST (Before sidebar menu & without try/except swallowing st.rerun) ---
+restore_session()
+
 VIEWS = [
     "🏠 League Home & Awards",
     "🏅 Awards & Rewards",
@@ -1327,12 +1331,9 @@ VIEWS = [
     "📖 Record Book & Milestones",
 ]
 view_mode = st.sidebar.radio("Navigation", VIEWS)
-try:
-    restore_session()
+
+with st.sidebar:
     login_widget()
-except Exception:
-    pass
-st.sidebar.divider()
 
 
 # right after: st.sidebar.title("⚙️ Hub Controls")
@@ -1810,26 +1811,34 @@ def _verify(token: str):
 
 
 def _exchange_code(code):
-    data = {"client_id": _cfg("DISCORD_CLIENT_ID"),
-            "client_secret": _cfg("DISCORD_CLIENT_SECRET"),
-            "grant_type": "authorization_code", "code": code,
-            "redirect_uri": _cfg("DISCORD_REDIRECT_URI")}
+    client_id = _cfg("DISCORD_CLIENT_ID") or _cfg("CLIENT_ID")
+    client_secret = _cfg("DISCORD_CLIENT_SECRET") or _cfg("CLIENT_SECRET")
+    redirect_uri = _cfg("DISCORD_REDIRECT_URI") or _cfg("REDIRECT_URI")
+
+    data = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": redirect_uri
+    }
+    
     try:
         r = requests.post(_TOKEN, data=data,
                           headers={"Content-Type": "application/x-www-form-urlencoded"},
                           timeout=8)
         
-        # --- NEW DEBUG CODE ---
         if r.status_code != 200:
-            st.error(f"🚨 Discord rejected the trade: {r.text}")
+            st.error(f"🚨 Discord Response ({r.status_code}): {r.text}")
+            st.stop()
             return None
-        # ----------------------
         
         tok = r.json().get("access_token")
         me = requests.get(_ME, headers={"Authorization": f"Bearer {tok}"}, timeout=8)
         return me.json() if me.status_code == 200 else None
     except Exception as e:
-        st.error(f"🚨 Network Crash: {e}")
+        st.error(f"🚨 Network Error: {e}")
+        st.stop()
         return None
 
 
