@@ -1834,32 +1834,38 @@ def _exchange_code(code):
 
 
 def restore_session():
-    """Call ONCE at the top of app.py. Restores login from URL token, or
-    completes a fresh Discord login, so the user persists across all views."""
-    # already in memory this run
+    """Restores login from URL token or completes a fresh Discord login safely."""
     if st.session_state.get("discord_user"):
         return
 
     params = st.query_params
 
-    # 1. returning from Discord with ?code=...
+    # 1. Returning from Discord with ?code=...
     code = params.get("code")
     if code:
-        user = _exchange_code(code if isinstance(code, str) else code[0])
+        code_str = code if isinstance(code, str) else code[0]
+        
+        # CLEAR THE CODE IMMEDIATELY so it never loops or tries to reuse a dead code
+        st.query_params.clear()
+        
+        user = _exchange_code(code_str)
         if user:
             u = {"id": user.get("id"), "username": user.get("username"),
                  "global_name": user.get("global_name") or user.get("username"),
                  "avatar": user.get("avatar")}
             st.session_state["discord_user"] = u
-            # persist: sign a token into the URL
+            
+            # Persist via signed token in URL
             token = _sign({"id": u["id"], "name": u["global_name"],
                            "avatar": u["avatar"], "exp": time.time() + _TOKEN_TTL})
-            st.query_params.clear()
             st.query_params["qcl"] = token
             st.rerun()
+        else:
+            st.error("🚨 Discord Login Failed! Check that your Client ID, Client Secret, and Redirect URI match perfectly in Streamlit Cloud Secrets.")
+            st.stop()
         return
 
-    # 2. persisted token in ?qcl=...
+    # 2. Persisted token in ?qcl=...
     tok = params.get("qcl")
     if tok:
         payload = _verify(tok if isinstance(tok, str) else tok[0])
