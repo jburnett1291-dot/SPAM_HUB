@@ -1818,54 +1818,42 @@ def _exchange_code(code):
         r = requests.post(_TOKEN, data=data,
                           headers={"Content-Type": "application/x-www-form-urlencoded"},
                           timeout=8)
-        
-        # --- NEW DEBUG CODE ---
         if r.status_code != 200:
-            st.error(f"🚨 Discord rejected the trade: {r.text}")
             return None
-        # ----------------------
-        
         tok = r.json().get("access_token")
         me = requests.get(_ME, headers={"Authorization": f"Bearer {tok}"}, timeout=8)
         return me.json() if me.status_code == 200 else None
-    except Exception as e:
-        st.error(f"🚨 Network Crash: {e}")
+    except Exception:
         return None
 
 
 def restore_session():
-    """Restores login from URL token or completes a fresh Discord login safely."""
+    """Call ONCE at the top of app.py. Restores login from URL token, or
+    completes a fresh Discord login, so the user persists across all views."""
+    # already in memory this run
     if st.session_state.get("discord_user"):
         return
 
     params = st.query_params
 
-    # 1. Returning from Discord with ?code=...
+    # 1. returning from Discord with ?code=...
     code = params.get("code")
     if code:
-        code_str = code if isinstance(code, str) else code[0]
-        
-        # CLEAR THE CODE IMMEDIATELY so it never loops or tries to reuse a dead code
-        st.query_params.clear()
-        
-        user = _exchange_code(code_str)
+        user = _exchange_code(code if isinstance(code, str) else code[0])
         if user:
             u = {"id": user.get("id"), "username": user.get("username"),
                  "global_name": user.get("global_name") or user.get("username"),
                  "avatar": user.get("avatar")}
             st.session_state["discord_user"] = u
-            
-            # Persist via signed token in URL
+            # persist: sign a token into the URL
             token = _sign({"id": u["id"], "name": u["global_name"],
                            "avatar": u["avatar"], "exp": time.time() + _TOKEN_TTL})
+            st.query_params.clear()
             st.query_params["qcl"] = token
             st.rerun()
-        else:
-            st.error("🚨 Discord Login Failed! Check that your Client ID, Client Secret, and Redirect URI match perfectly in Streamlit Cloud Secrets.")
-            st.stop()
         return
 
-    # 2. Persisted token in ?qcl=...
+    # 2. persisted token in ?qcl=...
     tok = params.get("qcl")
     if tok:
         payload = _verify(tok if isinstance(tok, str) else tok[0])
@@ -1907,7 +1895,7 @@ def login_widget():
             st.rerun()
     else:
         st.markdown(
-            f"<a href='{_login_url()}' target='_blank' style='display:inline-block;"
+            f"<a href='{_login_url()}' target='_self' style='display:inline-block;"
             f"background:#5865F2;color:#fff;font-weight:800;padding:10px 20px;"
             f"border-radius:10px;text-decoration:none;'>\U0001f517 Login with Discord</a>",
             unsafe_allow_html=True)
