@@ -231,22 +231,22 @@ def _login_url():
         "response_type": "code", "scope": "identify"})
 
 
-def login_widget():
+def login_widget(key="sidebar"):
     """Login button, or a 'logged in as' chip with logout."""
     if not _cfg("DISCORD_CLIENT_ID"):
-        st.caption("\U0001f512 Discord login not configured yet.")
+        st.caption("🔒 Discord login not configured yet.")
         return
     u = current_user()
     if u:
         c1, c2 = st.columns([3, 1])
         av = (f"https://cdn.discordapp.com/avatars/{u['id']}/{u['avatar']}.png"
-              if u.get("avatar") else "https://cdn.discordapp.com/embed/avatars/0.png")
+             if u.get("avatar") else "https://cdn.discordapp.com/embed/avatars/0.png")
         c1.markdown(f"<div style='display:flex;align-items:center;gap:8px;'>"
                     f"<img src='{av}' width='28' style='border-radius:50%;'>"
                     f"<span style='color:#fff;font-weight:700;'>{u['global_name']}</span>"
-                    f"<span style='color:#3ba55d;font-size:12px;'>\u2713 verified</span>"
+                    f"<span style='color:#3ba55d;font-size:12px;'>✓ verified</span>"
                     f"</div>", unsafe_allow_html=True)
-        if c2.button("Log out"):
+        if c2.button("Log out", key=f"logout_{key}"):
             st.session_state.pop("discord_user", None)
             st.query_params.clear()
             st.rerun()
@@ -254,7 +254,7 @@ def login_widget():
         st.markdown(
             f"<a href='{_login_url()}' target='_blank' style='display:inline-block;"
             f"background:#5865F2;color:#fff;font-weight:800;padding:10px 20px;"
-            f"border-radius:10px;text-decoration:none;'>\U0001f517 Login with Discord</a>",
+            f"border-radius:10px;text-decoration:none;'>🔗 Login with Discord</a>",
             unsafe_allow_html=True)
 
 
@@ -1504,7 +1504,7 @@ VIEWS = [
 view_mode = st.sidebar.radio("Navigation", VIEWS)
 try:
     restore_session()
-    login_widget()
+    login_widget(key="sidebar")
 except Exception:
     pass
 st.sidebar.divider()
@@ -3934,7 +3934,7 @@ elif view_mode == "💬 Discord":
 if view_mode == "👤 My Profile":
     st.header("👤 My Profile")
     _u = current_user()
-    login_widget()
+    login_widget(key="profile")
     if _u:
         st.success(f"Verified as {_u['global_name']}")
         st.markdown("#### Link your accounts")
