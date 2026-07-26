@@ -1818,12 +1818,18 @@ def _exchange_code(code):
         r = requests.post(_TOKEN, data=data,
                           headers={"Content-Type": "application/x-www-form-urlencoded"},
                           timeout=8)
+        
+        # --- NEW DEBUG CODE ---
         if r.status_code != 200:
+            st.error(f"🚨 Discord rejected the trade: {r.text}")
             return None
+        # ----------------------
+        
         tok = r.json().get("access_token")
         me = requests.get(_ME, headers={"Authorization": f"Bearer {tok}"}, timeout=8)
         return me.json() if me.status_code == 200 else None
-    except Exception:
+    except Exception as e:
+        st.error(f"🚨 Network Crash: {e}")
         return None
 
 
