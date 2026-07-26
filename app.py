@@ -52,6 +52,15 @@ import streamlit.components.v1 as components
 # =============================================================================
 st.set_page_config(page_title="QCL LEAGUE CENTRAL", page_icon="🏀", layout="wide")
 
+st.markdown("""
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1055/1055687.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="QCL Hub">
+    <meta name="theme-color" content="#5865F2">
+    <meta name="mobile-web-app-capable" content="yes">
+    <style>@media (max-width:640px){header[data-testid="stHeader"]{height:0;}.block-container{padding-top:1rem;}}</style>
+""", unsafe_allow_html=True)
+
 
 SHEET_ID = "1rksLYUcXQJ03uTacfIBD6SRsvtH-IE6djqT-LINwcH4"
 URL = os.environ.get("QCL_CSV_URL",
@@ -1311,11 +1320,18 @@ VIEWS = [
     "🏦 The Vault",
     "📈 Card Market",
     "🎴 Qwiks TCG",
+    "👤 My Profile",
+    "🎁 Open Packs",
     "🃏 Player Cards",
     "💬 Discord",
     "📖 Record Book & Milestones",
 ]
 view_mode = st.sidebar.radio("Navigation", VIEWS)
+try:
+    restore_session()
+    login_widget()
+except Exception:
+    pass
 st.sidebar.divider()
 
 
@@ -1718,6 +1734,439 @@ def projected_box(rot, pp):
 
 
 # ------------------------------------------------------------------ HOME -----
+
+
+# ==================================================================
+#  QCL login + packs + merged cards (inlined)
+# ==================================================================
+import streamlit.components.v1 as components
+# ═══════════════════════════════════════════════════════════════════════════
+#  PERSISTENT DISCORD LOGIN — stays logged in across pages, refresh, revisits
+#
+#  After Discord login we sign a token and stash it in the URL (?qcl=...).
+#  Every page load reads it back, verifies the signature, and restores the
+#  user. So login flows through ALL views and survives refresh.
+#
+#  Replaces hub_discord_login.py. Same setup (Discord app + secrets), plus one
+#  more secret for signing:
+#     .streamlit/secrets.toml
+#        DISCORD_CLIENT_ID = "..."
+#        DISCORD_CLIENT_SECRET = "..."
+#        DISCORD_REDIRECT_URI = "https://your-hub.streamlit.app"
+#        QCL_SIGNING_SECRET = "any-long-random-string"
+#
+#  In app.py, ONCE near the top (after set_page_config):
+#     from hub_persistent_login import restore_session, login_widget, current_user
+#     restore_session()      # <- this makes login persist everywhere
+#  Then anywhere:
+#     user = current_user()  # None or {"id","username","global_name","avatar"}
+#     login_widget()         # shows Login button or "logged in as ..."
+# ═══════════════════════════════════════════════════════════════════════════
+
+import requests
+import os
+import json
+import hmac
+import hashlib
+import base64
+import time
+import urllib.parse
+
+_AUTH = "https://discord.com/api/oauth2/authorize"
+_TOKEN = "https://discord.com/api/oauth2/token"
+_ME = "https://discord.com/api/users/@me"
+_TOKEN_TTL = 60 * 60 * 24 * 30      # 30 days
+
+
+def _cfg(key, default=""):
+    try:
+        return st.secrets.get(key, default)
+    except Exception:
+        return os.environ.get(key, default)
+
+
+# ── signed token: {id, name, avatar, exp} base64 + hmac ────────────────────
+def _sign(payload: dict) -> str:
+    secret = _cfg("QCL_SIGNING_SECRET", "change-me").encode()
+    body = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    sig = hmac.new(secret, body.encode(), hashlib.sha256).hexdigest()[:16]
+    return f"{body}.{sig}"
+
+
+def _verify(token: str):
+    try:
+        body, sig = token.split(".", 1)
+        secret = _cfg("QCL_SIGNING_SECRET", "change-me").encode()
+        good = hmac.new(secret, body.encode(), hashlib.sha256).hexdigest()[:16]
+        if not hmac.compare_digest(sig, good):
+            return None
+        pad = "=" * (-len(body) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(body + pad))
+        if payload.get("exp", 0) < time.time():
+            return None
+        return payload
+    except Exception:
+        return None
+
+
+def _exchange_code(code):
+    data = {"client_id": _cfg("DISCORD_CLIENT_ID"),
+            "client_secret": _cfg("DISCORD_CLIENT_SECRET"),
+            "grant_type": "authorization_code", "code": code,
+            "redirect_uri": _cfg("DISCORD_REDIRECT_URI")}
+    try:
+        r = requests.post(_TOKEN, data=data,
+                          headers={"Content-Type": "application/x-www-form-urlencoded"},
+                          timeout=8)
+        if r.status_code != 200:
+            return None
+        tok = r.json().get("access_token")
+        me = requests.get(_ME, headers={"Authorization": f"Bearer {tok}"}, timeout=8)
+        return me.json() if me.status_code == 200 else None
+    except Exception:
+        return None
+
+
+def restore_session():
+    """Call ONCE at the top of app.py. Restores login from URL token, or
+    completes a fresh Discord login, so the user persists across all views."""
+    # already in memory this run
+    if st.session_state.get("discord_user"):
+        return
+
+    params = st.query_params
+
+    # 1. returning from Discord with ?code=...
+    code = params.get("code")
+    if code:
+        user = _exchange_code(code if isinstance(code, str) else code[0])
+        if user:
+            u = {"id": user.get("id"), "username": user.get("username"),
+                 "global_name": user.get("global_name") or user.get("username"),
+                 "avatar": user.get("avatar")}
+            st.session_state["discord_user"] = u
+            # persist: sign a token into the URL
+            token = _sign({"id": u["id"], "name": u["global_name"],
+                           "avatar": u["avatar"], "exp": time.time() + _TOKEN_TTL})
+            st.query_params.clear()
+            st.query_params["qcl"] = token
+            st.rerun()
+        return
+
+    # 2. persisted token in ?qcl=...
+    tok = params.get("qcl")
+    if tok:
+        payload = _verify(tok if isinstance(tok, str) else tok[0])
+        if payload:
+            st.session_state["discord_user"] = {
+                "id": payload["id"], "username": payload["name"],
+                "global_name": payload["name"], "avatar": payload.get("avatar")}
+
+
+def current_user():
+    return st.session_state.get("discord_user")
+
+
+def _login_url():
+    return _AUTH + "?" + urllib.parse.urlencode({
+        "client_id": _cfg("DISCORD_CLIENT_ID"),
+        "redirect_uri": _cfg("DISCORD_REDIRECT_URI"),
+        "response_type": "code", "scope": "identify"})
+
+
+def login_widget():
+    """Login button, or a 'logged in as' chip with logout."""
+    if not _cfg("DISCORD_CLIENT_ID"):
+        st.caption("\U0001f512 Discord login not configured yet.")
+        return
+    u = current_user()
+    if u:
+        c1, c2 = st.columns([3, 1])
+        av = (f"https://cdn.discordapp.com/avatars/{u['id']}/{u['avatar']}.png"
+              if u.get("avatar") else "https://cdn.discordapp.com/embed/avatars/0.png")
+        c1.markdown(f"<div style='display:flex;align-items:center;gap:8px;'>"
+                    f"<img src='{av}' width='28' style='border-radius:50%;'>"
+                    f"<span style='color:#fff;font-weight:700;'>{u['global_name']}</span>"
+                    f"<span style='color:#3ba55d;font-size:12px;'>\u2713 verified</span>"
+                    f"</div>", unsafe_allow_html=True)
+        if c2.button("Log out"):
+            st.session_state.pop("discord_user", None)
+            st.query_params.clear()
+            st.rerun()
+    else:
+        st.markdown(
+            f"<a href='{_login_url()}' target='_self' style='display:inline-block;"
+            f"background:#5865F2;color:#fff;font-weight:800;padding:10px 20px;"
+            f"border-radius:10px;text-decoration:none;'>\U0001f517 Login with Discord</a>",
+            unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  OPEN A PACK ON THE SITE — logged-in players open packs in the Hub itself
+#
+#  Uses the SAME card pool + save file the bot reads, so Discord and the site
+#  are one economy. Requires the persistent login (current_user()).
+#
+#  In app.py:
+#     from hub_persistent_login import current_user
+#     from hub_open_pack import render_open_pack
+#     render_open_pack(current_user())
+# ═══════════════════════════════════════════════════════════════════════════
+
+import os
+import json
+import random
+
+
+def _base():
+    return _ASSET_BASE if "_ASSET_BASE" in globals() else "."
+
+
+# odds must mirror the bot's TVT_ODDS; edit if yours differ
+_SITE_ODDS = [("Legendary", 0.03), ("Epic", 0.10), ("Rare", 0.22),
+              ("Uncommon", 0.30), ("Common", 0.35)]
+_PACK_SIZE = 5
+_TIER_CLASS = {"Legendary": "legendary", "Epic": "epic", "Rare": "rare",
+               "Uncommon": "uncommon", "Common": "common"}
+
+
+def _load_pool():
+    """Read the same pool the bot publishes (names + rarity)."""
+    for fn in ("fantasy_market.json", "pool.json"):
+        p = os.path.join(_base(), fn)
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                names = data.get("names") or list(data.get("cards", {}).keys())
+                rarity = data.get("rarity", {})
+                if names:
+                    return names, rarity
+            except Exception:
+                pass
+    return [], {}
+
+
+def _draw(names, rarity):
+    buckets = {}
+    for n in names:
+        buckets.setdefault(rarity.get(n, "Common"), []).append(n)
+    out = []
+    for _ in range(_PACK_SIZE):
+        roll, cum, chosen = random.random(), 0.0, "Common"
+        for tier, odds in _SITE_ODDS:
+            cum += odds
+            if roll <= cum:
+                chosen = tier
+                break
+        bucket = buckets.get(chosen) or names
+        if bucket:
+            name = random.choice(bucket)
+            out.append({"name": name, "tier": rarity.get(name, chosen)})
+    return out
+
+
+def _mint_to_save(user_id, pulled):
+    """Write into the SAME save file the bot uses, so it's one collection."""
+    p = os.path.join(_base(), "fantasy_save.json")
+    save = {}
+    if os.path.exists(p):
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                save = json.load(f) or {}
+        except Exception:
+            save = {}
+    users = save.setdefault("users", {})
+    u = users.setdefault(str(user_id), {"cards": [], "coins": 0})
+    u.setdefault("cards", []).extend(c["name"] for c in pulled)
+    mint = save.setdefault("mint", {})
+    for c in pulled:
+        mint[c["name"]] = int(mint.get(c["name"], 0)) + 1
+    try:
+        tmp = p + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(save, f, indent=2, ensure_ascii=False)
+        os.replace(tmp, p)
+    except Exception as e:
+        st.warning(f"Couldn't save collection: {e}")
+
+
+def render_open_pack(user):
+    st.subheader("\U0001f381 Open a Pack")
+    if not user:
+        st.info("Log in with Discord to open packs \u2014 they mint to your collection.")
+        return
+
+    names, rarity = _load_pool()
+    if not names:
+        st.info("The card pool isn't published yet. The bot publishes it on its "
+                "next cycle, then packs open here.")
+        return
+
+    if st.button("\U0001f0cf Rip a pack", type="primary"):
+        pulled = _draw(names, rarity)
+        _mint_to_save(user["id"], pulled)
+        st.session_state["last_site_pull"] = pulled
+
+    pulled = st.session_state.get("last_site_pull")
+    if pulled:
+        cards_js = json.dumps([{"n": c["name"],
+                                "c": _TIER_CLASS.get(c["tier"], "common"),
+                                "t": c["tier"].upper()} for c in pulled])
+        html = """
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><style>
+*{margin:0;box-sizing:border-box;}
+body{background:transparent;min-height:280px;display:flex;flex-wrap:wrap;gap:12px;
+justify-content:center;align-items:center;font-family:system-ui;padding:16px;}
+.rc{width:110px;height:158px;border-radius:12px;position:relative;display:flex;
+flex-direction:column;align-items:center;justify-content:center;color:#fff;
+font-weight:900;opacity:0;transform:translateY(40px) rotateY(90deg);
+box-shadow:0 12px 34px rgba(0,0,0,.55);}
+.rc.in{animation:flip .6s cubic-bezier(.2,.9,.3,1.2) forwards;}
+@keyframes flip{to{opacity:1;transform:translateY(0) rotateY(0);}}
+.t{font-size:10px;letter-spacing:1px;opacity:.9;}
+.n{font-size:14px;margin-top:6px;text-align:center;padding:0 6px;}
+.common{background:linear-gradient(135deg,#4b5563,#374151);}
+.uncommon{background:linear-gradient(135deg,#16a34a,#15803d);}
+.rare{background:linear-gradient(135deg,#2563eb,#1e40af);}
+.epic{background:linear-gradient(135deg,#7c3aed,#5b21b6);box-shadow:0 0 30px rgba(124,58,237,.5);}
+.legendary{background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 0 40px rgba(245,158,11,.7);}
+.legendary::after{content:'';position:absolute;inset:0;border-radius:12px;
+background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.6) 50%,transparent 70%);
+background-size:200% 200%;animation:holo 2s linear infinite;mix-blend-mode:overlay;}
+@keyframes holo{0%{background-position:0 0;}100%{background-position:200% 200%;}}
+</style></head><body><script>
+const C=__CARDS__;
+C.forEach((card,i)=>{const el=document.createElement('div');el.className='rc '+card.c;
+el.innerHTML='<div class="t">'+card.t+'</div><div class="n">'+card.n+'</div>';
+document.body.appendChild(el);setTimeout(()=>el.classList.add('in'),150+i*260);});
+</script></body></html>""".replace("__CARDS__", cards_js)
+        components.html(html, height=300)
+        st.caption("Minted to your collection \u2014 same one your Discord cards live in.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  MERGED PLAYER CARDS — player-driven truth, coach fallback
+#
+#  One card per player, resolved field-by-field:
+#    PLAYER self-service (social_links.json, from site login)  = WINS
+#    COACH registration  (registrations.json, from the bot)    = fallback
+#
+#  A coach can register someone; the moment that player logs in and sets a
+#  field themselves, THEIR value takes over for that field only. Coach values
+#  fill anything the player never set.
+#
+#  Add to app.py:
+#     from hub_merged_cards import render_merged_cards
+#     render_merged_cards_v2()
+# ═══════════════════════════════════════════════════════════════════════════
+
+import os
+import json
+
+
+def _base():
+    return _ASSET_BASE if "_ASSET_BASE" in globals() else "."
+
+
+@st.cache_data(ttl=30)
+def _load_json(name):
+    p = os.path.join(_base(), name)
+    if not os.path.exists(p):
+        return {}
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            return json.load(f) or {}
+    except Exception:
+        return {}
+
+
+# fields that make up a card, and where each can come from
+_CARD_FIELDS = ["gamertag", "twitter", "twitch", "youtube", "psn", "xbox",
+                "position", "team"]
+
+
+def _merge_one(discord_id, player_rec, coach_rec):
+    """Field-by-field: player value wins, coach fills the gaps."""
+    out = {"discord_id": discord_id}
+    # display name + avatar: prefer player (verified via login), else coach
+    out["display_name"] = (player_rec.get("discord_name")
+                           or coach_rec.get("display_name")
+                           or coach_rec.get("discord_tag") or "Unknown")
+    out["discord_tag"] = coach_rec.get("discord_tag") or player_rec.get("discord_name", "")
+    out["avatar"] = player_rec.get("avatar")
+    for f in _CARD_FIELDS:
+        pv = (player_rec.get(f) or "").strip() if isinstance(player_rec.get(f), str) else player_rec.get(f)
+        cv = (coach_rec.get(f) or "").strip() if isinstance(coach_rec.get(f), str) else coach_rec.get(f)
+        out[f] = pv or cv or ""
+    # provenance: who set the identity
+    out["source"] = "player" if player_rec else "coach"
+    return out
+
+
+def get_merged_players():
+    """Return {discord_id: merged_card} across both sources."""
+    players = _load_json("social_links.json")      # player-driven
+    coaches = _load_json("registrations.json")     # coach fallback
+    ids = set(players) | set(coaches)
+    merged = {}
+    for did in ids:
+        merged[did] = _merge_one(did, players.get(did, {}), coaches.get(did, {}))
+    return merged
+
+
+def render_merged_cards_v2():
+    st.subheader("\U0001f0cf Player Cards")
+    cards = get_merged_players()
+    if not cards:
+        st.info("No players yet. Players link their own profile via **Login with "
+                "Discord**; coaches can pre-register with `/qtcg register`.")
+        return
+
+    q = st.text_input("\U0001f50d Search players", key="mc_search")
+    rows = list(cards.values())
+    if q:
+        rows = [p for p in rows if q.lower() in
+                (p.get("display_name", "") + p.get("gamertag", "") +
+                 p.get("team", "")).lower()]
+    st.caption(f"{len(rows)} player(s)  \u00b7  \U0001f7e2 player-verified \u00b7 "
+               f"\u26aa coach-entered")
+
+    cols = st.columns(3)
+    for i, p in enumerate(sorted(rows, key=lambda x: x.get("display_name", ""))):
+        with cols[i % 3]:
+            dot = "\U0001f7e2" if p.get("source") == "player" else "\u26aa"
+            socials = []
+            if p.get("twitter"):
+                socials.append(f"<a href='https://x.com/{p['twitter']}' "
+                               f"target='_blank' style='color:#1DA1F2;'>X</a>")
+            if p.get("twitch"):
+                socials.append(f"<a href='https://twitch.tv/{p['twitch']}' "
+                               f"target='_blank' style='color:#9146FF;'>Twitch</a>")
+            if p.get("youtube"):
+                socials.append(f"<a href='https://youtube.com/@{p['youtube']}' "
+                               f"target='_blank' style='color:#FF0000;'>YT</a>")
+            social_html = " \u00b7 ".join(socials) if socials else \
+                "<span style='color:#666;'>no socials yet</span>"
+            pos = f" \u00b7 {p['position']}" if p.get("position") else ""
+            st.markdown(
+                f"<div style='background:#161b22;border:1px solid #30363d;"
+                f"border-radius:12px;padding:14px;margin-bottom:12px;'>"
+                f"<div style='color:#fff;font-size:16px;font-weight:800;'>"
+                f"{dot} {p.get('display_name','?')}</div>"
+                f"<div style='color:#8b949e;font-size:12px;margin-bottom:8px;'>"
+                f"{p.get('team','')}{pos}</div>"
+                f"<div style='color:#e6edf3;font-size:13px;'>\U0001f3ae "
+                f"<b>{p.get('gamertag') or '\u2014'}</b></div>"
+                f"<div style='color:#8b949e;font-size:12px;'>\U0001f4ac "
+                f"@{p.get('discord_tag','?')}</div>"
+                f"<div style='margin-top:8px;font-size:13px;'>{social_html}</div>"
+                f"</div>", unsafe_allow_html=True)
+
+
+
+
 if view_mode == "🏠 League Home & Awards":
     hc1, hc2, hc3, hc4 = st.columns(4)
     hc1.markdown(f"<div class='metric-box'><div class='metric-title'>Games Logged</div><div class='metric-value'>{df_active['GKey'].nunique()}</div></div>", unsafe_allow_html=True)
@@ -3397,7 +3846,7 @@ def _hub_discord_widget(guild_id):
         return {"_error": f"Couldn't reach Discord ({type(e).__name__})."}
 
 
-def render_player_cards():
+def render_merged_cards():
     st.subheader("\U0001f0cf Player Cards")
     regs = _hub_load_registrations()
     if not regs:
@@ -3465,6 +3914,39 @@ def render_discord_page():
 
 
 if view_mode == "\U0001f0cf Player Cards" or view_mode == "🃏 Player Cards":
-    render_player_cards()
+    render_merged_cards_v2()
 elif view_mode == "💬 Discord":
     render_discord_page()
+
+
+if view_mode == "👤 My Profile":
+    st.header("👤 My Profile")
+    _u = current_user()
+    login_widget()
+    if _u:
+        st.success(f"Verified as {_u['global_name']}")
+        st.markdown("#### Link your accounts")
+        _gt = st.text_input("Gamertag (PSN/Xbox)")
+        _tw = st.text_input("Twitter/X (no @)")
+        _tv = st.text_input("Twitch")
+        _yt = st.text_input("YouTube")
+        if st.button("Save my profile"):
+            import json as _j, os as _o
+            _p = _o.path.join(_ASSET_BASE, "social_links.json")
+            _d = {}
+            if _o.path.exists(_p):
+                try: _d = _j.load(open(_p, encoding="utf-8")) or {}
+                except Exception: _d = {}
+            _d[_u["id"]] = {"discord_id": _u["id"], "discord_name": _u["global_name"],
+                            "avatar": _u.get("avatar"), "gamertag": _gt.strip(),
+                            "twitter": _tw.strip().lstrip("@"), "twitch": _tv.strip(),
+                            "youtube": _yt.strip()}
+            _tmp = _p + ".tmp"
+            _j.dump(_d, open(_tmp, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+            _o.replace(_tmp, _p)
+            st.success("Saved — your card is linked to your verified Discord.")
+    else:
+        st.info("Log in with Discord above to set up your profile.")
+
+if view_mode == "🎁 Open Packs":
+    render_open_pack(current_user())
