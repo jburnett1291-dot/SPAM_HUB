@@ -2002,7 +2002,6 @@ def _mint_to_save(user_id, pulled):
     except Exception as e:
         st.warning(f"Couldn't save collection: {e}")
 
-
 def render_open_pack(user):
     st.subheader("🎁 Open a Pack")
     if not user:
@@ -2040,81 +2039,81 @@ def render_open_pack(user):
                    "t": c["tier"].upper()} for c in pulled]
     cards_js = json.dumps(cards_data)
 
-    pack_html = f"""
+    pack_html = """
     <!DOCTYPE html>
     <html>
     <head>
-    <meta charset="utf-sign">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
-    * {{ margin:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
-    body {{
+    * { margin:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body {
       background:transparent; min-height:360px; display:flex; flex-direction:column;
       align-items:center; justify-content:center; font-family:-apple-system,system-ui,sans-serif;
       overflow:hidden; touch-action:manipulation; padding:16px;
-    }}
+    }
     /* ---- THE PACK ---- */
-    .pack {{
+    .pack {
       width:220px; height:320px; border-radius:20px; cursor:pointer; position:relative;
       background:linear-gradient(135deg,#5865F2 0%,#8b5cf6 45%,#ec4899 100%);
       box-shadow:0 25px 60px rgba(88,101,242,.55),inset 0 2px 20px rgba(255,255,255,.25);
       display:flex; align-items:center; justify-content:center; overflow:hidden;
       transition:transform .25s;
-    }}
-    .pack:active {{ transform:scale(.96); }}
-    .pack::before {{
+    }
+    .pack:active { transform:scale(.96); }
+    .pack::before {
       content:''; position:absolute; top:0; left:-60%; width:40%; height:100%;
       background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
       transform:skewX(-20deg); animation:sheen 2.5s infinite;
-    }}
-    @keyframes sheen {{ 0%{{left:-60%;}} 60%,100%{{left:160%;}} }}
-    .pack .logo {{
+    }
+    @keyframes sheen { 0%{left:-60%;} 60%,100%{left:160%;} }
+    .pack .logo {
       color:#fff; font-size:24px; font-weight:900; letter-spacing:3px;
       text-shadow:0 3px 12px rgba(0,0,0,.5); z-index:2; text-align:center;
-    }}
-    .pack .sub {{ font-size:11px; letter-spacing:4px; opacity:.85; margin-top:6px; }}
-    .rip {{
+    }
+    .pack .sub { font-size:11px; letter-spacing:4px; opacity:.85; margin-top:6px; }
+    .rip {
       position:absolute; inset:0; z-index:3; pointer-events:none;
       background:radial-gradient(circle,rgba(255,255,255,.95),transparent 60%);
       opacity:0;
-    }}
-    .pack.opening {{ animation:shake .12s ease-in-out 6; }}
-    @keyframes shake {{
-      0%,100%{{transform:translateX(0) rotate(0);}}
-      25%{{transform:translateX(-6px) rotate(-2deg);}}
-      75%{{transform:translateX(6px) rotate(2deg);}}
-    }}
-    .pack.burst {{ animation:burst .5s ease-out forwards; }}
-    @keyframes burst {{ to{{transform:scale(1.6);opacity:0;filter:blur(8px);}} }}
-    .pack.burst .rip {{ animation:flash .5s ease-out; }}
-    @keyframes flash {{ 0%{{opacity:0;}} 40%{{opacity:1;}} 100%{{opacity:0;}} }}
+    }
+    .pack.opening { animation:shake .12s ease-in-out 6; }
+    @keyframes shake {
+      0%,100%{transform:translateX(0) rotate(0);}
+      25%{transform:translateX(-6px) rotate(-2deg);}
+      75%{transform:translateX(6px) rotate(2deg);}
+    }
+    .pack.burst { animation:burst .5s ease-out forwards; }
+    @keyframes burst { to{transform:scale(1.6);opacity:0;filter:blur(8px);} }
+    .pack.burst .rip { animation:flash .5s ease-out; }
+    @keyframes flash { 0%{opacity:0;} 40%{opacity:1;} 100%{opacity:0;} }
 
     /* ---- THE REVEAL ---- */
-    .reveal {{ display:none; gap:12px; flex-wrap:wrap; justify-content:center;
-      max-width:640px; padding:0 8px; }}
-    .reveal.show {{ display:flex; }}
-    .rc {{
+    .reveal { display:none; gap:12px; flex-wrap:wrap; justify-content:center;
+      max-width:640px; padding:0 8px; }
+    .reveal.show { display:flex; }
+    .rc {
       width:110px; height:158px; border-radius:12px; position:relative;
       display:flex; flex-direction:column; align-items:center; justify-content:center;
       color:#fff; font-weight:900; opacity:0; transform:translateY(40px) rotateY(90deg);
       box-shadow:0 12px 34px rgba(0,0,0,.55);
-    }}
-    .rc.in {{ animation:flip .6s cubic-bezier(.2,.9,.3,1.2) forwards; }}
-    @keyframes flip {{ to{{opacity:1;transform:translateY(0) rotateY(0);}} }}
-    .t {{ font-size:10px; letter-spacing:1px; opacity:.9; }}
-    .n {{ font-size:14px; margin-top:6px; text-align:center; padding:0 6px; }}
-    .common {{ background:linear-gradient(135deg,#4b5563,#374151); }}
-    .uncommon {{ background:linear-gradient(135deg,#16a34a,#15803d); }}
-    .rare {{ background:linear-gradient(135deg,#2563eb,#1e40af); }}
-    .epic {{ background:linear-gradient(135deg,#7c3aed,#5b21b6); box-shadow:0 0 30px rgba(124,58,237,.5); }}
-    .legendary {{ background:linear-gradient(135deg,#f59e0b,#d97706); box-shadow:0 0 40px rgba(245,158,11,.7); }}
-    .legendary::after {{
+    }
+    .rc.in { animation:flip .6s cubic-bezier(.2,.9,.3,1.2) forwards; }
+    @keyframes flip { to{opacity:1;transform:translateY(0) rotateY(0);} }
+    .t { font-size:10px; letter-spacing:1px; opacity:.9; }
+    .n { font-size:14px; margin-top:6px; text-align:center; padding:0 6px; }
+    .common { background:linear-gradient(135deg,#4b5563,#374151); }
+    .uncommon { background:linear-gradient(135deg,#16a34a,#15803d); }
+    .rare { background:linear-gradient(135deg,#2563eb,#1e40af); }
+    .epic { background:linear-gradient(135deg,#7c3aed,#5b21b6); box-shadow:0 0 30px rgba(124,58,237,.5); }
+    .legendary { background:linear-gradient(135deg,#f59e0b,#d97706); box-shadow:0 0 40px rgba(245,158,11,.7); }
+    .legendary::after {
       content:''; position:absolute; inset:0; border-radius:12px;
       background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.6) 50%,transparent 70%);
       background-size:200% 200%; animation:holo 2s linear infinite; mix-blend-mode:overlay;
-    }}
-    @keyframes holo {{ 0%{{background-position:0 0;}} 100%{{background-position:200% 200%;}} }}
-    .hint {{ color:#9ca3af; font-size:13px; margin-top:20px; height:20px; text-align:center; width:100%; }}
+    }
+    @keyframes holo { 0%{background-position:0 0;} 100%{background-position:200% 200%;} }
+    .hint { color:#9ca3af; font-size:13px; margin-top:20px; height:20px; text-align:center; width:100%; }
     </style>
     </head>
     <body>
@@ -2125,29 +2124,30 @@ def render_open_pack(user):
       <div class="reveal" id="reveal"></div>
       <div class="hint" id="hint">Tap the pack</div>
     <script>
-      const cards = {cards_js};
+      const cards = __CARDS__;
       function rip(){
         const pack=document.getElementById('pack');
         document.getElementById('hint').textContent='';
         pack.classList.add('opening');
-        setTimeout(()=>{{ pack.classList.remove('opening'); pack.classList.add('burst');
-          document.getElementById('ripFx').style.opacity=1; }}, 720);
-        setTimeout(()=>{{ pack.style.display='none'; showCards(); }}, 1200);
+        setTimeout(()=>{ pack.classList.remove('opening'); pack.classList.add('burst');
+          document.getElementById('ripFx').style.opacity=1; }, 720);
+        setTimeout(()=>{ pack.style.display='none'; showCards(); }, 1200);
       }
       function showCards(){
         const wrap=document.getElementById('reveal'); wrap.classList.add('show');
-        cards.forEach((card,i)=>{{
+        cards.forEach((card,i)=>{
           const el=document.createElement('div');
           el.className='rc '+card.c;
           el.innerHTML='<div class="t">'+card.t+'</div><div class="n">'+card.n+'</div>';
           wrap.appendChild(el);
           setTimeout(()=>el.classList.add('in'), 150 + i*260);
-        }});
+        });
       }
     </script>
     </body>
     </html>
-    """
+    """.replace("__CARDS__", cards_js)
+    
     components.html(pack_html, height=400)
     st.caption("Minted to your collection — same one your Discord cards live in.")
 
