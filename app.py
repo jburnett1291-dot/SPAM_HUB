@@ -1895,7 +1895,7 @@ def login_widget():
             st.rerun()
     else:
         st.markdown(
-            f"<a href='{_login_url()}' target='_self' style='display:inline-block;"
+            f"<a href='{_login_url()}' target='_top' style='display:inline-block;"
             f"background:#5865F2;color:#fff;font-weight:800;padding:10px 20px;"
             f"border-radius:10px;text-decoration:none;'>\U0001f517 Login with Discord</a>",
             unsafe_allow_html=True)
