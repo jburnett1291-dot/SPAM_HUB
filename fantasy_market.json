@@ -1,6 +1,6 @@
 {
   "v": 4,
-  "updated": 1785081713,
+  "updated": 1785108113,
   "cur_season": 1.0,
   "weights": {
     "w_perf": 0.4,
@@ -1774,8 +1774,8 @@
       "tier": "Epic",
       "cls": "active",
       "run": 14,
-      "minted": 0,
-      "left": 14,
+      "minted": 1,
+      "left": 13,
       "why": "Epic base 10 x1.40 (GP 8, trend -4.4)",
       "price": 160,
       "fair": 160,
