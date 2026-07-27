@@ -63,9 +63,21 @@
       {
         "name": "IIIManu",
         "tier": "Rare"
+      },
+      {
+        "name": "IIHopeMikaelson",
+        "tier": "Common"
+      },
+      {
+        "name": "IIZoell",
+        "tier": "Common"
+      },
+      {
+        "name": "Sohtoxxic",
+        "tier": "Uncommon"
       }
     ],
-    "count": 48
+    "count": 51
   },
   "1204518391369437278": {
     "name": "K-O-B-E-2-K-🧊",
