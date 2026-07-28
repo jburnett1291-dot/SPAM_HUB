@@ -1,5 +1,25 @@
 {
-  "users": {},
+  "users": {
+    "1337614287920959609": {
+      "name": "𝘚𝘵𝘦𝘱𝘩𝘦𝘯 𝘈. 𝘘𝘸𝘪𝘬",
+      "coins": 500,
+      "cards": [
+        "T2E xLOux X6",
+        "killakiaa_1",
+        "lexi Hull"
+      ],
+      "roster": {
+        "G": null,
+        "F": null,
+        "C": null,
+        "B1": null,
+        "B2": null
+      },
+      "serials": {},
+      "cumulative_fp": 0.0,
+      "history": []
+    }
+  },
   "economy": {},
   "mint": {},
   "market": {},
