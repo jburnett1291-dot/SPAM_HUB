@@ -2,7 +2,7 @@
   "users": {
     "1337614287920959609": {
       "name": "𝘚𝘵𝘦𝘱𝘩𝘦𝘯 𝘈. 𝘘𝘸𝘪𝘬",
-      "coins": 40,
+      "coins": 540,
       "cards": [
         "Pxlo Uncut",
         "T2E xLOUx X6",
@@ -105,7 +105,10 @@
         "Precision Kill",
         "MyOllies",
         "Igymo",
-        "Gods Flaw"
+        "Gods Flaw",
+        "Hxxdiel_Xck",
+        "Ttvlogross04",
+        "Dvnt Score"
       ],
       "roster": {
         "G": null,
@@ -151,7 +154,8 @@
           "cost": 200,
           "serial": 1
         }
-      ]
+      ],
+      "starter_claimed": "lockdown"
     },
     "1204518391369437278": {
       "name": "K-O-B-E-2-K-🧊",
