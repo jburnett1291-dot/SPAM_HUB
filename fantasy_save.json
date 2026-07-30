@@ -120,11 +120,11 @@
         "Dawgiest"
       ],
       "roster": {
-        "G": null,
-        "F": null,
-        "C": null,
-        "B1": null,
-        "B2": null
+        "G": "Pxlo Uncut",
+        "F": "K-O-B-E-2-K-🧊",
+        "C": "Molly",
+        "B1": "MagicIsD1",
+        "B2": "YPFRAS"
       },
       "serials": {
         "Kyglo_": [
@@ -164,7 +164,9 @@
           "serial": 1
         }
       ],
-      "starter_claimed": "lockdown"
+      "starter_claimed": "lockdown",
+      "roster_locked_at": 1785426770.3563602,
+      "roster_lock_game": 66
     },
     "1204518391369437278": {
       "name": "K-O-B-E-2-K-🧊",
