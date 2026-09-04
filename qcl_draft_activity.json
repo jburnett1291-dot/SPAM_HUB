@@ -1,0 +1,27 @@
+{
+  "revision": 1,
+  "status": "setup",
+  "teams": [],
+  "coaches": {},
+  "players": {},
+  "order": [],
+  "picks": [],
+  "current_pick": 0,
+  "pick_seconds": 90,
+  "deadline_at": null,
+  "paused_remaining": null,
+  "protected_picks": [],
+  "trades": [],
+  "audit_log": [
+    {
+      "at": 1788554718.8151598,
+      "action": "draft_pause_toggled",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "status": "setup"
+      }
+    }
+  ],
+  "promo": null,
+  "director_mode": false
+}
