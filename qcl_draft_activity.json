@@ -1,5 +1,5 @@
 {
-  "revision": 11,
+  "revision": 12,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -4933,9 +4933,9 @@
       "source": "commissioner_override"
     }
   ],
-  "current_pick": 8,
+  "current_pick": 9,
   "pick_seconds": 90,
-  "deadline_at": 1788634395.4091384,
+  "deadline_at": 1788634398.4605906,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5078,6 +5078,19 @@
           "round": 1,
           "round_pick": 8,
           "team": "Dallas Outlaws"
+        }
+      }
+    },
+    {
+      "at": 1788634308.4605937,
+      "action": "force_advance",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "skipped": {
+          "pick": 9,
+          "round": 1,
+          "round_pick": 9,
+          "team": "Denver Summit"
         }
       }
     }
