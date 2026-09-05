@@ -1,5 +1,5 @@
 {
-  "revision": 14,
+  "revision": 15,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -5119,18 +5119,16 @@
           "team": "Houston Comets"
         }
       }
+    },
+    {
+      "at": 1788634341.4878461,
+      "action": "promo_completed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "event_id": "pick-6-1788633849042"
+      }
     }
   ],
-  "promo": {
-    "event_id": "pick-6-1788633849042",
-    "kind": "pick",
-    "player": "Landon Nash",
-    "team": "Chicago Blizzard",
-    "pick": 6,
-    "media_url": null,
-    "entrance_audio_url": null,
-    "duck_background_audio": true,
-    "started_at": 1788633849.0424678
-  },
+  "promo": null,
   "director_mode": false
 }
