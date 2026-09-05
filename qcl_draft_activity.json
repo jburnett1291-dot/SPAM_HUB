@@ -1,5 +1,5 @@
 {
-  "revision": 4,
+  "revision": 5,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -100,7 +100,9 @@
       "rank": 4,
       "overall": 99.1,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Boston Harbor",
+      "pick_number": 4,
+      "drafted_at": 1788596997.692567
     },
     "test-prospect-5": {
       "discord_id": "test-prospect-5",
@@ -4895,11 +4897,21 @@
       "player_id": "test-prospect-3",
       "timestamp": 1788596799.56733,
       "source": "test_simulation"
+    },
+    {
+      "pick": 4,
+      "round": 1,
+      "round_pick": 4,
+      "team": "Boston Harbor",
+      "player": "Caleb Reed",
+      "player_id": "test-prospect-4",
+      "timestamp": 1788596997.692568,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 3,
+  "current_pick": 4,
   "pick_seconds": 90,
-  "deadline_at": 1788596889.5673318,
+  "deadline_at": 1788597087.69257,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -4957,18 +4969,33 @@
         "timestamp": 1788596799.56733,
         "source": "test_simulation"
       }
+    },
+    {
+      "at": 1788596997.6925776,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 4,
+        "round": 1,
+        "round_pick": 4,
+        "team": "Boston Harbor",
+        "player": "Caleb Reed",
+        "player_id": "test-prospect-4",
+        "timestamp": 1788596997.692568,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-3-1788596799567",
+    "event_id": "pick-4-1788596997692",
     "kind": "pick",
-    "player": "Preston Foster",
-    "team": "Baltimore Voyagers",
-    "pick": 3,
+    "player": "Caleb Reed",
+    "team": "Boston Harbor",
+    "pick": 4,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788596799.5673347
+    "started_at": 1788596997.692573
   },
   "director_mode": true
 }
