@@ -1,5 +1,5 @@
 {
-  "revision": 3,
+  "revision": 4,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -88,7 +88,9 @@
       "rank": 3,
       "overall": 99.2,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Baltimore Voyagers",
+      "pick_number": 3,
+      "drafted_at": 1788596799.5673285
     },
     "test-prospect-4": {
       "discord_id": "test-prospect-4",
@@ -4883,11 +4885,21 @@
       "player_id": "test-prospect-2",
       "timestamp": 1788596794.1678638,
       "source": "test_simulation"
+    },
+    {
+      "pick": 3,
+      "round": 1,
+      "round_pick": 3,
+      "team": "Baltimore Voyagers",
+      "player": "Preston Foster",
+      "player_id": "test-prospect-3",
+      "timestamp": 1788596799.56733,
+      "source": "test_simulation"
     }
   ],
-  "current_pick": 2,
+  "current_pick": 3,
   "pick_seconds": 90,
-  "deadline_at": 1788596884.1678665,
+  "deadline_at": 1788596889.5673318,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -4930,18 +4942,33 @@
         "timestamp": 1788596794.1678638,
         "source": "test_simulation"
       }
+    },
+    {
+      "at": 1788596799.5673382,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 3,
+        "round": 1,
+        "round_pick": 3,
+        "team": "Baltimore Voyagers",
+        "player": "Preston Foster",
+        "player_id": "test-prospect-3",
+        "timestamp": 1788596799.56733,
+        "source": "test_simulation"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-2-1788596794167",
+    "event_id": "pick-3-1788596799567",
     "kind": "pick",
-    "player": "Isaiah Owens",
-    "team": "Austin Armadillos",
-    "pick": 2,
+    "player": "Preston Foster",
+    "team": "Baltimore Voyagers",
+    "pick": 3,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788596794.16787
+    "started_at": 1788596799.5673347
   },
   "director_mode": true
 }
