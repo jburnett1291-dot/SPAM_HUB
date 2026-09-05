@@ -1,5 +1,5 @@
 {
-  "revision": 12,
+  "revision": 13,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -4933,9 +4933,9 @@
       "source": "commissioner_override"
     }
   ],
-  "current_pick": 9,
+  "current_pick": 10,
   "pick_seconds": 90,
-  "deadline_at": 1788634398.4605906,
+  "deadline_at": 1788634401.9753892,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5091,6 +5091,19 @@
           "round": 1,
           "round_pick": 9,
           "team": "Denver Summit"
+        }
+      }
+    },
+    {
+      "at": 1788634311.9753926,
+      "action": "force_advance",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "skipped": {
+          "pick": 10,
+          "round": 1,
+          "round_pick": 10,
+          "team": "Detroit Motors"
         }
       }
     }
