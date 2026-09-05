@@ -1,5 +1,5 @@
 {
-  "revision": 9,
+  "revision": 10,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -4933,9 +4933,9 @@
       "source": "commissioner_override"
     }
   ],
-  "current_pick": 6,
+  "current_pick": 7,
   "pick_seconds": 90,
-  "deadline_at": 1788633939.0424635,
+  "deadline_at": 1788634392.8780503,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5053,6 +5053,19 @@
         "player_id": "test-prospect-11",
         "timestamp": 1788633849.0424612,
         "source": "commissioner_override"
+      }
+    },
+    {
+      "at": 1788634302.8780537,
+      "action": "force_advance",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "skipped": {
+          "pick": 7,
+          "round": 1,
+          "round_pick": 7,
+          "team": "Cleveland Forge"
+        }
       }
     }
   ],
