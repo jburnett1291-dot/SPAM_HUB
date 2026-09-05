@@ -1,5 +1,5 @@
 {
-  "revision": 8,
+  "revision": 9,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -5046,6 +5046,14 @@
         "timestamp": 1788597264.9994617,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788597267.7337112,
+      "action": "director_mode_changed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "enabled": true
+      }
     }
   ],
   "promo": {
@@ -5059,5 +5067,5 @@
     "duck_background_audio": true,
     "started_at": 1788597264.9994648
   },
-  "director_mode": false
+  "director_mode": true
 }
