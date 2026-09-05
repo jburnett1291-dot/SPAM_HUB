@@ -1,5 +1,5 @@
 {
-  "revision": 5,
+  "revision": 6,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -112,7 +112,9 @@
       "rank": 5,
       "overall": 99.0,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Charlotte Crowns",
+      "pick_number": 5,
+      "drafted_at": 1788597089.8095772
     },
     "test-prospect-6": {
       "discord_id": "test-prospect-6",
@@ -4907,11 +4909,21 @@
       "player_id": "test-prospect-4",
       "timestamp": 1788596997.692568,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 5,
+      "round": 1,
+      "round_pick": 5,
+      "team": "Charlotte Crowns",
+      "player": "Jalen Hayes",
+      "player_id": "test-prospect-5",
+      "timestamp": 1788597089.809578,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 4,
+  "current_pick": 5,
   "pick_seconds": 90,
-  "deadline_at": 1788597087.69257,
+  "deadline_at": 1788597179.8095798,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -4984,18 +4996,33 @@
         "timestamp": 1788596997.692568,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788597089.8095863,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 5,
+        "round": 1,
+        "round_pick": 5,
+        "team": "Charlotte Crowns",
+        "player": "Jalen Hayes",
+        "player_id": "test-prospect-5",
+        "timestamp": 1788597089.809578,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-4-1788596997692",
+    "event_id": "pick-5-1788597089809",
     "kind": "pick",
-    "player": "Caleb Reed",
-    "team": "Boston Harbor",
-    "pick": 4,
+    "player": "Jalen Hayes",
+    "team": "Charlotte Crowns",
+    "pick": 5,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788596997.692573
+    "started_at": 1788597089.8095822
   },
   "director_mode": true
 }
