@@ -1,5 +1,5 @@
 {
-  "revision": 6,
+  "revision": 7,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -88,7 +88,9 @@
       "rank": 3,
       "overall": 99.2,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Boston Harbor",
+      "pick_number": 4,
+      "drafted_at": 1788628108.3570218
     },
     "test-prospect-4": {
       "discord_id": "test-prospect-4",
@@ -4895,11 +4897,21 @@
       "player_id": "test-prospect-1",
       "timestamp": 1788597589.3991861,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 4,
+      "round": 1,
+      "round_pick": 4,
+      "team": "Boston Harbor",
+      "player": "Preston Foster",
+      "player_id": "test-prospect-3",
+      "timestamp": 1788628108.3570235,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 3,
+  "current_pick": 4,
   "pick_seconds": 90,
-  "deadline_at": 1788597679.3991888,
+  "deadline_at": 1788628198.3570263,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -4973,8 +4985,33 @@
       "details": {
         "event_id": "pick-3-1788597589399"
       }
+    },
+    {
+      "at": 1788628108.3570385,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 4,
+        "round": 1,
+        "round_pick": 4,
+        "team": "Boston Harbor",
+        "player": "Preston Foster",
+        "player_id": "test-prospect-3",
+        "timestamp": 1788628108.3570235,
+        "source": "commissioner_override"
+      }
     }
   ],
-  "promo": null,
+  "promo": {
+    "event_id": "pick-4-1788628108357",
+    "kind": "pick",
+    "player": "Preston Foster",
+    "team": "Boston Harbor",
+    "pick": 4,
+    "media_url": null,
+    "entrance_audio_url": null,
+    "duck_background_audio": true,
+    "started_at": 1788628108.3570318
+  },
   "director_mode": false
 }
