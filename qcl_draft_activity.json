@@ -1,5 +1,5 @@
 {
-  "revision": 10,
+  "revision": 11,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -4933,9 +4933,9 @@
       "source": "commissioner_override"
     }
   ],
-  "current_pick": 7,
+  "current_pick": 8,
   "pick_seconds": 90,
-  "deadline_at": 1788634392.8780503,
+  "deadline_at": 1788634395.4091384,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5065,6 +5065,19 @@
           "round": 1,
           "round_pick": 7,
           "team": "Cleveland Forge"
+        }
+      }
+    },
+    {
+      "at": 1788634305.4091425,
+      "action": "force_advance",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "skipped": {
+          "pick": 8,
+          "round": 1,
+          "round_pick": 8,
+          "team": "Dallas Outlaws"
         }
       }
     }
