@@ -1,5 +1,5 @@
 {
-  "revision": 15,
+  "revision": 16,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -5127,8 +5127,16 @@
       "details": {
         "event_id": "pick-6-1788633849042"
       }
+    },
+    {
+      "at": 1788635460.2197056,
+      "action": "director_mode_changed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "enabled": true
+      }
     }
   ],
   "promo": null,
-  "director_mode": false
+  "director_mode": true
 }
