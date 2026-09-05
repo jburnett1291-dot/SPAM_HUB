@@ -1,5 +1,5 @@
 {
-  "revision": 4,
+  "revision": 5,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -64,7 +64,9 @@
       "rank": 1,
       "overall": 99.4,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Baltimore Voyagers",
+      "pick_number": 3,
+      "drafted_at": 1788597589.3991854
     },
     "test-prospect-2": {
       "discord_id": "test-prospect-2",
@@ -4883,11 +4885,21 @@
       "player_id": "test-prospect-2",
       "timestamp": 1788597560.3502784,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 3,
+      "round": 1,
+      "round_pick": 3,
+      "team": "Baltimore Voyagers",
+      "player": "Bryce Daniels",
+      "player_id": "test-prospect-1",
+      "timestamp": 1788597589.3991861,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 2,
+  "current_pick": 3,
   "pick_seconds": 90,
-  "deadline_at": 1788597650.350281,
+  "deadline_at": 1788597679.3991888,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -4938,18 +4950,33 @@
         "timestamp": 1788597560.3502784,
         "source": "commissioner_override"
       }
+    },
+    {
+      "at": 1788597589.399198,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 3,
+        "round": 1,
+        "round_pick": 3,
+        "team": "Baltimore Voyagers",
+        "player": "Bryce Daniels",
+        "player_id": "test-prospect-1",
+        "timestamp": 1788597589.3991861,
+        "source": "commissioner_override"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-2-1788597560350",
+    "event_id": "pick-3-1788597589399",
     "kind": "pick",
-    "player": "Isaiah Owens",
-    "team": "Austin Armadillos",
-    "pick": 2,
+    "player": "Bryce Daniels",
+    "team": "Baltimore Voyagers",
+    "pick": 3,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788597560.3502846
+    "started_at": 1788597589.3991926
   },
   "director_mode": false
 }
