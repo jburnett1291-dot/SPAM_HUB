@@ -1,5 +1,5 @@
 {
-  "revision": 7,
+  "revision": 8,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -142,7 +142,9 @@
       "rank": 8,
       "overall": 98.7,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Charlotte Crowns",
+      "pick_number": 5,
+      "drafted_at": 1788633831.6400955
     },
     "test-prospect-9": {
       "discord_id": "test-prospect-9",
@@ -4907,11 +4909,21 @@
       "player_id": "test-prospect-3",
       "timestamp": 1788628108.3570235,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 5,
+      "round": 1,
+      "round_pick": 5,
+      "team": "Charlotte Crowns",
+      "player": "Kai Anderson",
+      "player_id": "test-prospect-8",
+      "timestamp": 1788633831.6400967,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 4,
+  "current_pick": 5,
   "pick_seconds": 90,
-  "deadline_at": 1788628198.3570263,
+  "deadline_at": 1788633921.640099,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5000,18 +5012,33 @@
         "timestamp": 1788628108.3570235,
         "source": "commissioner_override"
       }
+    },
+    {
+      "at": 1788633831.6401079,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 5,
+        "round": 1,
+        "round_pick": 5,
+        "team": "Charlotte Crowns",
+        "player": "Kai Anderson",
+        "player_id": "test-prospect-8",
+        "timestamp": 1788633831.6400967,
+        "source": "commissioner_override"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-4-1788628108357",
+    "event_id": "pick-5-1788633831640",
     "kind": "pick",
-    "player": "Preston Foster",
-    "team": "Boston Harbor",
-    "pick": 4,
+    "player": "Kai Anderson",
+    "team": "Charlotte Crowns",
+    "pick": 5,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788628108.3570318
+    "started_at": 1788633831.640103
   },
   "director_mode": false
 }
