@@ -1,5 +1,5 @@
 {
-  "revision": 3,
+  "revision": 4,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -74,7 +74,9 @@
       "rank": 2,
       "overall": 99.3,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Austin Armadillos",
+      "pick_number": 2,
+      "drafted_at": 1788597560.3502772
     },
     "test-prospect-3": {
       "discord_id": "test-prospect-3",
@@ -4871,11 +4873,21 @@
       "player_id": "test-prospect-5",
       "timestamp": 1788597547.8949778,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 2,
+      "round": 1,
+      "round_pick": 2,
+      "team": "Austin Armadillos",
+      "player": "Isaiah Owens",
+      "player_id": "test-prospect-2",
+      "timestamp": 1788597560.3502784,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 1,
+  "current_pick": 2,
   "pick_seconds": 90,
-  "deadline_at": 1788597637.8949814,
+  "deadline_at": 1788597650.350281,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -4911,18 +4923,33 @@
         "timestamp": 1788597547.8949778,
         "source": "commissioner_override"
       }
+    },
+    {
+      "at": 1788597560.3502889,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 2,
+        "round": 1,
+        "round_pick": 2,
+        "team": "Austin Armadillos",
+        "player": "Isaiah Owens",
+        "player_id": "test-prospect-2",
+        "timestamp": 1788597560.3502784,
+        "source": "commissioner_override"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-1-1788597547894",
+    "event_id": "pick-2-1788597560350",
     "kind": "pick",
-    "player": "Jalen Hayes",
-    "team": "Atlanta Aviators",
-    "pick": 1,
+    "player": "Isaiah Owens",
+    "team": "Austin Armadillos",
+    "pick": 2,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788597547.894985
+    "started_at": 1788597560.3502846
   },
   "director_mode": false
 }
