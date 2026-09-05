@@ -1,5 +1,5 @@
 {
-  "revision": 23,
+  "revision": 24,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -208,7 +208,9 @@
       "rank": 13,
       "overall": 98.1,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "New Orleans Brass",
+      "pick_number": 18,
+      "drafted_at": 1788635502.53021
     },
     "test-prospect-14": {
       "discord_id": "test-prospect-14",
@@ -5003,11 +5005,21 @@
       "player_id": "test-prospect-12",
       "timestamp": 1788635492.7738302,
       "source": "test_simulation"
+    },
+    {
+      "pick": 18,
+      "round": 1,
+      "round_pick": 18,
+      "team": "New Orleans Brass",
+      "player": "Felix Price",
+      "player_id": "test-prospect-13",
+      "timestamp": 1788635502.530211,
+      "source": "test_simulation"
     }
   ],
-  "current_pick": 17,
+  "current_pick": 18,
   "pick_seconds": 90,
-  "deadline_at": 1788635582.773833,
+  "deadline_at": 1788635592.530213,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5305,18 +5317,33 @@
         "timestamp": 1788635492.7738302,
         "source": "test_simulation"
       }
+    },
+    {
+      "at": 1788635502.5302207,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 18,
+        "round": 1,
+        "round_pick": 18,
+        "team": "New Orleans Brass",
+        "player": "Felix Price",
+        "player_id": "test-prospect-13",
+        "timestamp": 1788635502.530211,
+        "source": "test_simulation"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-17-1788635492773",
+    "event_id": "pick-18-1788635502530",
     "kind": "pick",
-    "player": "Silas Ellis",
-    "team": "Nashville Sound",
-    "pick": 17,
+    "player": "Felix Price",
+    "team": "New Orleans Brass",
+    "pick": 18,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788635492.7738376
+    "started_at": 1788635502.5302167
   },
   "director_mode": false
 }
