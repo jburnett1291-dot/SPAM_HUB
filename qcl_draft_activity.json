@@ -1,5 +1,5 @@
 {
-  "revision": 1,
+  "revision": 2,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -64,7 +64,9 @@
       "rank": 1,
       "overall": 99.4,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Atlanta Aviators",
+      "pick_number": 1,
+      "drafted_at": 1788596788.7087169
     },
     "test-prospect-2": {
       "discord_id": "test-prospect-2",
@@ -4859,10 +4861,21 @@
       "team": "Washington Sentinels"
     }
   ],
-  "picks": [],
-  "current_pick": 0,
+  "picks": [
+    {
+      "pick": 1,
+      "round": 1,
+      "round_pick": 1,
+      "team": "Atlanta Aviators",
+      "player": "Bryce Daniels",
+      "player_id": "test-prospect-1",
+      "timestamp": 1788596788.7087183,
+      "source": "test_simulation"
+    }
+  ],
+  "current_pick": 1,
   "pick_seconds": 90,
-  "deadline_at": 1788596877.1807187,
+  "deadline_at": 1788596878.7087212,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -4875,8 +4888,33 @@
         "players": 300,
         "teams": 25
       }
+    },
+    {
+      "at": 1788596788.7087288,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 1,
+        "round": 1,
+        "round_pick": 1,
+        "team": "Atlanta Aviators",
+        "player": "Bryce Daniels",
+        "player_id": "test-prospect-1",
+        "timestamp": 1788596788.7087183,
+        "source": "test_simulation"
+      }
     }
   ],
-  "promo": null,
+  "promo": {
+    "event_id": "pick-1-1788596788708",
+    "kind": "pick",
+    "player": "Bryce Daniels",
+    "team": "Atlanta Aviators",
+    "pick": 1,
+    "media_url": null,
+    "entrance_audio_url": null,
+    "duck_background_audio": true,
+    "started_at": 1788596788.7087247
+  },
   "director_mode": true
 }
