@@ -1,5 +1,5 @@
 {
-  "revision": 18,
+  "revision": 19,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -124,7 +124,9 @@
       "rank": 6,
       "overall": 98.9,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Las Vegas Neon",
+      "pick_number": 13,
+      "drafted_at": 1788635483.1327677
     },
     "test-prospect-7": {
       "discord_id": "test-prospect-7",
@@ -4943,11 +4945,21 @@
       "player_id": "test-prospect-4",
       "timestamp": 1788635472.485144,
       "source": "test_simulation"
+    },
+    {
+      "pick": 13,
+      "round": 1,
+      "round_pick": 13,
+      "team": "Las Vegas Neon",
+      "player": "Quincy Turner",
+      "player_id": "test-prospect-6",
+      "timestamp": 1788635483.1327696,
+      "source": "test_simulation"
     }
   ],
-  "current_pick": 12,
+  "current_pick": 13,
   "pick_seconds": 90,
-  "deadline_at": 1788635562.4851463,
+  "deadline_at": 1788635573.1327732,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5170,18 +5182,33 @@
         "timestamp": 1788635472.485144,
         "source": "test_simulation"
       }
+    },
+    {
+      "at": 1788635483.132783,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 13,
+        "round": 1,
+        "round_pick": 13,
+        "team": "Las Vegas Neon",
+        "player": "Quincy Turner",
+        "player_id": "test-prospect-6",
+        "timestamp": 1788635483.1327696,
+        "source": "test_simulation"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-12-1788635472485",
+    "event_id": "pick-13-1788635483132",
     "kind": "pick",
-    "player": "Caleb Reed",
-    "team": "Kansas City Monarchs",
-    "pick": 12,
+    "player": "Quincy Turner",
+    "team": "Las Vegas Neon",
+    "pick": 13,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788635472.4851506
+    "started_at": 1788635483.1327777
   },
   "director_mode": false
 }
