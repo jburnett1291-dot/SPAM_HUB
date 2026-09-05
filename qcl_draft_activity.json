@@ -1,5 +1,5 @@
 {
-  "revision": 2,
+  "revision": 3,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -104,7 +104,9 @@
       "rank": 5,
       "overall": 99.0,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Atlanta Aviators",
+      "pick_number": 1,
+      "drafted_at": 1788597547.8949769
     },
     "test-prospect-6": {
       "discord_id": "test-prospect-6",
@@ -4859,10 +4861,21 @@
       "team": "Washington Sentinels"
     }
   ],
-  "picks": [],
-  "current_pick": 0,
+  "picks": [
+    {
+      "pick": 1,
+      "round": 1,
+      "round_pick": 1,
+      "team": "Atlanta Aviators",
+      "player": "Jalen Hayes",
+      "player_id": "test-prospect-5",
+      "timestamp": 1788597547.8949778,
+      "source": "commissioner_override"
+    }
+  ],
+  "current_pick": 1,
   "pick_seconds": 90,
-  "deadline_at": 1788597387.7777786,
+  "deadline_at": 1788597637.8949814,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -4883,8 +4896,33 @@
       "details": {
         "enabled": false
       }
+    },
+    {
+      "at": 1788597547.894989,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 1,
+        "round": 1,
+        "round_pick": 1,
+        "team": "Atlanta Aviators",
+        "player": "Jalen Hayes",
+        "player_id": "test-prospect-5",
+        "timestamp": 1788597547.8949778,
+        "source": "commissioner_override"
+      }
     }
   ],
-  "promo": null,
+  "promo": {
+    "event_id": "pick-1-1788597547894",
+    "kind": "pick",
+    "player": "Jalen Hayes",
+    "team": "Atlanta Aviators",
+    "pick": 1,
+    "media_url": null,
+    "entrance_audio_url": null,
+    "duck_background_audio": true,
+    "started_at": 1788597547.894985
+  },
   "director_mode": false
 }
