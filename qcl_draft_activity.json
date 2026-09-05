@@ -1,5 +1,5 @@
 {
-  "revision": 2,
+  "revision": 3,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -76,7 +76,9 @@
       "rank": 2,
       "overall": 99.3,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Austin Armadillos",
+      "pick_number": 2,
+      "drafted_at": 1788596794.1678622
     },
     "test-prospect-3": {
       "discord_id": "test-prospect-3",
@@ -4871,11 +4873,21 @@
       "player_id": "test-prospect-1",
       "timestamp": 1788596788.7087183,
       "source": "test_simulation"
+    },
+    {
+      "pick": 2,
+      "round": 1,
+      "round_pick": 2,
+      "team": "Austin Armadillos",
+      "player": "Isaiah Owens",
+      "player_id": "test-prospect-2",
+      "timestamp": 1788596794.1678638,
+      "source": "test_simulation"
     }
   ],
-  "current_pick": 1,
+  "current_pick": 2,
   "pick_seconds": 90,
-  "deadline_at": 1788596878.7087212,
+  "deadline_at": 1788596884.1678665,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -4903,18 +4915,33 @@
         "timestamp": 1788596788.7087183,
         "source": "test_simulation"
       }
+    },
+    {
+      "at": 1788596794.167874,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 2,
+        "round": 1,
+        "round_pick": 2,
+        "team": "Austin Armadillos",
+        "player": "Isaiah Owens",
+        "player_id": "test-prospect-2",
+        "timestamp": 1788596794.1678638,
+        "source": "test_simulation"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-1-1788596788708",
+    "event_id": "pick-2-1788596794167",
     "kind": "pick",
-    "player": "Bryce Daniels",
-    "team": "Atlanta Aviators",
-    "pick": 1,
+    "player": "Isaiah Owens",
+    "team": "Austin Armadillos",
+    "pick": 2,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788596788.7087247
+    "started_at": 1788596794.16787
   },
   "director_mode": true
 }
