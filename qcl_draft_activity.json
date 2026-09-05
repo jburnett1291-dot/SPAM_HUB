@@ -1,5 +1,5 @@
 {
-  "revision": 5,
+  "revision": 6,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -4965,18 +4965,16 @@
         "timestamp": 1788597589.3991861,
         "source": "commissioner_override"
       }
+    },
+    {
+      "at": 1788628084.5961013,
+      "action": "promo_completed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "event_id": "pick-3-1788597589399"
+      }
     }
   ],
-  "promo": {
-    "event_id": "pick-3-1788597589399",
-    "kind": "pick",
-    "player": "Bryce Daniels",
-    "team": "Baltimore Voyagers",
-    "pick": 3,
-    "media_url": null,
-    "entrance_audio_url": null,
-    "duck_background_audio": true,
-    "started_at": 1788597589.3991926
-  },
+  "promo": null,
   "director_mode": false
 }
