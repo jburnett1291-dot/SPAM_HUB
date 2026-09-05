@@ -1,5 +1,5 @@
 {
-  "revision": 17,
+  "revision": 18,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -100,7 +100,9 @@
       "rank": 4,
       "overall": 99.1,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Kansas City Monarchs",
+      "pick_number": 12,
+      "drafted_at": 1788635472.485142
     },
     "test-prospect-5": {
       "discord_id": "test-prospect-5",
@@ -4931,11 +4933,21 @@
       "player_id": "test-prospect-11",
       "timestamp": 1788633849.0424612,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 12,
+      "round": 1,
+      "round_pick": 12,
+      "team": "Kansas City Monarchs",
+      "player": "Caleb Reed",
+      "player_id": "test-prospect-4",
+      "timestamp": 1788635472.485144,
+      "source": "test_simulation"
     }
   ],
-  "current_pick": 11,
+  "current_pick": 12,
   "pick_seconds": 90,
-  "deadline_at": 1788634409.0666358,
+  "deadline_at": 1788635562.4851463,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5143,8 +5155,33 @@
       "details": {
         "enabled": false
       }
+    },
+    {
+      "at": 1788635472.4851549,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 12,
+        "round": 1,
+        "round_pick": 12,
+        "team": "Kansas City Monarchs",
+        "player": "Caleb Reed",
+        "player_id": "test-prospect-4",
+        "timestamp": 1788635472.485144,
+        "source": "test_simulation"
+      }
     }
   ],
-  "promo": null,
+  "promo": {
+    "event_id": "pick-12-1788635472485",
+    "kind": "pick",
+    "player": "Caleb Reed",
+    "team": "Kansas City Monarchs",
+    "pick": 12,
+    "media_url": null,
+    "entrance_audio_url": null,
+    "duck_background_audio": true,
+    "started_at": 1788635472.4851506
+  },
   "director_mode": false
 }
