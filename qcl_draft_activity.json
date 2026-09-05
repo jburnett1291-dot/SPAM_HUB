@@ -1,5 +1,5 @@
 {
-  "revision": 2,
+  "revision": 3,
   "status": "setup",
   "teams": [],
   "coaches": {},
@@ -28,8 +28,16 @@
       "details": {
         "enabled": true
       }
+    },
+    {
+      "at": 1788596781.17524,
+      "action": "director_mode_changed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "enabled": false
+      }
     }
   ],
   "promo": null,
-  "director_mode": true
+  "director_mode": false
 }
