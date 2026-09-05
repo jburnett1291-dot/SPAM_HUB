@@ -1,5 +1,5 @@
 {
-  "revision": 8,
+  "revision": 9,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -174,7 +174,9 @@
       "rank": 11,
       "overall": 98.4,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Chicago Blizzard",
+      "pick_number": 6,
+      "drafted_at": 1788633849.0424602
     },
     "test-prospect-12": {
       "discord_id": "test-prospect-12",
@@ -4919,11 +4921,21 @@
       "player_id": "test-prospect-8",
       "timestamp": 1788633831.6400967,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 6,
+      "round": 1,
+      "round_pick": 6,
+      "team": "Chicago Blizzard",
+      "player": "Landon Nash",
+      "player_id": "test-prospect-11",
+      "timestamp": 1788633849.0424612,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 5,
+  "current_pick": 6,
   "pick_seconds": 90,
-  "deadline_at": 1788633921.640099,
+  "deadline_at": 1788633939.0424635,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5027,18 +5039,33 @@
         "timestamp": 1788633831.6400967,
         "source": "commissioner_override"
       }
+    },
+    {
+      "at": 1788633849.0424724,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 6,
+        "round": 1,
+        "round_pick": 6,
+        "team": "Chicago Blizzard",
+        "player": "Landon Nash",
+        "player_id": "test-prospect-11",
+        "timestamp": 1788633849.0424612,
+        "source": "commissioner_override"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-5-1788633831640",
+    "event_id": "pick-6-1788633849042",
     "kind": "pick",
-    "player": "Kai Anderson",
-    "team": "Charlotte Crowns",
-    "pick": 5,
+    "player": "Landon Nash",
+    "team": "Chicago Blizzard",
+    "pick": 6,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788633831.640103
+    "started_at": 1788633849.0424678
   },
   "director_mode": false
 }
