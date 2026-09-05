@@ -1,5 +1,5 @@
 {
-  "revision": 7,
+  "revision": 8,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -124,7 +124,9 @@
       "rank": 6,
       "overall": 98.9,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Chicago Blizzard",
+      "pick_number": 6,
+      "drafted_at": 1788597264.999461
     },
     "test-prospect-7": {
       "discord_id": "test-prospect-7",
@@ -4919,11 +4921,21 @@
       "player_id": "test-prospect-5",
       "timestamp": 1788597089.809578,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 6,
+      "round": 1,
+      "round_pick": 6,
+      "team": "Chicago Blizzard",
+      "player": "Quincy Turner",
+      "player_id": "test-prospect-6",
+      "timestamp": 1788597264.9994617,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 5,
+  "current_pick": 6,
   "pick_seconds": 90,
-  "deadline_at": 1788597179.8095798,
+  "deadline_at": 1788597354.9994628,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5019,18 +5031,33 @@
       "details": {
         "enabled": false
       }
+    },
+    {
+      "at": 1788597264.999468,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 6,
+        "round": 1,
+        "round_pick": 6,
+        "team": "Chicago Blizzard",
+        "player": "Quincy Turner",
+        "player_id": "test-prospect-6",
+        "timestamp": 1788597264.9994617,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-5-1788597089809",
+    "event_id": "pick-6-1788597264999",
     "kind": "pick",
-    "player": "Jalen Hayes",
-    "team": "Charlotte Crowns",
-    "pick": 5,
+    "player": "Quincy Turner",
+    "team": "Chicago Blizzard",
+    "pick": 6,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788597089.8095822
+    "started_at": 1788597264.9994648
   },
   "director_mode": false
 }
