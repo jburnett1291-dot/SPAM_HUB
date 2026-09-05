@@ -1,5 +1,5 @@
 {
-  "revision": 11,
+  "revision": 1,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -64,9 +64,7 @@
       "rank": 1,
       "overall": 99.4,
       "eligible": true,
-      "drafted_by": "Atlanta Aviators",
-      "pick_number": 1,
-      "drafted_at": 1788596788.7087169
+      "drafted_by": null
     },
     "test-prospect-2": {
       "discord_id": "test-prospect-2",
@@ -76,9 +74,7 @@
       "rank": 2,
       "overall": 99.3,
       "eligible": true,
-      "drafted_by": "Austin Armadillos",
-      "pick_number": 2,
-      "drafted_at": 1788596794.1678622
+      "drafted_by": null
     },
     "test-prospect-3": {
       "discord_id": "test-prospect-3",
@@ -88,9 +84,7 @@
       "rank": 3,
       "overall": 99.2,
       "eligible": true,
-      "drafted_by": "Baltimore Voyagers",
-      "pick_number": 3,
-      "drafted_at": 1788596799.5673285
+      "drafted_by": null
     },
     "test-prospect-4": {
       "discord_id": "test-prospect-4",
@@ -100,9 +94,7 @@
       "rank": 4,
       "overall": 99.1,
       "eligible": true,
-      "drafted_by": "Boston Harbor",
-      "pick_number": 4,
-      "drafted_at": 1788596997.692567
+      "drafted_by": null
     },
     "test-prospect-5": {
       "discord_id": "test-prospect-5",
@@ -112,9 +104,7 @@
       "rank": 5,
       "overall": 99.0,
       "eligible": true,
-      "drafted_by": "Charlotte Crowns",
-      "pick_number": 5,
-      "drafted_at": 1788597089.8095772
+      "drafted_by": null
     },
     "test-prospect-6": {
       "discord_id": "test-prospect-6",
@@ -124,9 +114,7 @@
       "rank": 6,
       "overall": 98.9,
       "eligible": true,
-      "drafted_by": "Chicago Blizzard",
-      "pick_number": 6,
-      "drafted_at": 1788597264.999461
+      "drafted_by": null
     },
     "test-prospect-7": {
       "discord_id": "test-prospect-7",
@@ -4871,217 +4859,24 @@
       "team": "Washington Sentinels"
     }
   ],
-  "picks": [
-    {
-      "pick": 1,
-      "round": 1,
-      "round_pick": 1,
-      "team": "Atlanta Aviators",
-      "player": "Bryce Daniels",
-      "player_id": "test-prospect-1",
-      "timestamp": 1788596788.7087183,
-      "source": "test_simulation"
-    },
-    {
-      "pick": 2,
-      "round": 1,
-      "round_pick": 2,
-      "team": "Austin Armadillos",
-      "player": "Isaiah Owens",
-      "player_id": "test-prospect-2",
-      "timestamp": 1788596794.1678638,
-      "source": "test_simulation"
-    },
-    {
-      "pick": 3,
-      "round": 1,
-      "round_pick": 3,
-      "team": "Baltimore Voyagers",
-      "player": "Preston Foster",
-      "player_id": "test-prospect-3",
-      "timestamp": 1788596799.56733,
-      "source": "test_simulation"
-    },
-    {
-      "pick": 4,
-      "round": 1,
-      "round_pick": 4,
-      "team": "Boston Harbor",
-      "player": "Caleb Reed",
-      "player_id": "test-prospect-4",
-      "timestamp": 1788596997.692568,
-      "source": "clock_auto_pick"
-    },
-    {
-      "pick": 5,
-      "round": 1,
-      "round_pick": 5,
-      "team": "Charlotte Crowns",
-      "player": "Jalen Hayes",
-      "player_id": "test-prospect-5",
-      "timestamp": 1788597089.809578,
-      "source": "clock_auto_pick"
-    },
-    {
-      "pick": 6,
-      "round": 1,
-      "round_pick": 6,
-      "team": "Chicago Blizzard",
-      "player": "Quincy Turner",
-      "player_id": "test-prospect-6",
-      "timestamp": 1788597264.9994617,
-      "source": "clock_auto_pick"
-    }
-  ],
-  "current_pick": 6,
+  "picks": [],
+  "current_pick": 0,
   "pick_seconds": 90,
-  "deadline_at": 1788597354.9994628,
+  "deadline_at": 1788597387.7777786,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
   "audit_log": [
     {
-      "at": 1788596787.1807215,
+      "at": 1788597297.7777824,
       "action": "test_league_loaded",
       "actor_id": null,
       "details": {
         "players": 300,
         "teams": 25
       }
-    },
-    {
-      "at": 1788596788.7087288,
-      "action": "pick_recorded",
-      "actor_id": "1337614287920959609",
-      "details": {
-        "pick": 1,
-        "round": 1,
-        "round_pick": 1,
-        "team": "Atlanta Aviators",
-        "player": "Bryce Daniels",
-        "player_id": "test-prospect-1",
-        "timestamp": 1788596788.7087183,
-        "source": "test_simulation"
-      }
-    },
-    {
-      "at": 1788596794.167874,
-      "action": "pick_recorded",
-      "actor_id": "1337614287920959609",
-      "details": {
-        "pick": 2,
-        "round": 1,
-        "round_pick": 2,
-        "team": "Austin Armadillos",
-        "player": "Isaiah Owens",
-        "player_id": "test-prospect-2",
-        "timestamp": 1788596794.1678638,
-        "source": "test_simulation"
-      }
-    },
-    {
-      "at": 1788596799.5673382,
-      "action": "pick_recorded",
-      "actor_id": "1337614287920959609",
-      "details": {
-        "pick": 3,
-        "round": 1,
-        "round_pick": 3,
-        "team": "Baltimore Voyagers",
-        "player": "Preston Foster",
-        "player_id": "test-prospect-3",
-        "timestamp": 1788596799.56733,
-        "source": "test_simulation"
-      }
-    },
-    {
-      "at": 1788596997.6925776,
-      "action": "pick_recorded",
-      "actor_id": null,
-      "details": {
-        "pick": 4,
-        "round": 1,
-        "round_pick": 4,
-        "team": "Boston Harbor",
-        "player": "Caleb Reed",
-        "player_id": "test-prospect-4",
-        "timestamp": 1788596997.692568,
-        "source": "clock_auto_pick"
-      }
-    },
-    {
-      "at": 1788597089.8095863,
-      "action": "pick_recorded",
-      "actor_id": null,
-      "details": {
-        "pick": 5,
-        "round": 1,
-        "round_pick": 5,
-        "team": "Charlotte Crowns",
-        "player": "Jalen Hayes",
-        "player_id": "test-prospect-5",
-        "timestamp": 1788597089.809578,
-        "source": "clock_auto_pick"
-      }
-    },
-    {
-      "at": 1788597109.427128,
-      "action": "director_mode_changed",
-      "actor_id": "1337614287920959609",
-      "details": {
-        "enabled": false
-      }
-    },
-    {
-      "at": 1788597264.999468,
-      "action": "pick_recorded",
-      "actor_id": null,
-      "details": {
-        "pick": 6,
-        "round": 1,
-        "round_pick": 6,
-        "team": "Chicago Blizzard",
-        "player": "Quincy Turner",
-        "player_id": "test-prospect-6",
-        "timestamp": 1788597264.9994617,
-        "source": "clock_auto_pick"
-      }
-    },
-    {
-      "at": 1788597267.7337112,
-      "action": "director_mode_changed",
-      "actor_id": "1337614287920959609",
-      "details": {
-        "enabled": true
-      }
-    },
-    {
-      "at": 1788597283.3812957,
-      "action": "director_mode_changed",
-      "actor_id": "1337614287920959609",
-      "details": {
-        "enabled": false
-      }
-    },
-    {
-      "at": 1788597287.280092,
-      "action": "director_mode_changed",
-      "actor_id": "1337614287920959609",
-      "details": {
-        "enabled": false
-      }
     }
   ],
-  "promo": {
-    "event_id": "pick-6-1788597264999",
-    "kind": "pick",
-    "player": "Quincy Turner",
-    "team": "Chicago Blizzard",
-    "pick": 6,
-    "media_url": null,
-    "entrance_audio_url": null,
-    "duck_background_audio": true,
-    "started_at": 1788597264.9994648
-  },
-  "director_mode": false
+  "promo": null,
+  "director_mode": true
 }
