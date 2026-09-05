@@ -1,5 +1,5 @@
 {
-  "revision": 20,
+  "revision": 21,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -160,7 +160,9 @@
       "rank": 9,
       "overall": 98.6,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Memphis Rhythm",
+      "pick_number": 15,
+      "drafted_at": 1788635489.8100634
     },
     "test-prospect-10": {
       "discord_id": "test-prospect-10",
@@ -4967,11 +4969,21 @@
       "player_id": "test-prospect-7",
       "timestamp": 1788635487.9703832,
       "source": "test_simulation"
+    },
+    {
+      "pick": 15,
+      "round": 1,
+      "round_pick": 15,
+      "team": "Memphis Rhythm",
+      "player": "Roman Lawson",
+      "player_id": "test-prospect-9",
+      "timestamp": 1788635489.8100655,
+      "source": "test_simulation"
     }
   ],
-  "current_pick": 14,
+  "current_pick": 15,
   "pick_seconds": 90,
-  "deadline_at": 1788635577.970385,
+  "deadline_at": 1788635579.810068,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5224,18 +5236,33 @@
         "timestamp": 1788635487.9703832,
         "source": "test_simulation"
       }
+    },
+    {
+      "at": 1788635489.8100772,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 15,
+        "round": 1,
+        "round_pick": 15,
+        "team": "Memphis Rhythm",
+        "player": "Roman Lawson",
+        "player_id": "test-prospect-9",
+        "timestamp": 1788635489.8100655,
+        "source": "test_simulation"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-14-1788635487970",
+    "event_id": "pick-15-1788635489810",
     "kind": "pick",
-    "player": "Darius Jefferson",
-    "team": "Los Angeles Stars",
-    "pick": 14,
+    "player": "Roman Lawson",
+    "team": "Memphis Rhythm",
+    "pick": 15,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788635487.9703884
+    "started_at": 1788635489.8100724
   },
   "director_mode": false
 }
