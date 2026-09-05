@@ -1,5 +1,5 @@
 {
-  "revision": 1,
+  "revision": 2,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -4875,8 +4875,16 @@
         "players": 300,
         "teams": 25
       }
+    },
+    {
+      "at": 1788597304.3040898,
+      "action": "director_mode_changed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "enabled": false
+      }
     }
   ],
   "promo": null,
-  "director_mode": true
+  "director_mode": false
 }
