@@ -1,5 +1,5 @@
 {
-  "revision": 22,
+  "revision": 23,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -196,7 +196,9 @@
       "rank": 12,
       "overall": 98.2,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Nashville Sound",
+      "pick_number": 17,
+      "drafted_at": 1788635492.7738287
     },
     "test-prospect-13": {
       "discord_id": "test-prospect-13",
@@ -4991,11 +4993,21 @@
       "player_id": "test-prospect-10",
       "timestamp": 1788635491.3834217,
       "source": "test_simulation"
+    },
+    {
+      "pick": 17,
+      "round": 1,
+      "round_pick": 17,
+      "team": "Nashville Sound",
+      "player": "Silas Ellis",
+      "player_id": "test-prospect-12",
+      "timestamp": 1788635492.7738302,
+      "source": "test_simulation"
     }
   ],
-  "current_pick": 16,
+  "current_pick": 17,
   "pick_seconds": 90,
-  "deadline_at": 1788635581.3834236,
+  "deadline_at": 1788635582.773833,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5278,18 +5290,33 @@
         "timestamp": 1788635491.3834217,
         "source": "test_simulation"
       }
+    },
+    {
+      "at": 1788635492.7738426,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 17,
+        "round": 1,
+        "round_pick": 17,
+        "team": "Nashville Sound",
+        "player": "Silas Ellis",
+        "player_id": "test-prospect-12",
+        "timestamp": 1788635492.7738302,
+        "source": "test_simulation"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-16-1788635491383",
+    "event_id": "pick-17-1788635492773",
     "kind": "pick",
-    "player": "Eli Cross",
-    "team": "Miami Vice",
-    "pick": 16,
+    "player": "Silas Ellis",
+    "team": "Nashville Sound",
+    "pick": 17,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788635491.3834276
+    "started_at": 1788635492.7738376
   },
   "director_mode": false
 }
