@@ -1,5 +1,5 @@
 {
-  "revision": 21,
+  "revision": 22,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -172,7 +172,9 @@
       "rank": 10,
       "overall": 98.5,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Miami Vice",
+      "pick_number": 16,
+      "drafted_at": 1788635491.3834205
     },
     "test-prospect-11": {
       "discord_id": "test-prospect-11",
@@ -4979,11 +4981,21 @@
       "player_id": "test-prospect-9",
       "timestamp": 1788635489.8100655,
       "source": "test_simulation"
+    },
+    {
+      "pick": 16,
+      "round": 1,
+      "round_pick": 16,
+      "team": "Miami Vice",
+      "player": "Eli Cross",
+      "player_id": "test-prospect-10",
+      "timestamp": 1788635491.3834217,
+      "source": "test_simulation"
     }
   ],
-  "current_pick": 15,
+  "current_pick": 16,
   "pick_seconds": 90,
-  "deadline_at": 1788635579.810068,
+  "deadline_at": 1788635581.3834236,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5251,18 +5263,33 @@
         "timestamp": 1788635489.8100655,
         "source": "test_simulation"
       }
+    },
+    {
+      "at": 1788635491.3834312,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 16,
+        "round": 1,
+        "round_pick": 16,
+        "team": "Miami Vice",
+        "player": "Eli Cross",
+        "player_id": "test-prospect-10",
+        "timestamp": 1788635491.3834217,
+        "source": "test_simulation"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-15-1788635489810",
+    "event_id": "pick-16-1788635491383",
     "kind": "pick",
-    "player": "Roman Lawson",
-    "team": "Memphis Rhythm",
-    "pick": 15,
+    "player": "Eli Cross",
+    "team": "Miami Vice",
+    "pick": 16,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788635489.8100724
+    "started_at": 1788635491.3834276
   },
   "director_mode": false
 }
