@@ -1,5 +1,5 @@
 {
-  "revision": 13,
+  "revision": 14,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -4933,9 +4933,9 @@
       "source": "commissioner_override"
     }
   ],
-  "current_pick": 10,
+  "current_pick": 11,
   "pick_seconds": 90,
-  "deadline_at": 1788634401.9753892,
+  "deadline_at": 1788634409.0666358,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5104,6 +5104,19 @@
           "round": 1,
           "round_pick": 10,
           "team": "Detroit Motors"
+        }
+      }
+    },
+    {
+      "at": 1788634319.0666404,
+      "action": "force_advance",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "skipped": {
+          "pick": 11,
+          "round": 1,
+          "round_pick": 11,
+          "team": "Houston Comets"
         }
       }
     }
