@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 50,
+  "revision": 51,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -5246,9 +5246,9 @@
       "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 38,
+  "current_pick": 39,
   "pick_seconds": 90,
-  "deadline_at": 1788726556.5895696,
+  "deadline_at": 1788726571.267752,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5911,6 +5911,19 @@
         "player_id": "test-prospect-32",
         "timestamp": 1788726466.5895662,
         "source": "clock_auto_pick"
+      }
+    },
+    {
+      "at": 1788726481.2677555,
+      "action": "force_advance",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "skipped": {
+          "pick": 39,
+          "round": 2,
+          "round_pick": 14,
+          "team": "Los Angeles Stars"
+        }
       }
     }
   ],
