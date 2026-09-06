@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 42,
+  "revision": 43,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -353,7 +353,9 @@
       "rank": 25,
       "overall": 96.9,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Chicago Blizzard",
+      "pick_number": 31,
+      "drafted_at": 1788721177.1233766
     },
     "test-prospect-26": {
       "discord_id": "test-prospect-26",
@@ -5160,11 +5162,21 @@
       "player_id": "test-prospect-24",
       "timestamp": 1788721086.6798022,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 31,
+      "round": 2,
+      "round_pick": 6,
+      "team": "Chicago Blizzard",
+      "player": "Jalen Hayes",
+      "player_id": "test-prospect-25",
+      "timestamp": 1788721177.1233773,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 30,
+  "current_pick": 31,
   "pick_seconds": 90,
-  "deadline_at": 1788721176.679804,
+  "deadline_at": 1788721267.1233816,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5710,18 +5722,33 @@
         "timestamp": 1788721086.6798022,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788721177.1233895,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 31,
+        "round": 2,
+        "round_pick": 6,
+        "team": "Chicago Blizzard",
+        "player": "Jalen Hayes",
+        "player_id": "test-prospect-25",
+        "timestamp": 1788721177.1233773,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-30-1788721086679",
+    "event_id": "pick-31-1788721177123",
     "kind": "pick",
-    "player": "Caleb Reed",
-    "team": "Charlotte Crowns",
-    "pick": 30,
+    "player": "Jalen Hayes",
+    "team": "Chicago Blizzard",
+    "pick": 31,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788721086.679807
+    "started_at": 1788721177.1233857
   },
   "director_mode": false
 }
