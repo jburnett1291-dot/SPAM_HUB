@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 39,
+  "revision": 40,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -317,7 +317,9 @@
       "rank": 22,
       "overall": 97.2,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Baltimore Voyagers",
+      "pick_number": 28,
+      "drafted_at": 1788720904.3209183
     },
     "test-prospect-23": {
       "discord_id": "test-prospect-23",
@@ -5124,11 +5126,21 @@
       "player_id": "test-prospect-21",
       "timestamp": 1788720814.0868149,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 28,
+      "round": 2,
+      "round_pick": 3,
+      "team": "Baltimore Voyagers",
+      "player": "Isaiah Owens",
+      "player_id": "test-prospect-22",
+      "timestamp": 1788720904.3209193,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 27,
+  "current_pick": 28,
   "pick_seconds": 90,
-  "deadline_at": 1788720904.086818,
+  "deadline_at": 1788720994.3209217,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5629,18 +5641,33 @@
         "timestamp": 1788720814.0868149,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788720904.3209283,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 28,
+        "round": 2,
+        "round_pick": 3,
+        "team": "Baltimore Voyagers",
+        "player": "Isaiah Owens",
+        "player_id": "test-prospect-22",
+        "timestamp": 1788720904.3209193,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-27-1788720814086",
+    "event_id": "pick-28-1788720904320",
     "kind": "pick",
-    "player": "Bryce Daniels",
-    "team": "Austin Armadillos",
-    "pick": 27,
+    "player": "Isaiah Owens",
+    "team": "Baltimore Voyagers",
+    "pick": 28,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788720814.0868232
+    "started_at": 1788720904.3209245
   },
   "director_mode": false
 }
