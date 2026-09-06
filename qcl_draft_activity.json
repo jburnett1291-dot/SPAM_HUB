@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 45,
+  "revision": 46,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -401,7 +401,9 @@
       "rank": 29,
       "overall": 96.5,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Denver Summit",
+      "pick_number": 34,
+      "drafted_at": 1788724954.444317
     },
     "test-prospect-30": {
       "discord_id": "test-prospect-30",
@@ -5196,11 +5198,21 @@
       "player_id": "test-prospect-27",
       "timestamp": 1788721545.8612206,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 34,
+      "round": 2,
+      "round_pick": 9,
+      "team": "Denver Summit",
+      "player": "Roman Lawson",
+      "player_id": "test-prospect-29",
+      "timestamp": 1788724954.4443183,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 33,
+  "current_pick": 34,
   "pick_seconds": 90,
-  "deadline_at": 1788721635.8612227,
+  "deadline_at": 1788725044.4443204,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5791,18 +5803,33 @@
         "timestamp": 1788721545.8612206,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788724954.4443283,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 34,
+        "round": 2,
+        "round_pick": 9,
+        "team": "Denver Summit",
+        "player": "Roman Lawson",
+        "player_id": "test-prospect-29",
+        "timestamp": 1788724954.4443183,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-33-1788721545861",
+    "event_id": "pick-34-1788724954444",
     "kind": "pick",
-    "player": "Darius Jefferson",
-    "team": "Dallas Outlaws",
-    "pick": 33,
+    "player": "Roman Lawson",
+    "team": "Denver Summit",
+    "pick": 34,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788721545.861227
+    "started_at": 1788724954.4443243
   },
   "director_mode": false
 }
