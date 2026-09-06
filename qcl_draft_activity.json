@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 38,
+  "revision": 39,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -305,7 +305,9 @@
       "rank": 21,
       "overall": 97.3,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Austin Armadillos",
+      "pick_number": 27,
+      "drafted_at": 1788720814.086814
     },
     "test-prospect-22": {
       "discord_id": "test-prospect-22",
@@ -5112,11 +5114,21 @@
       "player_id": "test-prospect-19",
       "timestamp": 1788720723.7562397,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 27,
+      "round": 2,
+      "round_pick": 2,
+      "team": "Austin Armadillos",
+      "player": "Bryce Daniels",
+      "player_id": "test-prospect-21",
+      "timestamp": 1788720814.0868149,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 26,
+  "current_pick": 27,
   "pick_seconds": 90,
-  "deadline_at": 1788720813.7562425,
+  "deadline_at": 1788720904.086818,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5602,8 +5614,33 @@
       "details": {
         "event_id": "pick-26-1788720723756"
       }
+    },
+    {
+      "at": 1788720814.0868273,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 27,
+        "round": 2,
+        "round_pick": 2,
+        "team": "Austin Armadillos",
+        "player": "Bryce Daniels",
+        "player_id": "test-prospect-21",
+        "timestamp": 1788720814.0868149,
+        "source": "clock_auto_pick"
+      }
     }
   ],
-  "promo": null,
+  "promo": {
+    "event_id": "pick-27-1788720814086",
+    "kind": "pick",
+    "player": "Bryce Daniels",
+    "team": "Austin Armadillos",
+    "pick": 27,
+    "media_url": null,
+    "entrance_audio_url": null,
+    "duck_background_audio": true,
+    "started_at": 1788720814.0868232
+  },
   "director_mode": false
 }
