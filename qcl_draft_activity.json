@@ -1,5 +1,5 @@
 {
-  "revision": 35,
+  "revision": 36,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -5553,18 +5553,16 @@
         "timestamp": 1788719847.177658,
         "source": "commissioner_override"
       }
+    },
+    {
+      "at": 1788719850.5389884,
+      "action": "promo_completed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "event_id": "pick-25-1788719847177"
+      }
     }
   ],
-  "promo": {
-    "event_id": "pick-25-1788719847177",
-    "kind": "pick",
-    "player": "Kai Anderson",
-    "team": "Washington Sentinels",
-    "pick": 25,
-    "media_url": null,
-    "entrance_audio_url": null,
-    "duck_background_audio": true,
-    "started_at": 1788719847.177666
-  },
+  "promo": null,
   "director_mode": false
 }
