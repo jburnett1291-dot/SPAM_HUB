@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "revision": 53,
-  "status": "paused",
+  "revision": 54,
+  "status": "active",
   "teams": [
     "Atlanta Aviators",
     "Austin Armadillos",
@@ -437,9 +437,7 @@
       "rank": 32,
       "overall": 96.1,
       "eligible": true,
-      "drafted_by": "Las Vegas Neon",
-      "pick_number": 38,
-      "drafted_at": 1788726466.5895646
+      "drafted_by": null
     },
     "test-prospect-33": {
       "discord_id": "test-prospect-33",
@@ -5234,26 +5232,16 @@
       "player_id": "test-prospect-30",
       "timestamp": 1788726373.344037,
       "source": "clock_auto_pick"
-    },
-    {
-      "pick": 38,
-      "round": 2,
-      "round_pick": 13,
-      "team": "Las Vegas Neon",
-      "player": "Silas Ellis",
-      "player_id": "test-prospect-32",
-      "timestamp": 1788726466.5895662,
-      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 40,
+  "current_pick": 39,
   "pick_seconds": 90,
-  "deadline_at": null,
+  "deadline_at": 1788726584.2614877,
   "paused_remaining": 87,
   "scheduled_at": null,
   "started_at": null,
   "stopped_at": null,
-  "lifecycle_updated_at": 1788726486.7528174,
+  "lifecycle_updated_at": 1788726494.2614865,
   "lifecycle_updated_by": "1337614287920959609",
   "protected_picks": [],
   "trades": [],
@@ -5945,6 +5933,23 @@
       "actor_id": "1337614287920959609",
       "details": {
         "remaining": 87
+      }
+    },
+    {
+      "at": 1788726494.2614906,
+      "action": "pick_reversed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": {
+          "pick": 38,
+          "round": 2,
+          "round_pick": 13,
+          "team": "Las Vegas Neon",
+          "player": "Silas Ellis",
+          "player_id": "test-prospect-32",
+          "timestamp": 1788726466.5895662,
+          "source": "clock_auto_pick"
+        }
       }
     }
   ],
