@@ -1,5 +1,5 @@
 {
-  "revision": 26,
+  "revision": 27,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -232,7 +232,9 @@
       "rank": 15,
       "overall": 97.9,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Philadelphia Liberty",
+      "pick_number": 21,
+      "drafted_at": 1788719522.113822
     },
     "test-prospect-16": {
       "discord_id": "test-prospect-16",
@@ -5039,11 +5041,21 @@
       "player_id": "test-prospect-16",
       "timestamp": 1788665982.9675212,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 21,
+      "round": 1,
+      "round_pick": 21,
+      "team": "Philadelphia Liberty",
+      "player": "Tristan Sutton",
+      "player_id": "test-prospect-15",
+      "timestamp": 1788719522.1138248,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 20,
+  "current_pick": 21,
   "pick_seconds": 90,
-  "deadline_at": 1788666072.9675248,
+  "deadline_at": 1788719612.11383,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5386,18 +5398,33 @@
         "timestamp": 1788665982.9675212,
         "source": "commissioner_override"
       }
+    },
+    {
+      "at": 1788719522.113844,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 21,
+        "round": 1,
+        "round_pick": 21,
+        "team": "Philadelphia Liberty",
+        "player": "Tristan Sutton",
+        "player_id": "test-prospect-15",
+        "timestamp": 1788719522.1138248,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-20-1788665982967",
+    "event_id": "pick-21-1788719522113",
     "kind": "pick",
-    "player": "Gavin Irving",
-    "team": "Orlando Orbit",
-    "pick": 20,
+    "player": "Tristan Sutton",
+    "team": "Philadelphia Liberty",
+    "pick": 21,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788665982.9675295
+    "started_at": 1788719522.1138375
   },
   "director_mode": false
 }
