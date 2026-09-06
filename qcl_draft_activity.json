@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "revision": 52,
-  "status": "active",
+  "revision": 53,
+  "status": "paused",
   "teams": [
     "Atlanta Aviators",
     "Austin Armadillos",
@@ -5248,13 +5248,13 @@
   ],
   "current_pick": 40,
   "pick_seconds": 90,
-  "deadline_at": 1788726574.218577,
-  "paused_remaining": null,
+  "deadline_at": null,
+  "paused_remaining": 87,
   "scheduled_at": null,
   "started_at": null,
   "stopped_at": null,
-  "lifecycle_updated_at": null,
-  "lifecycle_updated_by": null,
+  "lifecycle_updated_at": 1788726486.7528174,
+  "lifecycle_updated_by": "1337614287920959609",
   "protected_picks": [],
   "trades": [],
   "audit_log": [
@@ -5937,6 +5937,14 @@
           "round_pick": 15,
           "team": "Memphis Rhythm"
         }
+      }
+    },
+    {
+      "at": 1788726486.7528198,
+      "action": "draft_paused",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "remaining": 87
       }
     }
   ],
