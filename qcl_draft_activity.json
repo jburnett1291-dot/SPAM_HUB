@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 41,
+  "revision": 42,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -341,7 +341,9 @@
       "rank": 24,
       "overall": 97.0,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Charlotte Crowns",
+      "pick_number": 30,
+      "drafted_at": 1788721086.6798012
     },
     "test-prospect-25": {
       "discord_id": "test-prospect-25",
@@ -5148,11 +5150,21 @@
       "player_id": "test-prospect-23",
       "timestamp": 1788720995.1615539,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 30,
+      "round": 2,
+      "round_pick": 5,
+      "team": "Charlotte Crowns",
+      "player": "Caleb Reed",
+      "player_id": "test-prospect-24",
+      "timestamp": 1788721086.6798022,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 29,
+  "current_pick": 30,
   "pick_seconds": 90,
-  "deadline_at": 1788721085.1615565,
+  "deadline_at": 1788721176.679804,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5683,18 +5695,33 @@
         "timestamp": 1788720995.1615539,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788721086.6798098,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 30,
+        "round": 2,
+        "round_pick": 5,
+        "team": "Charlotte Crowns",
+        "player": "Caleb Reed",
+        "player_id": "test-prospect-24",
+        "timestamp": 1788721086.6798022,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-29-1788720995161",
+    "event_id": "pick-30-1788721086679",
     "kind": "pick",
-    "player": "Preston Foster",
-    "team": "Boston Harbor",
-    "pick": 29,
+    "player": "Caleb Reed",
+    "team": "Charlotte Crowns",
+    "pick": 30,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788720995.1615603
+    "started_at": 1788721086.679807
   },
   "director_mode": false
 }
