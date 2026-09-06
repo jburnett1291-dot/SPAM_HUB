@@ -1,5 +1,5 @@
 {
-  "revision": 32,
+  "revision": 33,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -290,7 +290,9 @@
       "rank": 20,
       "overall": 97.4,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Seattle Emeralds",
+      "pick_number": 24,
+      "drafted_at": 1788719840.29783
     },
     "test-prospect-21": {
       "discord_id": "test-prospect-21",
@@ -5075,11 +5077,21 @@
       "player_id": "test-prospect-18",
       "timestamp": 1788719832.7010832,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 24,
+      "round": 1,
+      "round_pick": 24,
+      "team": "Seattle Emeralds",
+      "player": "Orion Mitchell",
+      "player_id": "test-prospect-20",
+      "timestamp": 1788719840.2978308,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 23,
+  "current_pick": 24,
   "pick_seconds": 90,
-  "deadline_at": 1788719922.7010877,
+  "deadline_at": 1788719930.297833,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5491,8 +5503,33 @@
       "details": {
         "event_id": "pick-23-1788719832701"
       }
+    },
+    {
+      "at": 1788719840.2978404,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 24,
+        "round": 1,
+        "round_pick": 24,
+        "team": "Seattle Emeralds",
+        "player": "Orion Mitchell",
+        "player_id": "test-prospect-20",
+        "timestamp": 1788719840.2978308,
+        "source": "commissioner_override"
+      }
     }
   ],
-  "promo": null,
+  "promo": {
+    "event_id": "pick-24-1788719840297",
+    "kind": "pick",
+    "player": "Orion Mitchell",
+    "team": "Seattle Emeralds",
+    "pick": 24,
+    "media_url": null,
+    "entrance_audio_url": null,
+    "duck_background_audio": true,
+    "started_at": 1788719840.2978363
+  },
   "director_mode": false
 }
