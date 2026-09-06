@@ -1,5 +1,5 @@
 {
-  "revision": 29,
+  "revision": 30,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -5448,18 +5448,16 @@
         "timestamp": 1788719800.348463,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788719809.6269474,
+      "action": "promo_completed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "event_id": "pick-22-1788719800348"
+      }
     }
   ],
-  "promo": {
-    "event_id": "pick-22-1788719800348",
-    "kind": "pick",
-    "player": "Nolan Vaughn",
-    "team": "Phoenix Firebirds",
-    "pick": 22,
-    "media_url": null,
-    "entrance_audio_url": null,
-    "duck_background_audio": true,
-    "started_at": 1788719800.3484697
-  },
+  "promo": null,
   "director_mode": false
 }
