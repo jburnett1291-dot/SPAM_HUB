@@ -1,5 +1,5 @@
 {
-  "revision": 30,
+  "revision": 31,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -268,7 +268,9 @@
       "rank": 18,
       "overall": 97.6,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Portland Pines",
+      "pick_number": 23,
+      "drafted_at": 1788719832.7010815
     },
     "test-prospect-19": {
       "discord_id": "test-prospect-19",
@@ -5063,11 +5065,21 @@
       "player_id": "test-prospect-17",
       "timestamp": 1788719800.348463,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 23,
+      "round": 1,
+      "round_pick": 23,
+      "team": "Portland Pines",
+      "player": "Adrian King",
+      "player_id": "test-prospect-18",
+      "timestamp": 1788719832.7010832,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 22,
+  "current_pick": 23,
   "pick_seconds": 90,
-  "deadline_at": 1788719890.3484662,
+  "deadline_at": 1788719922.7010877,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5456,8 +5468,33 @@
       "details": {
         "event_id": "pick-22-1788719800348"
       }
+    },
+    {
+      "at": 1788719832.701098,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 23,
+        "round": 1,
+        "round_pick": 23,
+        "team": "Portland Pines",
+        "player": "Adrian King",
+        "player_id": "test-prospect-18",
+        "timestamp": 1788719832.7010832,
+        "source": "commissioner_override"
+      }
     }
   ],
-  "promo": null,
+  "promo": {
+    "event_id": "pick-23-1788719832701",
+    "kind": "pick",
+    "player": "Adrian King",
+    "team": "Portland Pines",
+    "pick": 23,
+    "media_url": null,
+    "entrance_audio_url": null,
+    "duck_background_audio": true,
+    "started_at": 1788719832.701093
+  },
   "director_mode": false
 }
