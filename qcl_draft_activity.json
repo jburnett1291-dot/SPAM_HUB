@@ -1,5 +1,5 @@
 {
-  "revision": 28,
+  "revision": 29,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -256,7 +256,9 @@
       "rank": 17,
       "overall": 97.7,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Phoenix Firebirds",
+      "pick_number": 22,
+      "drafted_at": 1788719800.348462
     },
     "test-prospect-18": {
       "discord_id": "test-prospect-18",
@@ -5051,11 +5053,21 @@
       "player_id": "test-prospect-15",
       "timestamp": 1788719522.1138248,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 22,
+      "round": 1,
+      "round_pick": 22,
+      "team": "Phoenix Firebirds",
+      "player": "Nolan Vaughn",
+      "player_id": "test-prospect-17",
+      "timestamp": 1788719800.348463,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 21,
+  "current_pick": 22,
   "pick_seconds": 90,
-  "deadline_at": 1788719612.11383,
+  "deadline_at": 1788719890.3484662,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5421,8 +5433,33 @@
       "details": {
         "event_id": "pick-21-1788719522113"
       }
+    },
+    {
+      "at": 1788719800.3484735,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 22,
+        "round": 1,
+        "round_pick": 22,
+        "team": "Phoenix Firebirds",
+        "player": "Nolan Vaughn",
+        "player_id": "test-prospect-17",
+        "timestamp": 1788719800.348463,
+        "source": "clock_auto_pick"
+      }
     }
   ],
-  "promo": null,
+  "promo": {
+    "event_id": "pick-22-1788719800348",
+    "kind": "pick",
+    "player": "Nolan Vaughn",
+    "team": "Phoenix Firebirds",
+    "pick": 22,
+    "media_url": null,
+    "entrance_audio_url": null,
+    "duck_background_audio": true,
+    "started_at": 1788719800.3484697
+  },
   "director_mode": false
 }
