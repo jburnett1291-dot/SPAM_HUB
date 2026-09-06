@@ -1,5 +1,6 @@
 {
-  "revision": 36,
+  "schema_version": 2,
+  "revision": 37,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -280,7 +281,9 @@
       "rank": 19,
       "overall": 97.5,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Atlanta Aviators",
+      "pick_number": 26,
+      "drafted_at": 1788720723.7562387
     },
     "test-prospect-20": {
       "discord_id": "test-prospect-20",
@@ -5099,12 +5102,27 @@
       "player_id": "test-prospect-28",
       "timestamp": 1788719847.177658,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 26,
+      "round": 2,
+      "round_pick": 1,
+      "team": "Atlanta Aviators",
+      "player": "Hudson Bennett",
+      "player_id": "test-prospect-19",
+      "timestamp": 1788720723.7562397,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 25,
+  "current_pick": 26,
   "pick_seconds": 90,
-  "deadline_at": 1788719937.1776614,
+  "deadline_at": 1788720813.7562425,
   "paused_remaining": null,
+  "scheduled_at": null,
+  "started_at": null,
+  "stopped_at": null,
+  "lifecycle_updated_at": null,
+  "lifecycle_updated_by": null,
   "protected_picks": [],
   "trades": [],
   "audit_log": [
@@ -5561,8 +5579,33 @@
       "details": {
         "event_id": "pick-25-1788719847177"
       }
+    },
+    {
+      "at": 1788720723.7562497,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 26,
+        "round": 2,
+        "round_pick": 1,
+        "team": "Atlanta Aviators",
+        "player": "Hudson Bennett",
+        "player_id": "test-prospect-19",
+        "timestamp": 1788720723.7562397,
+        "source": "clock_auto_pick"
+      }
     }
   ],
-  "promo": null,
+  "promo": {
+    "event_id": "pick-26-1788720723756",
+    "kind": "pick",
+    "player": "Hudson Bennett",
+    "team": "Atlanta Aviators",
+    "pick": 26,
+    "media_url": null,
+    "entrance_audio_url": null,
+    "duck_background_audio": true,
+    "started_at": 1788720723.7562456
+  },
   "director_mode": false
 }
