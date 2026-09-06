@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 37,
+  "revision": 38,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -5594,18 +5594,16 @@
         "timestamp": 1788720723.7562397,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788720732.3041968,
+      "action": "promo_completed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "event_id": "pick-26-1788720723756"
+      }
     }
   ],
-  "promo": {
-    "event_id": "pick-26-1788720723756",
-    "kind": "pick",
-    "player": "Hudson Bennett",
-    "team": "Atlanta Aviators",
-    "pick": 26,
-    "media_url": null,
-    "entrance_audio_url": null,
-    "duck_background_audio": true,
-    "started_at": 1788720723.7562456
-  },
+  "promo": null,
   "director_mode": false
 }
