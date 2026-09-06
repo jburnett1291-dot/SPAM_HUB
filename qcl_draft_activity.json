@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 40,
+  "revision": 41,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -329,7 +329,9 @@
       "rank": 23,
       "overall": 97.1,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Boston Harbor",
+      "pick_number": 29,
+      "drafted_at": 1788720995.1615531
     },
     "test-prospect-24": {
       "discord_id": "test-prospect-24",
@@ -5136,11 +5138,21 @@
       "player_id": "test-prospect-22",
       "timestamp": 1788720904.3209193,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 29,
+      "round": 2,
+      "round_pick": 4,
+      "team": "Boston Harbor",
+      "player": "Preston Foster",
+      "player_id": "test-prospect-23",
+      "timestamp": 1788720995.1615539,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 28,
+  "current_pick": 29,
   "pick_seconds": 90,
-  "deadline_at": 1788720994.3209217,
+  "deadline_at": 1788721085.1615565,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5656,18 +5668,33 @@
         "timestamp": 1788720904.3209193,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788720995.1615639,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 29,
+        "round": 2,
+        "round_pick": 4,
+        "team": "Boston Harbor",
+        "player": "Preston Foster",
+        "player_id": "test-prospect-23",
+        "timestamp": 1788720995.1615539,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-28-1788720904320",
+    "event_id": "pick-29-1788720995161",
     "kind": "pick",
-    "player": "Isaiah Owens",
-    "team": "Baltimore Voyagers",
-    "pick": 28,
+    "player": "Preston Foster",
+    "team": "Boston Harbor",
+    "pick": 29,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788720904.3209245
+    "started_at": 1788720995.1615603
   },
   "director_mode": false
 }
