@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 49,
+  "revision": 50,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -437,7 +437,9 @@
       "rank": 32,
       "overall": 96.1,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Las Vegas Neon",
+      "pick_number": 38,
+      "drafted_at": 1788726466.5895646
     },
     "test-prospect-33": {
       "discord_id": "test-prospect-33",
@@ -5232,11 +5234,21 @@
       "player_id": "test-prospect-30",
       "timestamp": 1788726373.344037,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 38,
+      "round": 2,
+      "round_pick": 13,
+      "team": "Las Vegas Neon",
+      "player": "Silas Ellis",
+      "player_id": "test-prospect-32",
+      "timestamp": 1788726466.5895662,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 37,
+  "current_pick": 38,
   "pick_seconds": 90,
-  "deadline_at": 1788726465.2906842,
+  "deadline_at": 1788726556.5895696,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5885,18 +5897,33 @@
           "team": "Kansas City Monarchs"
         }
       }
+    },
+    {
+      "at": 1788726466.589578,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 38,
+        "round": 2,
+        "round_pick": 13,
+        "team": "Las Vegas Neon",
+        "player": "Silas Ellis",
+        "player_id": "test-prospect-32",
+        "timestamp": 1788726466.5895662,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-36-1788726373344",
+    "event_id": "pick-38-1788726466589",
     "kind": "pick",
-    "player": "Eli Cross",
-    "team": "Houston Comets",
-    "pick": 36,
+    "player": "Silas Ellis",
+    "team": "Las Vegas Neon",
+    "pick": 38,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788726373.3440452
+    "started_at": 1788726466.589574
   },
   "director_mode": false
 }
