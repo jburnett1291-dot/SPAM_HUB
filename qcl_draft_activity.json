@@ -1,5 +1,5 @@
 {
-  "revision": 33,
+  "revision": 34,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -5518,18 +5518,16 @@
         "timestamp": 1788719840.2978308,
         "source": "commissioner_override"
       }
+    },
+    {
+      "at": 1788719844.7515364,
+      "action": "promo_completed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "event_id": "pick-24-1788719840297"
+      }
     }
   ],
-  "promo": {
-    "event_id": "pick-24-1788719840297",
-    "kind": "pick",
-    "player": "Orion Mitchell",
-    "team": "Seattle Emeralds",
-    "pick": 24,
-    "media_url": null,
-    "entrance_audio_url": null,
-    "duck_background_audio": true,
-    "started_at": 1788719840.2978363
-  },
+  "promo": null,
   "director_mode": false
 }
