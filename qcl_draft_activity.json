@@ -1,5 +1,5 @@
 {
-  "revision": 27,
+  "revision": 28,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -5413,18 +5413,16 @@
         "timestamp": 1788719522.1138248,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788719543.781976,
+      "action": "promo_completed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "event_id": "pick-21-1788719522113"
+      }
     }
   ],
-  "promo": {
-    "event_id": "pick-21-1788719522113",
-    "kind": "pick",
-    "player": "Tristan Sutton",
-    "team": "Philadelphia Liberty",
-    "pick": 21,
-    "media_url": null,
-    "entrance_audio_url": null,
-    "duck_background_audio": true,
-    "started_at": 1788719522.1138375
-  },
+  "promo": null,
   "director_mode": false
 }
