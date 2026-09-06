@@ -1,5 +1,5 @@
 {
-  "revision": 25,
+  "revision": 26,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -242,7 +242,9 @@
       "rank": 16,
       "overall": 97.8,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Orlando Orbit",
+      "pick_number": 20,
+      "drafted_at": 1788665982.9675198
     },
     "test-prospect-17": {
       "discord_id": "test-prospect-17",
@@ -5027,11 +5029,21 @@
       "player_id": "test-prospect-14",
       "timestamp": 1788665929.512854,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 20,
+      "round": 1,
+      "round_pick": 20,
+      "team": "Orlando Orbit",
+      "player": "Gavin Irving",
+      "player_id": "test-prospect-16",
+      "timestamp": 1788665982.9675212,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 19,
+  "current_pick": 20,
   "pick_seconds": 90,
-  "deadline_at": 1788666019.5128582,
+  "deadline_at": 1788666072.9675248,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5359,18 +5371,33 @@
         "timestamp": 1788665929.512854,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788665982.967534,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 20,
+        "round": 1,
+        "round_pick": 20,
+        "team": "Orlando Orbit",
+        "player": "Gavin Irving",
+        "player_id": "test-prospect-16",
+        "timestamp": 1788665982.9675212,
+        "source": "commissioner_override"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-19-1788665929512",
+    "event_id": "pick-20-1788665982967",
     "kind": "pick",
-    "player": "Micah Grant",
-    "team": "New York Empire",
-    "pick": 19,
+    "player": "Gavin Irving",
+    "team": "Orlando Orbit",
+    "pick": 20,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788665929.5128627
+    "started_at": 1788665982.9675295
   },
   "director_mode": false
 }
