@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 47,
+  "revision": 48,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -413,7 +413,9 @@
       "rank": 30,
       "overall": 96.4,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Houston Comets",
+      "pick_number": 36,
+      "drafted_at": 1788726373.3440356
     },
     "test-prospect-31": {
       "discord_id": "test-prospect-31",
@@ -5220,11 +5222,21 @@
       "player_id": "test-prospect-31",
       "timestamp": 1788724962.6088338,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 36,
+      "round": 2,
+      "round_pick": 11,
+      "team": "Houston Comets",
+      "player": "Eli Cross",
+      "player_id": "test-prospect-30",
+      "timestamp": 1788726373.344037,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 35,
+  "current_pick": 36,
   "pick_seconds": 90,
-  "deadline_at": 1788725052.6088367,
+  "deadline_at": 1788726463.3440406,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5845,18 +5857,33 @@
         "timestamp": 1788724962.6088338,
         "source": "commissioner_override"
       }
+    },
+    {
+      "at": 1788726373.3440497,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 36,
+        "round": 2,
+        "round_pick": 11,
+        "team": "Houston Comets",
+        "player": "Eli Cross",
+        "player_id": "test-prospect-30",
+        "timestamp": 1788726373.344037,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-35-1788724962608",
+    "event_id": "pick-36-1788726373344",
     "kind": "pick",
-    "player": "Landon Nash",
-    "team": "Detroit Motors",
-    "pick": 35,
+    "player": "Eli Cross",
+    "team": "Houston Comets",
+    "pick": 36,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788724962.6088414
+    "started_at": 1788726373.3440452
   },
   "director_mode": false
 }
