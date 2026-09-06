@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 51,
+  "revision": 52,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -5246,9 +5246,9 @@
       "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 39,
+  "current_pick": 40,
   "pick_seconds": 90,
-  "deadline_at": 1788726571.267752,
+  "deadline_at": 1788726574.218577,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5923,6 +5923,19 @@
           "round": 2,
           "round_pick": 14,
           "team": "Los Angeles Stars"
+        }
+      }
+    },
+    {
+      "at": 1788726484.2185802,
+      "action": "force_advance",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "skipped": {
+          "pick": 40,
+          "round": 2,
+          "round_pick": 15,
+          "team": "Memphis Rhythm"
         }
       }
     }
