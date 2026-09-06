@@ -1,5 +1,5 @@
 {
-  "revision": 24,
+  "revision": 25,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -220,7 +220,9 @@
       "rank": 14,
       "overall": 98.0,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "New York Empire",
+      "pick_number": 19,
+      "drafted_at": 1788665929.5128527
     },
     "test-prospect-15": {
       "discord_id": "test-prospect-15",
@@ -5015,11 +5017,21 @@
       "player_id": "test-prospect-13",
       "timestamp": 1788635502.530211,
       "source": "test_simulation"
+    },
+    {
+      "pick": 19,
+      "round": 1,
+      "round_pick": 19,
+      "team": "New York Empire",
+      "player": "Micah Grant",
+      "player_id": "test-prospect-14",
+      "timestamp": 1788665929.512854,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 18,
+  "current_pick": 19,
   "pick_seconds": 90,
-  "deadline_at": 1788635592.530213,
+  "deadline_at": 1788666019.5128582,
   "paused_remaining": null,
   "protected_picks": [],
   "trades": [],
@@ -5332,18 +5344,33 @@
         "timestamp": 1788635502.530211,
         "source": "test_simulation"
       }
+    },
+    {
+      "at": 1788665929.5128684,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 19,
+        "round": 1,
+        "round_pick": 19,
+        "team": "New York Empire",
+        "player": "Micah Grant",
+        "player_id": "test-prospect-14",
+        "timestamp": 1788665929.512854,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-18-1788635502530",
+    "event_id": "pick-19-1788665929512",
     "kind": "pick",
-    "player": "Felix Price",
-    "team": "New Orleans Brass",
-    "pick": 18,
+    "player": "Micah Grant",
+    "team": "New York Empire",
+    "pick": 19,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788635502.5302167
+    "started_at": 1788665929.5128627
   },
   "director_mode": false
 }
