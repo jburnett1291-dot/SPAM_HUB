@@ -1,5 +1,5 @@
 {
-  "revision": 31,
+  "revision": 32,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -5483,18 +5483,16 @@
         "timestamp": 1788719832.7010832,
         "source": "commissioner_override"
       }
+    },
+    {
+      "at": 1788719838.0849938,
+      "action": "promo_completed",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "event_id": "pick-23-1788719832701"
+      }
     }
   ],
-  "promo": {
-    "event_id": "pick-23-1788719832701",
-    "kind": "pick",
-    "player": "Adrian King",
-    "team": "Portland Pines",
-    "pick": 23,
-    "media_url": null,
-    "entrance_audio_url": null,
-    "duck_background_audio": true,
-    "started_at": 1788719832.701093
-  },
+  "promo": null,
   "director_mode": false
 }
