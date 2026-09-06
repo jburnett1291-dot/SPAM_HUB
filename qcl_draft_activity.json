@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 46,
+  "revision": 47,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -423,7 +423,9 @@
       "rank": 31,
       "overall": 96.2,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Detroit Motors",
+      "pick_number": 35,
+      "drafted_at": 1788724962.608832
     },
     "test-prospect-32": {
       "discord_id": "test-prospect-32",
@@ -5208,11 +5210,21 @@
       "player_id": "test-prospect-29",
       "timestamp": 1788724954.4443183,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 35,
+      "round": 2,
+      "round_pick": 10,
+      "team": "Detroit Motors",
+      "player": "Landon Nash",
+      "player_id": "test-prospect-31",
+      "timestamp": 1788724962.6088338,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 34,
+  "current_pick": 35,
   "pick_seconds": 90,
-  "deadline_at": 1788725044.4443204,
+  "deadline_at": 1788725052.6088367,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5818,18 +5830,33 @@
         "timestamp": 1788724954.4443183,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788724962.6088457,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 35,
+        "round": 2,
+        "round_pick": 10,
+        "team": "Detroit Motors",
+        "player": "Landon Nash",
+        "player_id": "test-prospect-31",
+        "timestamp": 1788724962.6088338,
+        "source": "commissioner_override"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-34-1788724954444",
+    "event_id": "pick-35-1788724962608",
     "kind": "pick",
-    "player": "Roman Lawson",
-    "team": "Denver Summit",
-    "pick": 34,
+    "player": "Landon Nash",
+    "team": "Detroit Motors",
+    "pick": 35,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788724954.4443243
+    "started_at": 1788724962.6088414
   },
   "director_mode": false
 }
