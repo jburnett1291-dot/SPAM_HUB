@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 44,
+  "revision": 45,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -377,7 +377,9 @@
       "rank": 27,
       "overall": 96.7,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Dallas Outlaws",
+      "pick_number": 33,
+      "drafted_at": 1788721545.86122
     },
     "test-prospect-28": {
       "discord_id": "test-prospect-28",
@@ -5184,11 +5186,21 @@
       "player_id": "test-prospect-26",
       "timestamp": 1788721269.5270238,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 33,
+      "round": 2,
+      "round_pick": 8,
+      "team": "Dallas Outlaws",
+      "player": "Darius Jefferson",
+      "player_id": "test-prospect-27",
+      "timestamp": 1788721545.8612206,
+      "source": "clock_auto_pick"
     }
   ],
-  "current_pick": 32,
+  "current_pick": 33,
   "pick_seconds": 90,
-  "deadline_at": 1788721359.5270274,
+  "deadline_at": 1788721635.8612227,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5764,18 +5776,33 @@
         "timestamp": 1788721269.5270238,
         "source": "clock_auto_pick"
       }
+    },
+    {
+      "at": 1788721545.8612309,
+      "action": "pick_recorded",
+      "actor_id": null,
+      "details": {
+        "pick": 33,
+        "round": 2,
+        "round_pick": 8,
+        "team": "Dallas Outlaws",
+        "player": "Darius Jefferson",
+        "player_id": "test-prospect-27",
+        "timestamp": 1788721545.8612206,
+        "source": "clock_auto_pick"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-32-1788721269527",
+    "event_id": "pick-33-1788721545861",
     "kind": "pick",
-    "player": "Quincy Turner",
-    "team": "Cleveland Forge",
-    "pick": 32,
+    "player": "Darius Jefferson",
+    "team": "Dallas Outlaws",
+    "pick": 33,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788721269.5270326
+    "started_at": 1788721545.861227
   },
   "director_mode": false
 }
