@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 57,
+  "revision": 58,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -447,7 +447,9 @@
       "rank": 33,
       "overall": 96.0,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Miami Vice",
+      "pick_number": 41,
+      "drafted_at": 1788791644.6094904
     },
     "test-prospect-34": {
       "discord_id": "test-prospect-34",
@@ -5244,11 +5246,21 @@
       "player_id": "test-prospect-35",
       "timestamp": 1788791639.1681235,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 41,
+      "round": 2,
+      "round_pick": 16,
+      "team": "Miami Vice",
+      "player": "Felix Price",
+      "player_id": "test-prospect-33",
+      "timestamp": 1788791644.6094923,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 40,
+  "current_pick": 41,
   "pick_seconds": 90,
-  "deadline_at": 1788791729.1681275,
+  "deadline_at": 1788791734.609497,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5992,18 +6004,33 @@
         "timestamp": 1788791639.1681235,
         "source": "commissioner_override"
       }
+    },
+    {
+      "at": 1788791644.6095085,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 41,
+        "round": 2,
+        "round_pick": 16,
+        "team": "Miami Vice",
+        "player": "Felix Price",
+        "player_id": "test-prospect-33",
+        "timestamp": 1788791644.6094923,
+        "source": "commissioner_override"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-40-1788791639168",
+    "event_id": "pick-41-1788791644609",
     "kind": "pick",
-    "player": "Tristan Sutton",
-    "team": "Memphis Rhythm",
-    "pick": 40,
+    "player": "Felix Price",
+    "team": "Miami Vice",
+    "pick": 41,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788791639.1681325
+    "started_at": 1788791644.609503
   },
   "director_mode": false
 }
