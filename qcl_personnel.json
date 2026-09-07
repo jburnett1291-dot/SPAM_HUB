@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-07 14:51",
+  "source": "QCL2K Discord bot",
+  "general_managers": [],
+  "scouts": [],
+  "coaches": [
+    {
+      "discord_id": 1337614287920959609,
+      "guild_id": 1523019786877927595,
+      "discord_username": "qwiktv",
+      "discord_name": "𝘚𝘵𝘦𝘱𝘩𝘦𝘯 𝘈. 𝘘𝘸𝘪𝘬",
+      "head_coach_gamertag": "QwikTV",
+      "team_name": "Qwiks",
+      "availability": "All",
+      "registration_requirement": "follow",
+      "proof_of_following": [
+        "https://cdn.discordapp.com/attachments/1515465264487993539/1546564910769512609/Logo_2.png?ex=6aa03e50&is=6a9eecd0&hm=06a7f1e4027214fdd4315f29b98d733e5574bd4f588ead4926575f6889bd88ca&"
+      ],
+      "entry_fee_proof": [],
+      "proof_message_url": "https://discord.com/channels/@me/1515465264487993539/1546564911575076865",
+      "registered_at": "2026-09-07 11:56",
+      "updated_at": "2026-09-07 11:56",
+      "status": "pending review"
+    },
+    {
+      "discord_id": 720424755391365151,
+      "guild_id": 1523019786877927595,
+      "discord_username": "urgxyella59",
+      "discord_name": "URGxYella59",
+      "head_coach_gamertag": "URGxleague",
+      "team_name": "Unassigned",
+      "availability": "Everyday est",
+      "registration_requirement": "follow",
+      "proof_of_following": [
+        "https://cdn.discordapp.com/attachments/1546565097281949826/1546567649943887882/Revamp_NGUA-1.png?ex=6aa040dd&is=6a9eef5d&hm=df9841505d4185f4369823044cf644c5feb0967f0d662e8cc827ac9fd3e04e9a&",
+        "https://cdn.discordapp.com/attachments/1546565097281949826/1546567650262388736/NGUA_Season_Two_Logo.zip_-_18.png?ex=6aa040dd&is=6a9eef5d&hm=f97416d8b293cc2433fa7d1275c19f73fe02546cf1cd63bf7089fda1225eaab0&",
+        "https://cdn.discordapp.com/attachments/1546565097281949826/1546567650577219674/B77F274B-5B8C-4B96-BA11-D28714DBEC6C.png?ex=6aa040dd&is=6a9eef5d&hm=a7e7bae13b26f506002a9467937963065eaf6afa15ba9435961323bdd4c53c18&"
+      ],
+      "entry_fee_proof": [],
+      "proof_message_url": "https://discord.com/channels/@me/1546565097281949826/1546567650874884127",
+      "registered_at": "2026-09-07 12:07",
+      "updated_at": "2026-09-07 12:07",
+      "status": "approved",
+      "reviewed_by": 1337614287920959609,
+      "reviewed_at": "2026-09-07 12:56"
+    }
+  ]
+}
