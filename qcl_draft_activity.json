@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "revision": 66,
-  "status": "active",
+  "revision": 67,
+  "status": "stopped",
   "teams": [
     "Capitol City Cats",
     "Krashout",
@@ -2427,12 +2427,12 @@
   "picks": [],
   "current_pick": 0,
   "pick_seconds": 90,
-  "deadline_at": 1788809621.8718867,
+  "deadline_at": null,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": 1788809531.8718867,
-  "stopped_at": null,
-  "lifecycle_updated_at": 1788809531.8718846,
+  "stopped_at": 1788809554.838284,
+  "lifecycle_updated_at": 1788809554.8382828,
   "lifecycle_updated_by": "1337614287920959609",
   "protected_picks": [],
   "trades": [],
@@ -2440,6 +2440,12 @@
     {
       "at": 1788809531.8718908,
       "action": "draft_started",
+      "actor_id": "1337614287920959609",
+      "details": {}
+    },
+    {
+      "at": 1788809554.838286,
+      "action": "draft_stopped",
       "actor_id": "1337614287920959609",
       "details": {}
     }
