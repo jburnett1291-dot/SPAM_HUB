@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 60,
+  "revision": 61,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -1131,7 +1131,9 @@
       "rank": 101,
       "overall": 88.9,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Nashville Sound",
+      "pick_number": 42,
+      "drafted_at": 1788793285.0772083
     },
     "test-prospect-102": {
       "discord_id": "test-prospect-102",
@@ -5256,11 +5258,21 @@
       "player_id": "test-prospect-33",
       "timestamp": 1788791644.6094923,
       "source": "commissioner_override"
+    },
+    {
+      "pick": 42,
+      "round": 2,
+      "round_pick": 17,
+      "team": "Nashville Sound",
+      "player": "Bryce Daniels",
+      "player_id": "test-prospect-101",
+      "timestamp": 1788793285.0772102,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 41,
+  "current_pick": 42,
   "pick_seconds": 90,
-  "deadline_at": 1788793361.601018,
+  "deadline_at": 1788793375.0772126,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -6033,18 +6045,33 @@
       "action": "draft_resumed",
       "actor_id": "1337614287920959609",
       "details": {}
+    },
+    {
+      "at": 1788793285.0772228,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 42,
+        "round": 2,
+        "round_pick": 17,
+        "team": "Nashville Sound",
+        "player": "Bryce Daniels",
+        "player_id": "test-prospect-101",
+        "timestamp": 1788793285.0772102,
+        "source": "commissioner_override"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-41-1788791644609",
+    "event_id": "pick-42-1788793285077",
     "kind": "pick",
-    "player": "Felix Price",
-    "team": "Miami Vice",
-    "pick": 41,
+    "player": "Bryce Daniels",
+    "team": "Nashville Sound",
+    "pick": 42,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788791644.609503
+    "started_at": 1788793285.077218
   },
   "director_mode": false
 }
