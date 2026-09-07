@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 56,
+  "revision": 57,
   "status": "active",
   "teams": [
     "Atlanta Aviators",
@@ -467,7 +467,9 @@
       "rank": 35,
       "overall": 95.8,
       "eligible": true,
-      "drafted_by": null
+      "drafted_by": "Memphis Rhythm",
+      "pick_number": 40,
+      "drafted_at": 1788791639.1681218
     },
     "test-prospect-36": {
       "discord_id": "test-prospect-36",
@@ -5232,11 +5234,21 @@
       "player_id": "test-prospect-30",
       "timestamp": 1788726373.344037,
       "source": "clock_auto_pick"
+    },
+    {
+      "pick": 40,
+      "round": 2,
+      "round_pick": 15,
+      "team": "Memphis Rhythm",
+      "player": "Tristan Sutton",
+      "player_id": "test-prospect-35",
+      "timestamp": 1788791639.1681235,
+      "source": "commissioner_override"
     }
   ],
-  "current_pick": 39,
+  "current_pick": 40,
   "pick_seconds": 90,
-  "deadline_at": 1788791717.1295118,
+  "deadline_at": 1788791729.1681275,
   "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
@@ -5965,18 +5977,33 @@
       "action": "draft_resumed",
       "actor_id": "1337614287920959609",
       "details": {}
+    },
+    {
+      "at": 1788791639.1681383,
+      "action": "pick_recorded",
+      "actor_id": "1337614287920959609",
+      "details": {
+        "pick": 40,
+        "round": 2,
+        "round_pick": 15,
+        "team": "Memphis Rhythm",
+        "player": "Tristan Sutton",
+        "player_id": "test-prospect-35",
+        "timestamp": 1788791639.1681235,
+        "source": "commissioner_override"
+      }
     }
   ],
   "promo": {
-    "event_id": "pick-38-1788726466589",
+    "event_id": "pick-40-1788791639168",
     "kind": "pick",
-    "player": "Silas Ellis",
-    "team": "Las Vegas Neon",
-    "pick": 38,
+    "player": "Tristan Sutton",
+    "team": "Memphis Rhythm",
+    "pick": 40,
     "media_url": null,
     "entrance_audio_url": null,
     "duck_background_audio": true,
-    "started_at": 1788726466.589574
+    "started_at": 1788791639.1681325
   },
   "director_mode": false
 }
