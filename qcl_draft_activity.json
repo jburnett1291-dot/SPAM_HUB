@@ -1,13 +1,7 @@
 {
   "schema_version": 2,
-  "revision": 65,
-  "status": "setup",
-  "source": {
-    "repository": "jburnett1291-dot/SPAM_HUB",
-    "season": 6,
-    "stats": "player_stats.json",
-    "market": "fantasy_market.json"
-  },
+  "revision": 66,
+  "status": "active",
   "teams": [
     "Capitol City Cats",
     "Krashout",
@@ -2433,16 +2427,29 @@
   "picks": [],
   "current_pick": 0,
   "pick_seconds": 90,
-  "deadline_at": null,
+  "deadline_at": 1788809621.8718867,
   "paused_remaining": null,
   "scheduled_at": null,
-  "started_at": null,
+  "started_at": 1788809531.8718867,
   "stopped_at": null,
-  "lifecycle_updated_at": null,
-  "lifecycle_updated_by": null,
+  "lifecycle_updated_at": 1788809531.8718846,
+  "lifecycle_updated_by": "1337614287920959609",
   "protected_picks": [],
   "trades": [],
-  "audit_log": [],
+  "audit_log": [
+    {
+      "at": 1788809531.8718908,
+      "action": "draft_started",
+      "actor_id": "1337614287920959609",
+      "details": {}
+    }
+  ],
   "promo": null,
+  "source": {
+    "repository": "jburnett1291-dot/SPAM_HUB",
+    "season": 6,
+    "stats": "player_stats.json",
+    "market": "fantasy_market.json"
+  },
   "director_mode": false
 }
