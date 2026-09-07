@@ -214,6 +214,26 @@
       "serials": {},
       "cumulative_fp": 0.0,
       "history": []
+    },
+    "720424755391365151": {
+      "name": "URGxYella59",
+      "coins": 500,
+      "cards": [
+        "Llearn Pain",
+        "Smokinyellahhz",
+        "Oiamsitch"
+      ],
+      "roster": {
+        "G": null,
+        "F": null,
+        "C": null,
+        "B1": null,
+        "B2": null
+      },
+      "serials": {},
+      "cumulative_fp": 0.0,
+      "history": [],
+      "starter_claimed": "floor_general"
     }
   },
   "economy": {
