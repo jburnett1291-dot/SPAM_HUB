@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "revision": 55,
-  "status": "paused",
+  "revision": 56,
+  "status": "active",
   "teams": [
     "Atlanta Aviators",
     "Austin Armadillos",
@@ -5236,12 +5236,12 @@
   ],
   "current_pick": 39,
   "pick_seconds": 90,
-  "deadline_at": null,
-  "paused_remaining": 84,
+  "deadline_at": 1788791717.1295118,
+  "paused_remaining": null,
   "scheduled_at": null,
   "started_at": null,
   "stopped_at": null,
-  "lifecycle_updated_at": 1788726499.615626,
+  "lifecycle_updated_at": 1788791633.1295097,
   "lifecycle_updated_by": "1337614287920959609",
   "protected_picks": [],
   "trades": [],
@@ -5959,6 +5959,12 @@
       "details": {
         "remaining": 84
       }
+    },
+    {
+      "at": 1788791633.1296039,
+      "action": "draft_resumed",
+      "actor_id": "1337614287920959609",
+      "details": {}
     }
   ],
   "promo": {
