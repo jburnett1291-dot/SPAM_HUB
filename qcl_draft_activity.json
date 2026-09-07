@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "revision": 63,
+  "revision": 64,
   "status": "setup",
   "teams": [
     "Atlanta Aviators",
@@ -5277,7 +5277,7 @@
   "scheduled_at": null,
   "started_at": null,
   "stopped_at": null,
-  "lifecycle_updated_at": 1788793372.6533809,
+  "lifecycle_updated_at": 1788793379.5797582,
   "lifecycle_updated_by": "1337614287920959609",
   "protected_picks": [],
   "trades": [],
@@ -6069,6 +6069,12 @@
     },
     {
       "at": 1788793372.6533837,
+      "action": "draft_reset_to_setup",
+      "actor_id": "1337614287920959609",
+      "details": {}
+    },
+    {
+      "at": 1788793379.5797622,
       "action": "draft_reset_to_setup",
       "actor_id": "1337614287920959609",
       "details": {}
