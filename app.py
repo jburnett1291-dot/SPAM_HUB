@@ -36,6 +36,7 @@ v3.1 CHANGELOG
 
 import os
 import re
+import html as _html
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -381,14 +382,20 @@ st.markdown("""
 
     .stApp::after {
         inset: 0;
-        opacity: 0.17;
+        opacity: 0.22;
         background-image:
-            linear-gradient(rgba(230, 191, 85, 0.13) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 191, 255, 0.12) 1px, transparent 1px),
+            radial-gradient(circle at 50% 52%, transparent 0 10rem, rgba(230, 191, 85, 0.15) 10.1rem 10.18rem, transparent 10.3rem),
+            linear-gradient(90deg, transparent 49.88%, rgba(230, 191, 85, 0.12) 49.95% 50.05%, transparent 50.12%),
+            linear-gradient(0deg, transparent 49.88%, rgba(0, 191, 255, 0.10) 49.95% 50.05%, transparent 50.12%),
+            linear-gradient(33deg, transparent 49.94%, rgba(230, 191, 85, 0.08) 49.98% 50.02%, transparent 50.06%),
+            linear-gradient(147deg, transparent 49.94%, rgba(0, 191, 255, 0.08) 49.98% 50.02%, transparent 50.06%),
+            linear-gradient(rgba(230, 191, 85, 0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 191, 255, 0.07) 1px, transparent 1px),
             radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.10), transparent 38%);
-        background-size: 54px 54px, 54px 54px, 100% 100%;
+        background-size: 44rem 44rem, 44rem 44rem, 44rem 44rem, 44rem 44rem, 44rem 44rem, 54px 54px, 54px 54px, 100% 100%;
+        background-position: 50% 46%, 50% 46%, 50% 46%, 50% 46%, 50% 46%, 0 0, 0 0, 0 0;
         mask-image: linear-gradient(to bottom, black, transparent 82%);
-        animation: qcl-grid-drift 32s linear infinite;
+        animation: qcl-court-drift 32s linear infinite;
     }
 
     .stApp > *,
@@ -408,6 +415,12 @@ st.markdown("""
     @keyframes qcl-grid-drift {
         0% { background-position: 0 0, 0 0, 0 0; }
         100% { background-position: 54px 54px, 54px 54px, 0 0; }
+    }
+
+    @keyframes qcl-court-drift {
+        0% { transform: translate3d(-1.5%, -0.5%, 0) scale(1); }
+        50% { transform: translate3d(1%, 1%, 0) scale(1.035); }
+        100% { transform: translate3d(-0.5%, 2%, 0) scale(1.02); }
     }
 
     header[data-testid="stHeader"] {
@@ -796,6 +809,132 @@ st.markdown("""
         text-transform: uppercase;
     }
 
+    /* CourtSketch-inspired visual stat language: numbers live in cards,
+       with tiny comparison bars and clear hierarchy instead of a spreadsheet. */
+    .qcl-signal-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 0.8rem;
+        margin: 1rem 0 0.35rem;
+    }
+
+    .qcl-signal-card {
+        position: relative;
+        min-height: 11.6rem;
+        overflow: hidden;
+        padding: 1rem;
+        border: 1px solid var(--qcl-border);
+        border-radius: 0.9rem;
+        background:
+            radial-gradient(circle at 100% 0%, rgba(230, 191, 85, 0.12), transparent 8rem),
+            linear-gradient(145deg, rgba(255,255,255,0.055), rgba(255,255,255,0.012));
+        transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .qcl-signal-card:hover {
+        transform: translateY(-3px);
+        border-color: rgba(230, 191, 85, 0.48);
+        box-shadow: 0 16px 35px rgba(0,0,0,0.2);
+    }
+
+    .qcl-signal-rank {
+        float: right;
+        color: var(--qcl-faint);
+        font-size: 0.68rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+    }
+
+    .qcl-signal-name {
+        overflow: hidden;
+        color: var(--qcl-ink);
+        font-size: 1.03rem;
+        font-weight: 900;
+        letter-spacing: -0.035em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .qcl-signal-meta {
+        overflow: hidden;
+        color: var(--qcl-muted);
+        font-size: 0.7rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .qcl-signal-type {
+        display: inline-block;
+        margin-top: 0.6rem;
+        padding: 0.22rem 0.42rem;
+        border: 1px solid rgba(230, 191, 85, 0.3);
+        border-radius: 99px;
+        color: var(--qcl-accent-soft);
+        font-size: 0.59rem;
+        font-weight: 900;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+    }
+
+    .qcl-signal-primary {
+        display: flex;
+        align-items: baseline;
+        gap: 0.38rem;
+        margin: 0.9rem 0 0.62rem;
+    }
+
+    .qcl-signal-primary-value {
+        color: var(--qcl-ink);
+        font-size: 2rem;
+        font-weight: 950;
+        letter-spacing: -0.07em;
+    }
+
+    .qcl-signal-primary-label {
+        color: var(--qcl-accent);
+        font-size: 0.62rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    .qcl-signal-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.7rem;
+        padding: 0.3rem 0;
+        border-top: 1px solid rgba(235, 231, 220, 0.08);
+        color: var(--qcl-muted);
+        font-size: 0.7rem;
+    }
+
+    .qcl-signal-row strong {
+        color: var(--qcl-ink);
+        font-weight: 800;
+    }
+
+    .qcl-signal-bar {
+        height: 0.18rem;
+        margin-top: 0.2rem;
+        overflow: hidden;
+        border-radius: 99px;
+        background: rgba(255,255,255,0.08);
+    }
+
+    .qcl-signal-bar span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--qcl-accent), #00bfff);
+        animation: qcl-bar-in 700ms cubic-bezier(.2,.8,.2,1) both;
+    }
+
+    .qcl-data-note {
+        margin: 0.8rem 0 0.35rem;
+        color: var(--qcl-muted);
+        font-size: 0.75rem;
+    }
+
     @keyframes qcl-orbit {
         from { transform: rotate(0deg) translateX(0); }
         to { transform: rotate(360deg) translateX(0); }
@@ -814,10 +953,11 @@ st.markdown("""
 
     @media (prefers-reduced-motion: reduce) {
         .stApp::before, .stApp::after, .qcl-tools-hero::after,
-        .qcl-tool-card::before, .qcl-compare-row .bar > span {
+        .qcl-tool-card::before, .qcl-compare-row .bar > span,
+        .qcl-signal-bar span {
             animation: none !important;
         }
-        .qcl-tool-card { transition: none; }
+        .qcl-tool-card, .qcl-signal-card { transition: none; }
     }
 
     [data-testid="stDataFrame"] {
@@ -2027,6 +2167,89 @@ def build_advanced_player_board(scope_df):
     return board.sort_values(['PIE', 'PTS'], ascending=False).reset_index(drop=True)
 
 
+def _signal_format(value, decimals=1, suffix=""):
+    """Small, consistent formatter for the visual stat cards."""
+    if pd.isna(value):
+        value = 0
+    try:
+        return f"{float(value):.{decimals}f}{suffix}"
+    except (TypeError, ValueError):
+        return f"{_html.escape(str(value))}{suffix}"
+
+
+def render_signal_cards(frame, stat_specs, primary=None, limit=24,
+                        name_col="Player/Team", subtitle_cols=("Team",),
+                        badge_col="Type"):
+    """Render a visual scouting board instead of a spreadsheet-like dataframe.
+
+    stat_specs accepts (column, label), (column, label, decimals), or
+    (column, label, decimals, suffix). The first spec is the primary stat unless
+    primary is provided.
+    """
+    if frame is None or frame.empty:
+        return
+
+    normalized_specs = []
+    for spec in stat_specs:
+        if len(spec) == 2:
+            normalized_specs.append((spec[0], spec[1], 1, ""))
+        elif len(spec) == 3:
+            normalized_specs.append((spec[0], spec[1], spec[2], ""))
+        else:
+            normalized_specs.append((spec[0], spec[1], spec[2], spec[3]))
+
+    available = [s for s in normalized_specs if s[0] in frame.columns]
+    if not available:
+        return
+    primary_col = primary or available[0][0]
+    primary_spec = next((s for s in available if s[0] == primary_col), available[0])
+    primary_values = pd.to_numeric(frame[primary_spec[0]], errors="coerce").fillna(0)
+    primary_scale = max(float(primary_values.abs().max()), 1.0)
+
+    cards = []
+    for rank, (_, row) in enumerate(frame.head(limit).iterrows(), start=1):
+        name = _html.escape(str(row.get(name_col, "Unknown")))
+        subtitle = " · ".join(
+            _html.escape(str(row.get(col)))
+            for col in subtitle_cols
+            if col in row.index and pd.notna(row.get(col))
+            and str(row.get(col)).strip() not in ("", "—", "nan")
+        )
+        badge = _html.escape(str(row.get(badge_col, ""))) if badge_col in row.index else ""
+        primary_value = _signal_format(
+            row.get(primary_spec[0], 0), primary_spec[2], primary_spec[3]
+        )
+        try:
+            bar_width = min(abs(float(row.get(primary_spec[0], 0))) / primary_scale * 100, 100)
+        except (TypeError, ValueError):
+            bar_width = 0
+
+        stat_rows = []
+        for column, label, decimals, suffix in available[1:]:
+            stat_rows.append(
+                f"<div class='qcl-signal-row'><span>{_html.escape(label)}</span>"
+                f"<strong>{_signal_format(row.get(column, 0), decimals, suffix)}</strong></div>"
+            )
+        badge_html = f"<span class='qcl-signal-type'>{badge}</span>" if badge else ""
+        cards.append(
+            "<article class='qcl-signal-card'>"
+            f"<span class='qcl-signal-rank'>#{rank:02d}</span>"
+            f"<div class='qcl-signal-name'>{name}</div>"
+            f"<div class='qcl-signal-meta'>{subtitle or 'Current scope'}</div>"
+            f"{badge_html}"
+            "<div class='qcl-signal-primary'>"
+            f"<span class='qcl-signal-primary-value'>{primary_value}</span>"
+            f"<span class='qcl-signal-primary-label'>{_html.escape(primary_spec[1])}</span>"
+            "</div>"
+            f"<div class='qcl-signal-bar'><span style='width:{bar_width:.1f}%'></span></div>"
+            f"{''.join(stat_rows)}"
+            "</article>"
+        )
+
+    st.markdown("<div class='qcl-signal-grid'>" + "".join(cards) + "</div>",
+                unsafe_allow_html=True)
+
+
 # =============================================================================
 # 6. SESSION STATE
 # =============================================================================
@@ -3188,7 +3411,19 @@ elif view_mode == "🧰 Tools":
                     ["Player/Team", "GP", "PTS", "REB", "AST", "USG", "PIE"]
                 ].copy()
                 rotation_view.columns = ["Player", "GP", "PPG", "RPG", "APG", "USG%", "PIE"]
-                st.dataframe(rotation_view, use_container_width=True, hide_index=True)
+                st.markdown(
+                    "<div class='qcl-data-note'>Active five shown as a scouting board. "
+                    "Use the CSV for the complete machine-readable export.</div>",
+                    unsafe_allow_html=True,
+                )
+                render_signal_cards(
+                    rotation,
+                    [
+                        ("PTS", "PPG", 1), ("REB", "RPG", 1), ("AST", "APG", 1),
+                        ("USG", "USG%", 1, "%"), ("PIE", "PIE", 1),
+                    ],
+                    primary="PTS", limit=ROTATION_SIZE,
+                )
                 dl(
                     rotation_view,
                     "⬇️ Rotation CSV",
@@ -3329,7 +3564,22 @@ elif view_mode == "🧠 Advanced Stat Lab":
                 if c not in ("Player/Team", "Team", "Type", "Rarity", "GP")
             ]
             display_board[numeric_display] = display_board[numeric_display].round(1)
-            st.dataframe(display_board, use_container_width=True, hide_index=True)
+            visual_primary = sort_labels[sort_label] if sort_labels[sort_label] in view.columns else "PIE"
+            st.markdown(
+                "<div class='qcl-data-note'>Visual board · top 24 players in the selected "
+                "rank order. The CSV below contains every filtered row and every column.</div>",
+                unsafe_allow_html=True,
+            )
+            render_signal_cards(
+                view,
+                [
+                    (visual_primary, sort_label, 1),
+                    ("PTS", "PPG", 1), ("TS%", "TS%", 1, "%"),
+                    ("Hustle", "HUSTLE", 1), ("Disruption", "DISRUPTION", 1),
+                    ("Stocks", "STOCKS", 1),
+                ],
+                primary=visual_primary, limit=24,
+            )
             dl(
                 display_board, "⬇️ Advanced player board CSV",
                 "qcl_advanced_player_board.csv", "dl_advanced_player_board",
@@ -3475,7 +3725,21 @@ elif view_mode == "🌌 Player Galaxy":
                 if c not in ("Player/Team", "Team", "Type", "Rarity", "GP")
             ]
             galaxy_table[galaxy_numeric] = galaxy_table[galaxy_numeric].round(1)
-            st.dataframe(galaxy_table, use_container_width=True, hide_index=True)
+            st.markdown(
+                "<div class='qcl-data-note'>Visual constellation · showing the first 24 "
+                "players in the selected sort. Download the CSV for the full filtered galaxy.</div>",
+                unsafe_allow_html=True,
+            )
+            render_signal_cards(
+                galaxy_view,
+                [
+                    (galaxy_sort_map[galaxy_sort_label], galaxy_sort_label, 1),
+                    ("PTS", "PPG", 1), ("REB", "RPG", 1), ("AST", "APG", 1),
+                    ("TS%", "TS%", 1, "%"), ("Hustle", "HUSTLE", 1),
+                    ("Disruption", "DISRUPTION", 1),
+                ],
+                primary=galaxy_sort_map[galaxy_sort_label], limit=24,
+            )
             dl(
                 galaxy_table, "⬇️ Player Galaxy CSV",
                 "qcl_player_galaxy.csv", "dl_player_galaxy",
