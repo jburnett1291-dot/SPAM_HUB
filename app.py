@@ -319,6 +319,295 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# -----------------------------------------------------------------------------
+# QCL visual system
+#
+# The dashboard's calculations and page renderers intentionally stay below this
+# block.  These rules are presentation-only so the existing navigation,
+# filters, downloads, login, cards, and analytics keep their current behavior.
+# -----------------------------------------------------------------------------
+st.markdown("""
+<style>
+    :root {
+        --qcl-bg: #0d0e10;
+        --qcl-surface: #15171a;
+        --qcl-surface-2: #1b1e22;
+        --qcl-border: rgba(235, 231, 220, 0.13);
+        --qcl-border-strong: rgba(235, 231, 220, 0.24);
+        --qcl-ink: #f1eee7;
+        --qcl-muted: #92979d;
+        --qcl-faint: #5e646b;
+        --qcl-accent: #e6bf55;
+        --qcl-accent-soft: #f3da8b;
+        --qcl-positive: #58d39a;
+        --qcl-negative: #ef7277;
+    }
+
+    html, body, [class*="css"] {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+            BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .stApp {
+        background:
+            radial-gradient(circle at 82% -10%, rgba(230, 191, 85, 0.08), transparent 29rem),
+            radial-gradient(circle at 8% 30%, rgba(255, 255, 255, 0.025), transparent 24rem),
+            var(--qcl-bg) !important;
+        color: var(--qcl-ink) !important;
+    }
+
+    header[data-testid="stHeader"] {
+        background: rgba(13, 14, 16, 0.7) !important;
+    }
+
+    #MainMenu, footer { visibility: hidden; }
+
+    .block-container {
+        max-width: 1560px !important;
+        padding: 2.4rem 3.4rem 4.5rem !important;
+    }
+
+    [data-testid="stSidebar"] {
+        background: #111316 !important;
+        border-right: 1px solid var(--qcl-border) !important;
+    }
+
+    [data-testid="stSidebar"] > div:first-child {
+        padding: 1.4rem 1rem 1.5rem !important;
+    }
+
+    [data-testid="stSidebar"] .block-container {
+        padding: 0 !important;
+    }
+
+    .sidebar-brand {
+        padding: 0.35rem 0.55rem 1.25rem;
+        border-bottom: 1px solid var(--qcl-border);
+        margin-bottom: 1.1rem;
+    }
+
+    .sidebar-brand__mark {
+        color: var(--qcl-accent);
+        font-size: 0.68rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 800;
+        margin-bottom: 0.42rem;
+    }
+
+    .sidebar-brand__title {
+        color: var(--qcl-ink);
+        font-size: 1.22rem;
+        line-height: 1;
+        letter-spacing: -0.04em;
+        font-weight: 800;
+    }
+
+    .sidebar-brand__sub {
+        color: var(--qcl-muted);
+        font-size: 0.7rem;
+        margin-top: 0.45rem;
+    }
+
+    [data-testid="stSidebar"] .stRadio > label,
+    [data-testid="stSidebar"] .stSelectbox > label,
+    [data-testid="stSidebar"] .stSlider > label,
+    [data-testid="stSidebar"] .stTextInput > label {
+        color: var(--qcl-muted) !important;
+        font-size: 0.64rem !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.12em !important;
+        text-transform: uppercase !important;
+    }
+
+    [data-testid="stSidebar"] .stRadio > div {
+        gap: 0.22rem !important;
+    }
+
+    [data-testid="stSidebar"] .stRadio [role="radiogroup"] > label {
+        border: 1px solid transparent;
+        border-radius: 0.6rem;
+        color: #aeb3b7 !important;
+        margin: 0 !important;
+        min-height: 2.05rem;
+        padding: 0.38rem 0.62rem !important;
+        transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+
+    [data-testid="stSidebar"] .stRadio [role="radiogroup"] > label:hover {
+        background: rgba(230, 191, 85, 0.08);
+        border-color: rgba(230, 191, 85, 0.18);
+        color: var(--qcl-ink) !important;
+    }
+
+    [data-testid="stSidebar"] .stRadio [role="radiogroup"] > label:has(input:checked) {
+        background: rgba(230, 191, 85, 0.13);
+        border-color: rgba(230, 191, 85, 0.42);
+        color: var(--qcl-accent-soft) !important;
+        box-shadow: inset 3px 0 0 var(--qcl-accent);
+    }
+
+    [data-testid="stSidebar"] .stRadio [role="radiogroup"] > label > div:first-child {
+        display: none;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stExpander"] {
+        background: rgba(255, 255, 255, 0.025);
+        border-color: var(--qcl-border);
+        border-radius: 0.65rem;
+    }
+
+    [data-testid="stSidebar"] .stButton > button {
+        min-height: 2.25rem;
+    }
+
+    .header-banner {
+        background:
+            linear-gradient(115deg, rgba(230, 191, 85, 0.13), transparent 58%),
+            var(--qcl-surface) !important;
+        border: 1px solid var(--qcl-border) !important;
+        border-left: 3px solid var(--qcl-accent) !important;
+        border-radius: 0.9rem !important;
+        color: var(--qcl-ink) !important;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+        font-size: clamp(1.15rem, 2vw, 1.75rem) !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.035em !important;
+        line-height: 1.2 !important;
+        margin: 0 0 1.3rem !important;
+        padding: 1.15rem 1.4rem !important;
+        text-align: left !important;
+        text-transform: none !important;
+    }
+
+    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3,
+    [data-testid="stHeader"] h1, [data-testid="stHeader"] h2 {
+        color: var(--qcl-ink) !important;
+        letter-spacing: -0.045em !important;
+    }
+
+    .stMarkdown h2, .stMarkdown h3 {
+        margin-top: 1.15rem !important;
+    }
+
+    [data-testid="stMetric"] {
+        background: var(--qcl-surface) !important;
+        border: 1px solid var(--qcl-border) !important;
+        border-radius: 0.8rem !important;
+        padding: 0.95rem 1.05rem !important;
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: var(--qcl-muted) !important;
+        font-size: 0.64rem !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.1em !important;
+        text-transform: uppercase !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: var(--qcl-ink) !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.04em !important;
+    }
+
+    .metric-box, .line-box, .sim-box, .award-card {
+        background: var(--qcl-surface) !important;
+        border: 1px solid var(--qcl-border) !important;
+        border-radius: 0.8rem !important;
+        box-shadow: none !important;
+    }
+
+    .metric-box { border-left: 3px solid var(--qcl-accent) !important; }
+    .metric-title, .line-label { color: var(--qcl-muted) !important; }
+    .metric-value, .line-value { color: var(--qcl-ink) !important; }
+
+    .stButton > button, .stDownloadButton > button {
+        background: transparent !important;
+        border: 1px solid var(--qcl-border-strong) !important;
+        border-radius: 0.55rem !important;
+        color: var(--qcl-ink) !important;
+        font-weight: 700 !important;
+        min-height: 2.45rem;
+        transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+    }
+
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        background: rgba(230, 191, 85, 0.11) !important;
+        border-color: var(--qcl-accent) !important;
+        color: var(--qcl-accent-soft) !important;
+        transform: translateY(-1px);
+    }
+
+    .stButton > button[kind="primary"] {
+        background: var(--qcl-accent) !important;
+        border-color: var(--qcl-accent) !important;
+        color: #17130b !important;
+    }
+
+    .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"],
+    .stMultiSelect div[data-baseweb="select"], .stDateInput input {
+        background: var(--qcl-surface) !important;
+        border-color: var(--qcl-border-strong) !important;
+        border-radius: 0.55rem !important;
+        color: var(--qcl-ink) !important;
+    }
+
+    [data-baseweb="popover"], [data-baseweb="menu"] {
+        background: #1c1f23 !important;
+    }
+
+    [data-baseweb="tab-list"] {
+        border-bottom: 1px solid var(--qcl-border) !important;
+        gap: 1.2rem !important;
+    }
+
+    [data-baseweb="tab"] {
+        color: var(--qcl-muted) !important;
+        font-weight: 700 !important;
+        padding: 0.7rem 0.1rem !important;
+    }
+
+    [aria-selected="true"][data-baseweb="tab"] {
+        color: var(--qcl-accent-soft) !important;
+        border-bottom-color: var(--qcl-accent) !important;
+    }
+
+    .sleek-table {
+        background: var(--qcl-surface) !important;
+        border: 1px solid var(--qcl-border);
+        border-radius: 0.8rem !important;
+    }
+
+    .sleek-table th {
+        background: var(--qcl-surface-2) !important;
+        border-bottom: 1px solid var(--qcl-border) !important;
+        color: var(--qcl-accent-soft) !important;
+        font-size: 0.65rem !important;
+        letter-spacing: 0.08em;
+    }
+
+    .sleek-table td { border-bottom-color: rgba(235, 231, 220, 0.08) !important; }
+    .sleek-table tr:hover { background: rgba(230, 191, 85, 0.05) !important; }
+
+    [data-testid="stDataFrame"] {
+        border: 1px solid var(--qcl-border);
+        border-radius: 0.8rem;
+        overflow: hidden;
+    }
+
+    [data-testid="stAlert"] {
+        border-radius: 0.7rem !important;
+        border-color: var(--qcl-border) !important;
+    }
+
+    @media (max-width: 900px) {
+        .block-container { padding: 1.25rem 1rem 3rem !important; }
+        .header-banner { margin-top: 0.4rem !important; }
+    }
+</style>
+""", unsafe_allow_html=True)
+
 
 
 
@@ -1477,7 +1766,13 @@ if not seasons:
     st.stop()
 
 
-st.sidebar.title("⚙️ Hub Controls")
+st.sidebar.markdown("""
+<div class="sidebar-brand">
+    <div class="sidebar-brand__mark">QSPN / ANALYTICS</div>
+    <div class="sidebar-brand__title">QCL League Hub</div>
+    <div class="sidebar-brand__sub">The league, at a glance.</div>
+</div>
+""", unsafe_allow_html=True)
 VIEWS = [
     "🏠 League Home & Awards",
     "🏅 Awards & Rewards",
@@ -1501,7 +1796,8 @@ VIEWS = [
     "💬 Discord",
     "📖 Record Book & Milestones",
 ]
-view_mode = st.sidebar.radio("Navigation", VIEWS)
+st.sidebar.caption("EXPLORE")
+view_mode = st.sidebar.radio("Navigation", VIEWS, label_visibility="collapsed")
 try:
     restore_session()
     login_widget(key="sidebar")
@@ -1510,7 +1806,8 @@ except Exception:
 st.sidebar.divider()
 
 
-# right after: st.sidebar.title("⚙️ Hub Controls")
+# Keep the existing logo asset available for projects that ship it, while the
+# new wordmark above handles the primary navigation treatment.
 st.sidebar.image("Logo.png", width=140)
 
 
