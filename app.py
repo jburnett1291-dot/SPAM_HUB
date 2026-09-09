@@ -2099,7 +2099,8 @@ st.sidebar.divider()
 
 # Keep the existing logo asset available for projects that ship it, while the
 # new wordmark above handles the primary navigation treatment.
-st.sidebar.image("Logo.png", width=140)
+if os.path.exists("Logo.png"):
+    st.sidebar.image("Logo.png", width=140)
 
 
 def _season_label(s):
@@ -2176,7 +2177,8 @@ st.markdown(f'<div class="header-banner">🏀 QCL LEAGUE HUB — {banner_text}</
 
 
 # optional, right after the header-banner markdown
-st.image("Logo.png", width=120)
+if os.path.exists("Logo.png"):
+    st.image("Logo.png", width=120)
 
 
 if df_active.empty:
