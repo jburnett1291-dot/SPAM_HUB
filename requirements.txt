@@ -3,3 +3,4 @@ numpy
 plotly
 requests
 Pillow
+streamlit
