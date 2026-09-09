@@ -349,11 +349,65 @@ st.markdown("""
     }
 
     .stApp {
+        position: relative;
+        isolation: isolate;
         background:
             radial-gradient(circle at 82% -10%, rgba(230, 191, 85, 0.08), transparent 29rem),
+            radial-gradient(circle at 12% 78%, rgba(0, 191, 255, 0.08), transparent 26rem),
             radial-gradient(circle at 8% 30%, rgba(255, 255, 255, 0.025), transparent 24rem),
             var(--qcl-bg) !important;
         color: var(--qcl-ink) !important;
+    }
+
+    /* Ambient motion layer: animated, low-contrast, and always behind the UI. */
+    .stApp::before,
+    .stApp::after {
+        content: "";
+        position: fixed;
+        inset: -18%;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .stApp::before {
+        background:
+            radial-gradient(circle at 18% 18%, rgba(230, 191, 85, 0.12), transparent 18rem),
+            radial-gradient(circle at 84% 20%, rgba(0, 191, 255, 0.09), transparent 22rem),
+            radial-gradient(circle at 52% 92%, rgba(47, 128, 237, 0.08), transparent 20rem);
+        filter: blur(12px);
+        opacity: 0.8;
+        animation: qcl-ambient-drift 22s ease-in-out infinite alternate;
+    }
+
+    .stApp::after {
+        inset: 0;
+        opacity: 0.17;
+        background-image:
+            linear-gradient(rgba(230, 191, 85, 0.13) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 191, 255, 0.12) 1px, transparent 1px),
+            radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.10), transparent 38%);
+        background-size: 54px 54px, 54px 54px, 100% 100%;
+        mask-image: linear-gradient(to bottom, black, transparent 82%);
+        animation: qcl-grid-drift 32s linear infinite;
+    }
+
+    .stApp > *,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stHeader"],
+    [data-testid="stSidebar"] {
+        position: relative;
+        z-index: 1;
+    }
+
+    @keyframes qcl-ambient-drift {
+        0% { transform: translate3d(-2%, -1%, 0) scale(1); }
+        50% { transform: translate3d(2%, 1.5%, 0) scale(1.05); }
+        100% { transform: translate3d(-1%, 3%, 0) scale(1.02); }
+    }
+
+    @keyframes qcl-grid-drift {
+        0% { background-position: 0 0, 0 0, 0 0; }
+        100% { background-position: 54px 54px, 54px 54px, 0 0; }
     }
 
     header[data-testid="stHeader"] {
@@ -589,6 +643,182 @@ st.markdown("""
 
     .sleek-table td { border-bottom-color: rgba(235, 231, 220, 0.08) !important; }
     .sleek-table tr:hover { background: rgba(230, 191, 85, 0.05) !important; }
+
+    .qcl-tools-hero {
+        position: relative;
+        overflow: hidden;
+        padding: 1.35rem 1.5rem;
+        margin: 0.2rem 0 1.2rem;
+        border: 1px solid rgba(230, 191, 85, 0.25);
+        border-radius: 1rem;
+        background:
+            linear-gradient(120deg, rgba(230, 191, 85, 0.14), transparent 45%),
+            linear-gradient(300deg, rgba(0, 191, 255, 0.10), transparent 50%),
+            var(--qcl-surface);
+        box-shadow: 0 18px 55px rgba(0, 0, 0, 0.2);
+    }
+
+    .qcl-tools-hero::after {
+        content: "";
+        position: absolute;
+        width: 14rem;
+        height: 14rem;
+        right: -4rem;
+        top: -7rem;
+        border: 1px solid rgba(230, 191, 85, 0.35);
+        border-radius: 50%;
+        box-shadow: 0 0 0 18px rgba(230, 191, 85, 0.04),
+                    0 0 0 36px rgba(0, 191, 255, 0.06);
+        animation: qcl-orbit 10s linear infinite;
+    }
+
+    .qcl-tools-kicker {
+        color: var(--qcl-accent);
+        font-size: 0.67rem;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+    }
+
+    .qcl-tools-title {
+        margin: 0.35rem 0 0.35rem;
+        color: var(--qcl-ink);
+        font-size: clamp(1.6rem, 3vw, 2.5rem);
+        font-weight: 900;
+        letter-spacing: -0.06em;
+    }
+
+    .qcl-tools-copy {
+        max-width: 48rem;
+        margin: 0;
+        color: var(--qcl-muted);
+        line-height: 1.55;
+    }
+
+    .qcl-tool-card {
+        position: relative;
+        overflow: hidden;
+        min-height: 7.5rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--qcl-border);
+        border-radius: 0.85rem;
+        background: linear-gradient(145deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+        transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    }
+
+    .qcl-tool-card:hover {
+        transform: translateY(-3px);
+        border-color: rgba(230, 191, 85, 0.5);
+        background: linear-gradient(145deg, rgba(230,191,85,0.10), rgba(0,191,255,0.04));
+    }
+
+    .qcl-tool-card::before {
+        content: "";
+        position: absolute;
+        left: -35%;
+        top: 0;
+        width: 30%;
+        height: 2px;
+        background: linear-gradient(90deg, var(--qcl-accent), #00bfff);
+        box-shadow: 0 0 18px rgba(230, 191, 85, 0.8);
+        animation: qcl-scan 4.5s ease-in-out infinite;
+    }
+
+    .qcl-tool-label {
+        color: var(--qcl-muted);
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    .qcl-tool-value {
+        margin-top: 0.3rem;
+        color: var(--qcl-ink);
+        font-size: 1.55rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+    }
+
+    .qcl-tool-meta {
+        color: var(--qcl-faint);
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    .qcl-compare-row {
+        display: grid;
+        grid-template-columns: 1fr 5rem 1fr;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0.75rem 0;
+    }
+
+    .qcl-compare-row .bar {
+        height: 0.4rem;
+        overflow: hidden;
+        border-radius: 99px;
+        background: rgba(255,255,255,0.08);
+    }
+
+    .qcl-compare-row .bar > span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--qcl-accent), var(--qcl-accent-soft));
+        animation: qcl-bar-in 700ms cubic-bezier(.2,.8,.2,1) both;
+        transform-origin: left center;
+    }
+
+    .qcl-compare-row .right .bar > span {
+        margin-left: auto;
+        background: linear-gradient(90deg, #00bfff, #2f80ed);
+        transform-origin: right center;
+    }
+
+    .qcl-compare-name {
+        overflow: hidden;
+        color: var(--qcl-ink);
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .qcl-compare-name.right { text-align: right; }
+
+    .qcl-compare-stat {
+        color: var(--qcl-muted);
+        font-size: 0.64rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-align: center;
+        text-transform: uppercase;
+    }
+
+    @keyframes qcl-orbit {
+        from { transform: rotate(0deg) translateX(0); }
+        to { transform: rotate(360deg) translateX(0); }
+    }
+
+    @keyframes qcl-scan {
+        0%, 15% { left: -35%; opacity: 0; }
+        30% { opacity: 1; }
+        70%, 100% { left: 110%; opacity: 0; }
+    }
+
+    @keyframes qcl-bar-in {
+        from { transform: scaleX(0); opacity: 0.2; }
+        to { transform: scaleX(1); opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .stApp::before, .stApp::after, .qcl-tools-hero::after,
+        .qcl-tool-card::before, .qcl-compare-row .bar > span {
+            animation: none !important;
+        }
+        .qcl-tool-card { transition: none; }
+    }
 
     [data-testid="stDataFrame"] {
         border: 1px solid var(--qcl-border);
@@ -1740,6 +1970,64 @@ def player_archetype(player):
 
 
 # =============================================================================
+# 5.5 DERIVED PLAYER BOARD
+# =============================================================================
+def build_advanced_player_board(scope_df):
+    """Build a player-level derived-stat board from the raw game rows."""
+    p = scope_df[scope_df['Type'].astype(str).str.lower() == 'player'].copy()
+    if p.empty:
+        return pd.DataFrame()
+
+    stat_sources = {
+        'GP': ('GKey', 'nunique'),
+        'Team': ('Team Name', 'last'),
+        'PTS': ('PTS', 'mean'), 'REB': ('REB', 'mean'), 'AST': ('AST', 'mean'),
+        'STL': ('STL', 'mean'), 'BLK': ('BLK', 'mean'), 'TO': ('TO', 'mean'),
+        'FOULS': ('FOULS', 'mean'), 'OREB': ('OREB', 'mean'), 'DREB': ('DREB', 'mean'),
+        'FGM': ('FGM', 'mean'), 'FGA': ('FGA', 'mean'),
+        '3PM': ('3PM', 'mean'), '3PA': ('3PA', 'mean'),
+        'FTM': ('FTM', 'mean'), 'FTA': ('FTA', 'mean'),
+        'Poss': ('Poss_Raw', 'mean'), 'Game Score': ('Game_Score', 'mean'),
+        'PIE': ('PIE_Raw', 'mean'), 'USG%': ('USG_Game', 'mean'),
+        'ORtg': ('ORtg_Game', 'mean'),
+        'Tipped Passes': ('Tipped_Passes', 'mean'),
+        'Shots Affected': ('Shots_Affected', 'mean'),
+        'FB Points': ('FB_Points', 'mean'),
+    }
+    agg = {out: spec for out, spec in stat_sources.items() if spec[0] in p.columns}
+    board = p.groupby('Player/Team').agg(**agg).reset_index()
+
+    def num(col):
+        series = board[col] if col in board.columns else pd.Series(0, index=board.index)
+        return pd.to_numeric(series, errors='coerce').fillna(0)
+
+    board['2PM'] = num('FGM') - num('3PM')
+    board['2PA'] = num('FGA') - num('3PA')
+    board['2P%'] = np.where(board['2PA'] > 0, board['2PM'] / board['2PA'] * 100, 0)
+    board['3P%'] = np.where(num('3PA') > 0, num('3PM') / num('3PA') * 100, 0)
+    board['FT%'] = np.where(num('FTA') > 0, num('FTM') / num('FTA') * 100, 0)
+    ts_den = 2 * (num('FGA') + 0.44 * num('FTA'))
+    board['TS%'] = np.where(ts_den > 0, num('PTS') / ts_den * 100, 0)
+    board['eFG%'] = np.where(num('FGA') > 0,
+                             (num('FGM') + 0.5 * num('3PM')) / num('FGA') * 100, 0)
+    board['Stocks'] = num('STL') + num('BLK')
+    board['Disruption'] = num('Tipped Passes') + num('Shots Affected')
+    board['Hustle'] = (num('Tipped Passes') + num('Shots Affected')
+                       + num('FB Points') + num('OREB'))
+    board['AST/TO'] = np.where(num('TO') > 0, num('AST') / num('TO'), num('AST'))
+    board['Creation Load'] = num('FGA') + 0.44 * num('FTA') + 0.5 * num('AST')
+    board['Impact Load'] = num('PTS') + 1.5 * num('AST') + num('REB') + 2 * board['Stocks']
+    board['Type'] = board['Player/Team'].map(player_archetype)
+    board['Rarity'] = board['Player/Team'].map(lambda x: card_rarity(x)[0])
+    board['Team'] = board['Team'].fillna('—')
+
+    numeric_cols = [c for c in board.columns if c not in ('Player/Team', 'Team', 'Type', 'Rarity')]
+    board[numeric_cols] = board[numeric_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
+    board['GP'] = board['GP'].astype(int)
+    return board.sort_values(['PIE', 'PTS'], ascending=False).reset_index(drop=True)
+
+
+# =============================================================================
 # 6. SESSION STATE
 # =============================================================================
 if 'watchlist' not in st.session_state:
@@ -1775,6 +2063,9 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 VIEWS = [
     "🏠 League Home & Awards",
+    "🧰 Tools",
+    "🧠 Advanced Stat Lab",
+    "🌌 Player Galaxy",
     "🏅 Awards & Rewards",
     "🏆 Power Rankings & SOS",
     "🏢 Franchise Hub",
@@ -2756,6 +3047,450 @@ if view_mode == "🏠 League Home & Awards":
                         f"{r['Swing']:.1f} PIE under avg</div>", unsafe_allow_html=True)
 
 
+
+
+# --------------------------------------------------------------- TOOLS --------
+elif view_mode == "🧰 Tools":
+    st.markdown(
+        "<section class='qcl-tools-hero'>"
+        "<div class='qcl-tools-kicker'>QCL / FIELD KIT</div>"
+        "<div class='qcl-tools-title'>Tools for the next decision.</div>"
+        "<p class='qcl-tools-copy'>Compare players, build a five-man rotation, "
+        "pressure-test a matchup, and export the exact scope you are looking at. "
+        "Every tool below follows the current season and game-type filters.</p>"
+        "</section>",
+        unsafe_allow_html=True,
+    )
+
+    tool_tabs = st.tabs([
+        "⚖️ Player Compare",
+        "🔁 Rotation Builder",
+        "🆚 Team Matchup",
+        "⬇️ Exports & Glossary",
+    ])
+
+    with tool_tabs[0]:
+        player_names = sorted(p_stats["Player/Team"].dropna().astype(str).tolist())
+        if len(player_names) < 2:
+            st.info("At least two players are needed for a comparison.")
+        else:
+            pc1, pc2 = st.columns(2)
+            player_a = pc1.selectbox("First player", player_names, index=0, key="tools_player_a")
+            player_b = pc2.selectbox(
+                "Second player", player_names, index=min(1, len(player_names) - 1),
+                key="tools_player_b",
+            )
+
+            row_a = p_stats[p_stats["Player/Team"] == player_a].iloc[0]
+            row_b = p_stats[p_stats["Player/Team"] == player_b].iloc[0]
+            compare_metrics = [
+                ("PTS", "PPG"), ("REB", "RPG"), ("AST", "APG"),
+                ("PIE", "PIE"), ("TS%", "TS%"), ("NetRtg", "NET RTG"),
+            ]
+
+            st.markdown("#### Head-to-head profile")
+            for metric, label in compare_metrics:
+                av = fnum(row_a.get(metric, 0))
+                bv = fnum(row_b.get(metric, 0))
+                high = max(abs(av), abs(bv), 1.0)
+                aw = min(abs(av) / high * 100, 100)
+                bw = min(abs(bv) / high * 100, 100)
+                st.markdown(
+                    f"<div class='qcl-compare-row'>"
+                    f"<div><div class='qcl-compare-name'>{player_a} · {av:.1f}</div>"
+                    f"<div class='bar'><span style='width:{aw:.1f}%'></span></div></div>"
+                    f"<div class='qcl-compare-stat'>{label}</div>"
+                    f"<div class='right'><div class='qcl-compare-name right'>{bv:.1f} · {player_b}</div>"
+                    f"<div class='bar'><span style='width:{bw:.1f}%'></span></div></div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
+            c1, c2, c3, c4 = st.columns(4)
+            c1.markdown(
+                f"<div class='qcl-tool-card'><div class='qcl-tool-label'>{player_a} team</div>"
+                f"<div class='qcl-tool-value'>{row_a.get('Team', '—')}</div>"
+                f"<div class='qcl-tool-meta'>{int(row_a.get('GP', 0))} games logged</div></div>",
+                unsafe_allow_html=True,
+            )
+            c2.markdown(
+                f"<div class='qcl-tool-card'><div class='qcl-tool-label'>{player_a} win rate</div>"
+                f"<div class='qcl-tool-value'>{fnum(row_a.get('Win%', 0)) * 100:.0f}%</div>"
+                f"<div class='qcl-tool-meta'>current scope</div></div>",
+                unsafe_allow_html=True,
+            )
+            c3.markdown(
+                f"<div class='qcl-tool-card'><div class='qcl-tool-label'>{player_b} team</div>"
+                f"<div class='qcl-tool-value'>{row_b.get('Team', '—')}</div>"
+                f"<div class='qcl-tool-meta'>{int(row_b.get('GP', 0))} games logged</div></div>",
+                unsafe_allow_html=True,
+            )
+            c4.markdown(
+                f"<div class='qcl-tool-card'><div class='qcl-tool-label'>{player_b} win rate</div>"
+                f"<div class='qcl-tool-value'>{fnum(row_b.get('Win%', 0)) * 100:.0f}%</div>"
+                f"<div class='qcl-tool-meta'>current scope</div></div>",
+                unsafe_allow_html=True,
+            )
+
+    with tool_tabs[1]:
+        rotation_teams = sorted(t_stats["Team Name"].dropna().astype(str).tolist())
+        if not rotation_teams:
+            st.info("No teams are available in this scope.")
+        else:
+            selected_team = st.selectbox("Team", rotation_teams, key="tools_rotation_team")
+            roster = full_roster(selected_team)
+            scratches = st.multiselect(
+                "Optional scratches",
+                roster["Player/Team"].tolist(),
+                key="tools_rotation_scratches",
+                help="Remove a player to see how the active five changes.",
+            )
+            rotation = get_rotation(selected_team, exclude=scratches)
+            default_rotation = get_rotation(selected_team)
+
+            total_ppg = float(rotation["PTS"].sum()) if not rotation.empty else 0.0
+            healthy_ppg = float(default_rotation["PTS"].sum()) if not default_rotation.empty else 0.0
+            availability = total_ppg / healthy_ppg * 100 if healthy_ppg else 0.0
+            r1, r2, r3, r4 = st.columns(4)
+            r1.markdown(
+                f"<div class='qcl-tool-card'><div class='qcl-tool-label'>Active five</div>"
+                f"<div class='qcl-tool-value'>{len(rotation)} / {ROTATION_SIZE}</div>"
+                f"<div class='qcl-tool-meta'>rotation bodies</div></div>",
+                unsafe_allow_html=True,
+            )
+            r2.markdown(
+                f"<div class='qcl-tool-card'><div class='qcl-tool-label'>Rotation PPG</div>"
+                f"<div class='qcl-tool-value'>{total_ppg:.1f}</div>"
+                f"<div class='qcl-tool-meta'>average scoring load</div></div>",
+                unsafe_allow_html=True,
+            )
+            r3.markdown(
+                f"<div class='qcl-tool-card'><div class='qcl-tool-label'>Health index</div>"
+                f"<div class='qcl-tool-value'>{availability:.0f}%</div>"
+                f"<div class='qcl-tool-meta'>vs. default top five</div></div>",
+                unsafe_allow_html=True,
+            )
+            top_name = rotation.iloc[0]["Player/Team"] if not rotation.empty else "—"
+            r4.markdown(
+                f"<div class='qcl-tool-card'><div class='qcl-tool-label'>Usage anchor</div>"
+                f"<div class='qcl-tool-value'>{top_name}</div>"
+                f"<div class='qcl-tool-meta'>highest GP / PIE rotation slot</div></div>",
+                unsafe_allow_html=True,
+            )
+
+            st.markdown(f"#### {team_full(selected_team)} active five")
+            if rotation.empty:
+                st.warning("No available players remain in this rotation.")
+            else:
+                rotation_view = rotation[
+                    ["Player/Team", "GP", "PTS", "REB", "AST", "USG", "PIE"]
+                ].copy()
+                rotation_view.columns = ["Player", "GP", "PPG", "RPG", "APG", "USG%", "PIE"]
+                st.dataframe(rotation_view, use_container_width=True, hide_index=True)
+                dl(
+                    rotation_view,
+                    "⬇️ Rotation CSV",
+                    f"{selected_team}_rotation.csv",
+                    "dl_tools_rotation",
+                )
+
+    with tool_tabs[2]:
+        matchup_teams = sorted(t_stats["Team Name"].dropna().astype(str).tolist())
+        if len(matchup_teams) < 2:
+            st.info("At least two teams are needed for a matchup.")
+        else:
+            m1, m2 = st.columns(2)
+            home_team = m1.selectbox("Team one", matchup_teams, index=0, key="tools_team_a")
+            away_team = m2.selectbox(
+                "Team two", matchup_teams, index=min(1, len(matchup_teams) - 1),
+                key="tools_team_b",
+            )
+            if home_team == away_team:
+                st.warning("Choose two different teams to compare.")
+            else:
+                home = t_stats[t_stats["Team Name"] == home_team].iloc[0]
+                away = t_stats[t_stats["Team Name"] == away_team].iloc[0]
+                matchup_metrics = [
+                    ("Win%", "WIN RATE", 100), ("PPG", "SCORING", 1),
+                    ("OppPPG", "OPP. PPG", 1), ("NetRtg", "NET RTG", 1),
+                    ("Pace", "PACE", 1),
+                ]
+                st.markdown("#### Team profile")
+                for metric, label, multiplier in matchup_metrics:
+                    hv = fnum(home.get(metric, 0)) * multiplier
+                    av = fnum(away.get(metric, 0)) * multiplier
+                    high = max(abs(hv), abs(av), 1.0)
+                    hw = min(abs(hv) / high * 100, 100)
+                    aw = min(abs(av) / high * 100, 100)
+                    st.markdown(
+                        f"<div class='qcl-compare-row'>"
+                        f"<div><div class='qcl-compare-name'>{home_team} · {hv:.1f}</div>"
+                        f"<div class='bar'><span style='width:{hw:.1f}%'></span></div></div>"
+                        f"<div class='qcl-compare-stat'>{label}</div>"
+                        f"<div class='right'><div class='qcl-compare-name right'>{av:.1f} · {away_team}</div>"
+                        f"<div class='bar'><span style='width:{aw:.1f}%'></span></div></div>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                st.caption(
+                    "This is a profile comparison, not a simulated result. Use Oracle Predictor "
+                    "when you want a score distribution and win probability."
+                )
+
+    with tool_tabs[3]:
+        st.markdown("#### Download the current view")
+        st.caption(
+            f"Exports respect the active scope: {banner_text}. "
+            "Use these files for scouting, posts, or your own analysis."
+        )
+        export_cols = st.columns(4)
+        export_cols[0].download_button(
+            "⬇️ Player stats", p_stats.to_csv(index=False).encode("utf-8"),
+            "qcl_player_stats.csv", "text/csv", use_container_width=True,
+            key="dl_tools_player_stats",
+        )
+        export_cols[1].download_button(
+            "⬇️ Team stats", t_stats.to_csv(index=False).encode("utf-8"),
+            "qcl_team_stats.csv", "text/csv", use_container_width=True,
+            key="dl_tools_team_stats",
+        )
+        export_cols[2].download_button(
+            "⬇️ Game logs", df_active.to_csv(index=False).encode("utf-8"),
+            "qcl_game_logs.csv", "text/csv", use_container_width=True,
+            key="dl_tools_game_logs",
+        )
+        export_cols[3].download_button(
+            "⬇️ Watchlist", "\n".join(st.session_state.watchlist).encode("utf-8"),
+            "qcl_watchlist.txt", "text/plain", use_container_width=True,
+            key="dl_tools_watchlist",
+        )
+        with st.expander("📖 Stat glossary", expanded=True):
+            st.markdown(
+                "- **PIE** — overall game impact score used for league ranking.\n"
+                "- **TS%** — true shooting efficiency using field goals and free throws.\n"
+                "- **NetRtg** — offensive rating minus defensive rating.\n"
+                "- **USG%** — estimated share of team possessions used by a player.\n"
+                "- **Health index** — active rotation scoring compared with the default top five."
+            )
+
+
+# ------------------------------------------------------ ADVANCED STAT LAB ---
+elif view_mode == "🧠 Advanced Stat Lab":
+    advanced_board = build_advanced_player_board(p_df)
+    st.markdown(
+        "<section class='qcl-tools-hero'>"
+        "<div class='qcl-tools-kicker'>QCL / RAW DATA LAYER</div>"
+        "<div class='qcl-tools-title'>The numbers between the box score.</div>"
+        "<p class='qcl-tools-copy'>Turn possessions, defensive events, rebounding work, "
+        "and shot profile into usable player signals. These are derived from the raw game "
+        "rows in the current scope, not manually entered ratings.</p>"
+        "</section>",
+        unsafe_allow_html=True,
+    )
+
+    if advanced_board.empty:
+        st.info("There are not enough player rows to build the advanced board.")
+    else:
+        lab_tabs = st.tabs(["📋 Derived Stat Board", "🗺️ Impact Map", "🏅 Leaders & Definitions"])
+
+        with lab_tabs[0]:
+            control_a, control_b, control_c = st.columns([1.2, 1.5, 1])
+            min_gp = control_a.slider(
+                "Minimum GP", 0, int(max(1, advanced_board["GP"].max())), 1,
+                key="adv_min_gp",
+            )
+            sort_labels = {
+                "PIE": "PIE", "Impact Load": "Impact Load", "Disruption": "Disruption",
+                "Shots Affected": "Shots Affected", "Tipped Passes": "Tipped Passes",
+                "Hustle": "Hustle", "Creation Load": "Creation Load",
+                "TS%": "TS%", "Game Score": "Game Score", "Net offensive rating": "ORtg",
+                "GP": "GP",
+            }
+            sort_label = control_b.selectbox("Rank players by", list(sort_labels), key="adv_sort")
+            descending = control_c.checkbox("Highest first", value=True, key="adv_desc")
+            view = advanced_board[advanced_board["GP"] >= min_gp].copy()
+            view = view.sort_values(sort_labels[sort_label], ascending=not descending)
+
+            st.caption(
+                f"{len(view)} players shown · sorted by {sort_label} · scope: {banner_text}"
+            )
+            board_cols = [
+                "Player/Team", "Team", "Type", "Rarity", "GP", "PTS", "REB", "AST",
+                "STL", "BLK", "Stocks", "Tipped Passes", "Shots Affected", "FB Points",
+                "Disruption", "Hustle", "Creation Load", "TS%", "eFG%", "AST/TO",
+                "Game Score", "PIE", "ORtg",
+            ]
+            board_cols = [c for c in board_cols if c in view.columns]
+            display_board = view[board_cols].copy()
+            numeric_display = [
+                c for c in display_board.columns
+                if c not in ("Player/Team", "Team", "Type", "Rarity", "GP")
+            ]
+            display_board[numeric_display] = display_board[numeric_display].round(1)
+            st.dataframe(display_board, use_container_width=True, hide_index=True)
+            dl(
+                display_board, "⬇️ Advanced player board CSV",
+                "qcl_advanced_player_board.csv", "dl_advanced_player_board",
+            )
+
+        with lab_tabs[1]:
+            st.markdown("#### Creation vs defensive disruption")
+            st.caption(
+                "Bubble size represents disruption events. Color is the existing player "
+                "archetype calculated from league percentiles."
+            )
+            map_view = advanced_board[advanced_board["GP"] >= min_gp].copy()
+            if map_view.empty:
+                st.info("Lower the minimum GP filter to see the map.")
+            else:
+                fig = px.scatter(
+                    map_view, x="Creation Load", y="Disruption", size="PTS", color="Type",
+                    hover_name="Player/Team",
+                    hover_data=["Team", "GP", "PIE", "Shots Affected",
+                                "Tipped Passes", "Hustle"],
+                    template="plotly_dark", size_max=34,
+                    title="Players who create offense and change possessions",
+                )
+                fig.update_layout(
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    height=560, legend_title_text="Player type",
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+        with lab_tabs[2]:
+            st.markdown("#### Category leaders")
+            leader_stats = [
+                ("Shots affected", "Shots Affected"),
+                ("Tipped passes", "Tipped Passes"),
+                ("Fast-break points", "FB Points"),
+                ("Stocks", "Stocks"),
+                ("Hustle index", "Hustle"),
+                ("True shooting", "TS%"),
+            ]
+            leader_cols = st.columns(3)
+            for i, (title, stat) in enumerate(leader_stats):
+                with leader_cols[i % 3]:
+                    st.markdown(
+                        generate_mini_leaderboard(
+                            title, advanced_board[advanced_board["GP"] >= min_gp],
+                            stat, GOLD if i % 2 == 0 else BLUE, 5, "Player/Team"
+                        ),
+                        unsafe_allow_html=True,
+                    )
+            with st.expander("📖 How the derived stats work", expanded=True):
+                st.markdown(
+                    "- **Shots Affected** — a position-aware proxy using blocks, rebounds, "
+                    "steals, and fouls.\n"
+                    "- **Tipped Passes** — a position-aware proxy using steals and fouls "
+                    "for perimeter players, with blocks contributing for larger players.\n"
+                    "- **Disruption** — Shots Affected + Tipped Passes.\n"
+                    "- **Hustle** — Disruption + Fast-Break Points + Offensive Rebounds.\n"
+                    "- **Creation Load** — field-goal attempts + free-throw pressure + half "
+                    "of assists.\n"
+                    "- **Impact Load** — points + assist value + rebounds + defensive stocks."
+                )
+
+
+# -------------------------------------------------------- PLAYER GALAXY -------
+elif view_mode == "🌌 Player Galaxy":
+    galaxy_board = build_advanced_player_board(p_df)
+    st.markdown(
+        "<section class='qcl-tools-hero'>"
+        "<div class='qcl-tools-kicker'>QCL / PLAYER CONSTELLATION</div>"
+        "<div class='qcl-tools-title'>Every player. Every signal.</div>"
+        "<p class='qcl-tools-copy'>Filter the league by team and archetype, then sort the "
+        "full player universe by the stat that matters to you. Click into Advanced Stat Lab "
+        "when you want the formula behind a signal.</p>"
+        "</section>",
+        unsafe_allow_html=True,
+    )
+
+    if galaxy_board.empty:
+        st.info("There are no player rows in the current scope.")
+    else:
+        types = sorted(galaxy_board["Type"].dropna().unique().tolist())
+        teams = sorted(galaxy_board["Team"].dropna().unique().tolist())
+        f1, f2, f3, f4 = st.columns([1.5, 1.2, 1.2, 1])
+        galaxy_search = f1.text_input("Search player", key="galaxy_search")
+        galaxy_teams = f2.multiselect("Teams", teams, key="galaxy_teams")
+        galaxy_types = f3.multiselect("Player types", types, key="galaxy_types")
+        galaxy_min_gp = f4.slider(
+            "Min GP", 0, int(max(1, galaxy_board["GP"].max())), 1, key="galaxy_min_gp"
+        )
+
+        galaxy_view = galaxy_board[galaxy_board["GP"] >= galaxy_min_gp].copy()
+        if galaxy_search:
+            galaxy_view = galaxy_view[
+                galaxy_view["Player/Team"].str.contains(galaxy_search, case=False, na=False)
+            ]
+        if galaxy_teams:
+            galaxy_view = galaxy_view[galaxy_view["Team"].isin(galaxy_teams)]
+        if galaxy_types:
+            galaxy_view = galaxy_view[galaxy_view["Type"].isin(galaxy_types)]
+
+        galaxy_sort_map = {
+            "PIE": "PIE", "PTS": "PTS", "REB": "REB", "AST": "AST",
+            "Stocks": "Stocks", "Shots Affected": "Shots Affected",
+            "Tipped Passes": "Tipped Passes", "Disruption": "Disruption",
+            "Hustle": "Hustle", "TS%": "TS%", "eFG%": "eFG%",
+            "Game Score": "Game Score", "ORtg": "ORtg", "GP": "GP",
+        }
+        s1, s2, s3 = st.columns([1.5, 1, 1])
+        galaxy_sort_label = s1.selectbox(
+            "Sort galaxy by", list(galaxy_sort_map), index=0, key="galaxy_sort"
+        )
+        galaxy_desc = s2.checkbox("Descending", value=True, key="galaxy_desc")
+        s3.metric("Players in view", len(galaxy_view))
+        galaxy_view = galaxy_view.sort_values(
+            galaxy_sort_map[galaxy_sort_label], ascending=not galaxy_desc
+        )
+
+        if galaxy_view.empty:
+            st.info("No players match those filters.")
+        else:
+            chart = px.scatter(
+                galaxy_view, x="PTS", y="PIE", size="Disruption", color="Type",
+                hover_name="Player/Team",
+                hover_data=["Team", "GP", "Shots Affected", "Tipped Passes", "Hustle"],
+                template="plotly_dark", size_max=30,
+                title=f"Player Galaxy · sorted by {galaxy_sort_label}",
+            )
+            chart.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                height=500, legend_title_text="Type",
+            )
+            st.plotly_chart(chart, use_container_width=True)
+
+            galaxy_cols = [
+                "Player/Team", "Team", "Type", "Rarity", "GP", "PTS", "REB", "AST",
+                "STL", "BLK", "Stocks", "Shots Affected", "Tipped Passes", "FB Points",
+                "Disruption", "Hustle", "TS%", "eFG%", "Game Score", "PIE", "ORtg",
+            ]
+            galaxy_cols = [c for c in galaxy_cols if c in galaxy_view.columns]
+            galaxy_table = galaxy_view[galaxy_cols].copy()
+            galaxy_numeric = [
+                c for c in galaxy_table.columns
+                if c not in ("Player/Team", "Team", "Type", "Rarity", "GP")
+            ]
+            galaxy_table[galaxy_numeric] = galaxy_table[galaxy_numeric].round(1)
+            st.dataframe(galaxy_table, use_container_width=True, hide_index=True)
+            dl(
+                galaxy_table, "⬇️ Player Galaxy CSV",
+                "qcl_player_galaxy.csv", "dl_player_galaxy",
+            )
+
+        with st.expander("🌟 Player type key"):
+            st.markdown(
+                "**Microwave Chucker** = highest three-point volume · "
+                "**Glass Cleaner** = rebound specialist · "
+                "**Pocket Picker** = steals leader · "
+                "**Rim Protector** = blocks leader · "
+                "**Corner Specialist** = three-point efficiency · "
+                "**Dime Dropper** = assists leader · "
+                "**Lockdown Wing** = steals + blocks · "
+                "**Iron Man Grind** = games-played durability · "
+                "**Combo Guard** = scoring leader."
+            )
 
 
 # --------------------------------------------------------- POWER RANKINGS ----
