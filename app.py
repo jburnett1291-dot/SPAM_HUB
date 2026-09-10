@@ -3792,74 +3792,6 @@ if view_mode in ("🔬 Advanced Analytics Lab", "🌌 Player Galaxy"):
         if galaxy_view.empty:
             st.info("No players match those filters.")
         else:
-            st.markdown(
-                """
-                <style>
-                    .nebula-container {
-                        position: relative;
-                        overflow: hidden;
-                        padding: 0.55rem;
-                        border: 1px solid rgba(138, 43, 226, 0.34);
-                        border-radius: 0.9rem;
-                        background:
-                            radial-gradient(circle at 28% 35%, rgba(0, 191, 255, 0.13), transparent 18rem),
-                            radial-gradient(circle at 72% 62%, rgba(138, 43, 226, 0.20), transparent 22rem),
-                            radial-gradient(circle at 50% 50%, #16082b 0%, #05010a 72%, #000 100%);
-                        box-shadow: inset 0 0 50px rgba(138, 43, 226, 0.18),
-                                    0 0 28px rgba(0, 191, 255, 0.10);
-                        animation: nebulaPulse 8s infinite alternate ease-in-out;
-                    }
-                    .nebula-container::before,
-                    .nebula-container::after {
-                        content: "";
-                        position: absolute;
-                        pointer-events: none;
-                        border-radius: 50%;
-                        filter: blur(1px);
-                    }
-                    .nebula-container::before {
-                        top: 12%;
-                        left: 10%;
-                        width: 3px;
-                        height: 3px;
-                        background: #e6bf55;
-                        box-shadow:
-                            60px 38px #00bfff, 140px 80px #fff, 230px 24px #a855f7,
-                            340px 120px #e6bf55, 470px 42px #00bfff, 610px 95px #fff,
-                            760px 28px #a855f7, 880px 140px #e6bf55;
-                        opacity: 0.75;
-                    }
-                    .nebula-container::after {
-                        right: 8%;
-                        bottom: 12%;
-                        width: 2px;
-                        height: 2px;
-                        background: #fff;
-                        box-shadow:
-                            -90px -44px #00bfff, -210px -12px #e6bf55,
-                            -330px -80px #a855f7, -510px -20px #fff,
-                            -680px -100px #00bfff;
-                        opacity: 0.6;
-                    }
-                    @keyframes nebulaPulse {
-                        0% {
-                            box-shadow: inset 0 0 34px rgba(138, 43, 226, 0.12),
-                                        0 0 16px rgba(0, 191, 255, 0.06);
-                        }
-                        100% {
-                            box-shadow: inset 0 0 70px rgba(138, 43, 226, 0.30),
-                                        0 0 34px rgba(0, 191, 255, 0.18);
-                        }
-                    }
-                    @media (prefers-reduced-motion: reduce) {
-                        .nebula-container { animation: none; }
-                    }
-                </style>
-                <div class="nebula-container">
-                """,
-                unsafe_allow_html=True,
-            )
-
             neon_types = [
                 "#e6bf55", "#00bfff", "#a855f7", "#58d39a",
                 "#ff6b9d", "#f97316", "#7dd3fc", "#c084fc",
@@ -3910,12 +3842,246 @@ if view_mode in ("🔬 Advanced Analytics Lab", "🌌 Player Galaxy"):
                     ),
                 ),
             )
-            st.plotly_chart(
-                chart,
-                use_container_width=True,
-                config={"displaylogo": False, "responsive": True},
-            )
-            st.markdown("</div>", unsafe_allow_html=True)
+            chart_payload = chart.to_json()
+            galaxy_scene = """
+            <!doctype html>
+            <html>
+            <head>
+                <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+                <style>
+                    :root { color-scheme: dark; }
+                    * { box-sizing: border-box; }
+                    html, body {
+                        width: 100%;
+                        height: 100%;
+                        margin: 0;
+                        overflow: hidden;
+                        background: #020108;
+                        font-family: Inter, system-ui, sans-serif;
+                    }
+                    #galaxy-stage {
+                        position: relative;
+                        width: 100%;
+                        height: 680px;
+                        overflow: hidden;
+                        border: 1px solid rgba(138, 43, 226, 0.48);
+                        border-radius: 18px;
+                        isolation: isolate;
+                        background:
+                            radial-gradient(ellipse at 50% 52%,
+                                rgba(94, 35, 168, 0.24) 0%,
+                                rgba(24, 7, 55, 0.37) 24%,
+                                transparent 59%),
+                            radial-gradient(ellipse at 23% 34%,
+                                rgba(0, 191, 255, 0.18) 0%,
+                                transparent 37%),
+                            radial-gradient(ellipse at 82% 70%,
+                                rgba(219, 39, 119, 0.14) 0%,
+                                transparent 34%),
+                            #020108;
+                        box-shadow:
+                            inset 0 0 90px rgba(138, 43, 226, 0.32),
+                            inset 0 -40px 100px rgba(0, 191, 255, 0.12),
+                            0 0 38px rgba(0, 191, 255, 0.15);
+                    }
+                    #starfield, .nebula-clouds, .energy-rings,
+                    #galaxy-plot, .scene-label {
+                        position: absolute;
+                        inset: 0;
+                    }
+                    #starfield { z-index: 1; opacity: 0.86; }
+                    .nebula-clouds {
+                        z-index: 2;
+                        pointer-events: none;
+                        filter: blur(22px);
+                        opacity: 0.78;
+                    }
+                    .cloud {
+                        position: absolute;
+                        width: 44%;
+                        height: 28%;
+                        border-radius: 50%;
+                        mix-blend-mode: screen;
+                        animation: cloudDrift 16s ease-in-out infinite alternate;
+                    }
+                    .cloud-a {
+                        top: 12%; left: 3%;
+                        background: radial-gradient(ellipse, rgba(0,191,255,.38), transparent 68%);
+                        transform: rotate(-18deg);
+                    }
+                    .cloud-b {
+                        top: 46%; right: -4%;
+                        background: radial-gradient(ellipse, rgba(168,85,247,.48), transparent 68%);
+                        transform: rotate(23deg);
+                        animation-delay: -5s;
+                    }
+                    .cloud-c {
+                        bottom: -2%; left: 29%;
+                        background: radial-gradient(ellipse, rgba(230,191,85,.20), transparent 66%);
+                        transform: rotate(-8deg);
+                        animation-delay: -10s;
+                    }
+                    .energy-rings {
+                        z-index: 3;
+                        pointer-events: none;
+                        display: grid;
+                        place-items: center;
+                    }
+                    .energy-rings::before,
+                    .energy-rings::after {
+                        content: "";
+                        position: absolute;
+                        width: 42%;
+                        aspect-ratio: 2.9 / 1;
+                        border: 1px solid rgba(0,191,255,.40);
+                        border-radius: 50%;
+                        transform: rotate(-13deg);
+                        box-shadow: 0 0 18px rgba(0,191,255,.28);
+                        animation: ringOrbit 9s linear infinite;
+                    }
+                    .energy-rings::after {
+                        width: 59%;
+                        border-color: rgba(168,85,247,.30);
+                        transform: rotate(19deg);
+                        animation-duration: 14s;
+                        animation-direction: reverse;
+                    }
+                    .energy-rings {
+                        background: radial-gradient(circle at 50% 52%,
+                            rgba(230,191,85,.20) 0 2px,
+                            rgba(0,191,255,.08) 3px,
+                            transparent 12%);
+                        animation: corePulse 4s ease-in-out infinite;
+                    }
+                    #galaxy-plot {
+                        z-index: 4;
+                        pointer-events: auto;
+                    }
+                    #galaxy-plot .plotly,
+                    #galaxy-plot .main-svg {
+                        background: transparent !important;
+                    }
+                    .scene-label {
+                        z-index: 5;
+                        inset: auto 18px 14px auto;
+                        width: auto;
+                        height: auto;
+                        padding: 6px 10px;
+                        border: 1px solid rgba(255,255,255,.12);
+                        border-radius: 99px;
+                        color: rgba(232,236,255,.70);
+                        background: rgba(2,1,8,.48);
+                        backdrop-filter: blur(8px);
+                        font-size: 10px;
+                        letter-spacing: .08em;
+                        text-transform: uppercase;
+                    }
+                    @keyframes cloudDrift {
+                        0% { transform: translate3d(-2%, 2%, 0) rotate(-18deg) scale(1); }
+                        100% { transform: translate3d(7%, -5%, 0) rotate(-8deg) scale(1.18); }
+                    }
+                    @keyframes ringOrbit {
+                        0% { transform: rotate(-13deg) scale(.92); opacity: .32; }
+                        50% { opacity: .78; }
+                        100% { transform: rotate(347deg) scale(1.08); opacity: .32; }
+                    }
+                    @keyframes corePulse {
+                        0%, 100% { opacity: .62; }
+                        50% { opacity: 1; }
+                    }
+                    @media (prefers-reduced-motion: reduce) {
+                        .cloud, .energy-rings { animation: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <main id="galaxy-stage">
+                    <canvas id="starfield"></canvas>
+                    <div class="nebula-clouds">
+                        <div class="cloud cloud-a"></div>
+                        <div class="cloud cloud-b"></div>
+                        <div class="cloud cloud-c"></div>
+                    </div>
+                    <div class="energy-rings"></div>
+                    <div id="galaxy-plot"></div>
+                    <div class="scene-label">Live constellation · drag to orbit</div>
+                </main>
+                <script>
+                    const plotSpec = """ + chart_payload + """;
+                    const stage = document.getElementById("galaxy-stage");
+                    const canvas = document.getElementById("starfield");
+                    const ctx = canvas.getContext("2d");
+                    const reduceMotion = window.matchMedia(
+                        "(prefers-reduced-motion: reduce)"
+                    ).matches;
+                    let particles = [];
+                    let frame = 0;
+
+                    function resizeStars() {
+                        const ratio = window.devicePixelRatio || 1;
+                        canvas.width = stage.clientWidth * ratio;
+                        canvas.height = stage.clientHeight * ratio;
+                        canvas.style.width = stage.clientWidth + "px";
+                        canvas.style.height = stage.clientHeight + "px";
+                        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+                    }
+                    function seedStars() {
+                        particles = Array.from({length: 145}, (_, index) => ({
+                            x: Math.random() * stage.clientWidth,
+                            y: Math.random() * stage.clientHeight,
+                            r: Math.random() * 1.7 + 0.25,
+                            a: Math.random() * 0.75 + 0.15,
+                            speed: Math.random() * 0.28 + 0.04,
+                            phase: Math.random() * Math.PI * 2,
+                            color: index % 7 === 0 ? "#e6bf55" :
+                                index % 5 === 0 ? "#00bfff" : "#d9d6ff"
+                        }));
+                    }
+                    function drawStars() {
+                        const width = stage.clientWidth;
+                        const height = stage.clientHeight;
+                        ctx.clearRect(0, 0, width, height);
+                        particles.forEach((star) => {
+                            if (!reduceMotion) {
+                                star.y -= star.speed;
+                                if (star.y < -4) {
+                                    star.y = height + 4;
+                                    star.x = Math.random() * width;
+                                }
+                            }
+                            const twinkle = reduceMotion ? 1 :
+                                0.70 + Math.sin(frame * 0.025 + star.phase) * 0.30;
+                            ctx.beginPath();
+                            ctx.fillStyle = star.color;
+                            ctx.globalAlpha = star.a * twinkle;
+                            ctx.shadowBlur = star.r > 1.25 ? 9 : 3;
+                            ctx.shadowColor = star.color;
+                            ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+                            ctx.fill();
+                        });
+                        ctx.globalAlpha = 1;
+                        ctx.shadowBlur = 0;
+                        frame += 1;
+                        if (!reduceMotion) requestAnimationFrame(drawStars);
+                    }
+                    window.addEventListener("resize", () => {
+                        resizeStars();
+                        seedStars();
+                    });
+                    resizeStars();
+                    seedStars();
+                    drawStars();
+                    Plotly.newPlot(
+                        "galaxy-plot",
+                        plotSpec.data,
+                        plotSpec.layout,
+                        {responsive: true, displaylogo: false, scrollZoom: true}
+                    );
+                </script>
+            </body>
+            </html>
+            """
+            components.html(galaxy_scene, height=700, scrolling=False)
             st.caption(
                 "Drag to rotate the constellation · scroll to zoom · hover a star "
                 "for the player profile."
