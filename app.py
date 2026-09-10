@@ -36,6 +36,7 @@ v3.1 CHANGELOG
 
 import os
 import re
+import html as _html
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -391,6 +392,124 @@ st.markdown("""
     @keyframes popIn {
         from { opacity: 0; transform: scale(0.95); }
         to { opacity: 1; transform: scale(1); }
+    }
+    .galaxy-stat-card {
+        display: grid;
+        grid-template-columns: 2.5rem minmax(0, 1fr) minmax(10rem, 13rem);
+        align-items: center;
+        gap: 0.8rem;
+        margin: 0.55rem 0;
+        padding: 0.8rem 1rem;
+        border: 1px solid var(--qcl-border, rgba(235,231,220,0.13));
+        border-radius: 0.8rem;
+        background:
+            linear-gradient(105deg, rgba(138,43,226,0.08), transparent 42%),
+            var(--qcl-surface, #15171a);
+        transition: transform 180ms ease, border-color 180ms ease,
+                    box-shadow 180ms ease;
+    }
+    .galaxy-stat-card:hover {
+        transform: translateX(4px);
+        border-color: rgba(0,191,255,0.45);
+        box-shadow: 0 8px 26px rgba(0,0,0,0.22);
+    }
+    .galaxy-rank {
+        font-size: 0.9rem;
+        font-weight: 950;
+        text-align: center;
+    }
+    .galaxy-player-name {
+        overflow: hidden;
+        color: #fff;
+        font-size: 0.98rem;
+        font-weight: 850;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .galaxy-player-meta {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.32rem;
+        margin-top: 0.18rem;
+        color: #92979d;
+        font-size: 0.68rem;
+    }
+    .galaxy-tier-badge, .galaxy-archetype {
+        display: inline-block;
+        padding: 0.13rem 0.34rem;
+        border: 1px solid;
+        border-radius: 99px;
+        font-size: 0.58rem;
+        font-weight: 850;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+    .galaxy-archetype {
+        color: #cbd5e1;
+        border-color: rgba(203,213,225,0.2);
+        background: rgba(203,213,225,0.06);
+    }
+    .galaxy-stat-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin-top: 0.42rem;
+    }
+    .galaxy-stat-chip {
+        padding: 0.2rem 0.38rem;
+        border-radius: 0.3rem;
+        color: #aeb3b7;
+        background: rgba(255,255,255,0.055);
+        font-size: 0.64rem;
+    }
+    .galaxy-stat-chip b {
+        color: #e6bf55;
+        font-weight: 850;
+    }
+    .galaxy-card-value {
+        min-width: 0;
+        text-align: right;
+    }
+    .galaxy-stat-label {
+        color: #92979d;
+        font-size: 0.6rem;
+        font-weight: 850;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+    .galaxy-stat-value {
+        margin-top: 0.1rem;
+        color: #fff;
+        font-size: 1.35rem;
+        font-weight: 950;
+        letter-spacing: -0.04em;
+    }
+    .galaxy-percentile-track {
+        height: 0.24rem;
+        margin-top: 0.28rem;
+        overflow: hidden;
+        border-radius: 99px;
+        background: rgba(255,255,255,0.08);
+    }
+    .galaxy-percentile-track span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        animation: slideIn 0.8s ease-out both;
+    }
+    @keyframes slideIn {
+        from { width: 0%; opacity: 0.3; }
+        to { opacity: 1; }
+    }
+    @media (max-width: 700px) {
+        .galaxy-stat-card {
+            grid-template-columns: 2rem minmax(0, 1fr);
+        }
+        .galaxy-card-value {
+            grid-column: 2;
+            text-align: left;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -2103,6 +2222,146 @@ def build_advanced_player_board(scope_df):
     return board.sort_values(['PIE', 'PTS'], ascending=False).reset_index(drop=True)
 
 
+def _galaxy_tier_color(percentile):
+    """Map a player's percentile to a visual tier for the Galaxy cards."""
+    if percentile >= 0.95:
+        return GOLD
+    if percentile >= 0.85:
+        return "#a855f7"
+    if percentile >= 0.70:
+        return BLUE
+    return "#7f8c8d"
+
+
+def _galaxy_stat_value(value, column):
+    """Keep the card's headline value compact and consistent."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return _html.escape(str(value))
+    if column in {"TS%", "eFG%"}:
+        return f"{number:.1f}%"
+    if column == "GP":
+        return f"{number:.0f}"
+    return f"{number:.1f}"
+
+
+def render_modern_stat_row(rank, name, team, stat_val, percentile, color,
+                           stat_label, archetype="", secondary_stats=None):
+    """Render one Galaxy player as a responsive, animated stat card."""
+    pct_width = max(0, min(100, int(round(percentile * 100))))
+    secondary_stats = secondary_stats or []
+    chips = "".join(
+        f"<span class='galaxy-stat-chip'><b>{_html.escape(str(label))}</b> "
+        f"{_html.escape(str(value))}</span>"
+        for label, value in secondary_stats
+    )
+    badge = (
+        f"<span class='galaxy-tier-badge' style='color:{color};"
+        f"border-color:{color}55;background:{color}18;'>"
+        f"{pct_width}th percentile</span>"
+    )
+    archetype_html = (
+        f"<span class='galaxy-archetype'>{_html.escape(str(archetype))}</span>"
+        if archetype else ""
+    )
+    return (
+        "<article class='galaxy-stat-card'>"
+        f"<div class='galaxy-rank' style='color:{color};'>#{rank}</div>"
+        "<div class='galaxy-player-copy'>"
+        f"<div class='galaxy-player-name'>{_html.escape(str(name))}</div>"
+        f"<div class='galaxy-player-meta'>{_html.escape(str(team))} "
+        f"{badge}{archetype_html}</div>"
+        f"<div class='galaxy-stat-chips'>{chips}</div>"
+        "</div>"
+        "<div class='galaxy-card-value'>"
+        f"<div class='galaxy-stat-label'>{_html.escape(stat_label)}</div>"
+        f"<div class='galaxy-stat-value'>{_html.escape(str(stat_val))}</div>"
+        "<div class='galaxy-percentile-track'>"
+        f"<span style='width:{pct_width}%;background:linear-gradient(90deg,{color},#00bfff);'></span>"
+        "</div>"
+        "</div>"
+        "</article>"
+    )
+
+
+def render_modern_dataframe(frame, name_hint=None, max_rows=None):
+    """Use the Galaxy card language for every tabular view in the app.
+
+    The underlying dataframe remains available to downloads and calculations;
+    this only changes the on-screen presentation from a spreadsheet to ranked,
+    responsive cards.
+    """
+    if frame is None or frame.empty:
+        st.info("No rows in this view.")
+        return
+
+    view = frame.copy()
+    text_cols = [
+        c for c in view.columns
+        if not pd.api.types.is_numeric_dtype(view[c])
+    ]
+    name_candidates = [name_hint, "Player/Team", "Player", "Team Name", "Team"]
+    name_col = next((c for c in name_candidates if c and c in view.columns), None)
+    if name_col is None:
+        name_col = text_cols[0] if text_cols else view.columns[0]
+
+    numeric_cols = [
+        c for c in view.columns
+        if pd.api.types.is_numeric_dtype(view[c])
+    ]
+    preferred = [
+        "PIE", "Win%", "PTS", "PROJ PTS", "Point_Diff", "NetRtg",
+        "ORtg", "GmSc", "USG", "REB", "AST", "GP",
+    ]
+    primary_col = next((c for c in preferred if c in numeric_cols), None)
+    if primary_col is None and numeric_cols:
+        primary_col = numeric_cols[0]
+
+    if max_rows:
+        view = view.head(max_rows)
+
+    if primary_col:
+        values = pd.to_numeric(view[primary_col], errors="coerce").fillna(0)
+        percentiles = values.rank(pct=True)
+    else:
+        percentiles = pd.Series(0.5, index=view.index)
+
+    secondary_cols = [
+        c for c in numeric_cols
+        if c != primary_col and c not in ("_GalaxyPercentile",)
+    ][:4]
+    cards = []
+    for rank, (_, row) in enumerate(view.iterrows(), start=1):
+        team = row.get("Team", row.get("Team Name", ""))
+        if pd.isna(team):
+            team = "—"
+        secondary = [
+            (column, _galaxy_stat_value(row.get(column, 0), column))
+            for column in secondary_cols
+        ]
+        stat_label = primary_col or "Record"
+        stat_value = (
+            _galaxy_stat_value(row.get(primary_col, 0), primary_col)
+            if primary_col else "—"
+        )
+        percentile = float(percentiles.loc[row.name]) if primary_col else 0.5
+        cards.append(
+            render_modern_stat_row(
+                rank=rank,
+                name=row.get(name_col, f"Record {rank}"),
+                team=team,
+                stat_val=stat_value,
+                percentile=percentile,
+                color=_galaxy_tier_color(percentile),
+                stat_label=stat_label,
+                archetype=row.get("Type", row.get("Rarity", "")),
+                secondary_stats=secondary,
+            )
+        )
+    st.markdown("".join(cards), unsafe_allow_html=True)
+
+
 # =============================================================================
 # 6. SESSION STATE
 # =============================================================================
@@ -3265,7 +3524,7 @@ elif view_mode == "🔬 Advanced Analytics Lab":
                     ["Player/Team", "GP", "PTS", "REB", "AST", "USG", "PIE"]
                 ].copy()
                 rotation_view.columns = ["Player", "GP", "PPG", "RPG", "APG", "USG%", "PIE"]
-                st.dataframe(rotation_view, use_container_width=True, hide_index=True)
+                render_modern_dataframe(rotation_view, name_hint="Player")
                 dl(
                     rotation_view,
                     "⬇️ Rotation CSV",
@@ -3406,7 +3665,7 @@ if view_mode == "🔬 Advanced Analytics Lab":
                 if c not in ("Player/Team", "Team", "Type", "Rarity", "GP")
             ]
             display_board[numeric_display] = display_board[numeric_display].round(1)
-            st.dataframe(display_board, use_container_width=True, hide_index=True)
+            render_modern_dataframe(display_board, name_hint="Player/Team")
             dl(
                 display_board, "⬇️ Advanced player board CSV",
                 "qcl_advanced_player_board.csv", "dl_advanced_player_board",
@@ -3522,6 +3781,12 @@ if view_mode in ("🔬 Advanced Analytics Lab", "🌌 Player Galaxy"):
         s3.metric("Players in view", len(galaxy_view))
         galaxy_view = galaxy_view.sort_values(
             galaxy_sort_map[galaxy_sort_label], ascending=not galaxy_desc
+        )
+        galaxy_sort_column = galaxy_sort_map[galaxy_sort_label]
+        galaxy_view["_GalaxyPercentile"] = (
+            pd.to_numeric(galaxy_view[galaxy_sort_column], errors="coerce")
+            .fillna(0)
+            .rank(pct=True)
         )
 
         if galaxy_view.empty:
@@ -3668,7 +3933,40 @@ if view_mode in ("🔬 Advanced Analytics Lab", "🌌 Player Galaxy"):
                 if c not in ("Player/Team", "Team", "Type", "Rarity", "GP")
             ]
             galaxy_table[galaxy_numeric] = galaxy_table[galaxy_numeric].round(1)
-            st.dataframe(galaxy_table, use_container_width=True, hide_index=True)
+            st.markdown(
+                f"#### ✦ {len(galaxy_view)} players in the constellation"
+            )
+            st.caption(
+                f"Cards are ranked by {galaxy_sort_label}. Percentile bars show each "
+                "player's standing within the filtered Galaxy."
+            )
+            card_html = []
+            for rank, (_, player_row) in enumerate(galaxy_view.iterrows(), start=1):
+                secondary = [
+                    ("PTS", _galaxy_stat_value(player_row.get("PTS", 0), "PTS")),
+                    ("PIE", _galaxy_stat_value(player_row.get("PIE", 0), "PIE")),
+                    ("TS%", _galaxy_stat_value(player_row.get("TS%", 0), "TS%")),
+                    ("GP", _galaxy_stat_value(player_row.get("GP", 0), "GP")),
+                ]
+                card_html.append(
+                    render_modern_stat_row(
+                        rank=rank,
+                        name=player_row.get("Player/Team", "Unknown"),
+                        team=player_row.get("Team", "—"),
+                        stat_val=_galaxy_stat_value(
+                            player_row.get(galaxy_sort_column, 0),
+                            galaxy_sort_column,
+                        ),
+                        percentile=float(player_row.get("_GalaxyPercentile", 0)),
+                        color=_galaxy_tier_color(
+                            float(player_row.get("_GalaxyPercentile", 0))
+                        ),
+                        stat_label=galaxy_sort_label,
+                        archetype=player_row.get("Type", ""),
+                        secondary_stats=secondary,
+                    )
+                )
+            st.markdown("".join(card_html), unsafe_allow_html=True)
             dl(
                 galaxy_table, "⬇️ Player Galaxy CSV",
                 "qcl_player_galaxy.csv", "dl_player_galaxy",
@@ -3840,8 +4138,10 @@ elif view_mode == "🏢 Franchise Hub":
 
                 if not bench.empty:
                     st.markdown("#### 🪑 Depth (outside the five)")
-                    st.dataframe(bench[['Player/Team', 'GP', 'PTS', 'REB', 'AST', 'PIE']],
-                                 use_container_width=True, hide_index=True)
+                    render_modern_dataframe(
+                        bench[['Player/Team', 'GP', 'PTS', 'REB', 'AST', 'PIE']],
+                        name_hint="Player/Team",
+                    )
 
 
             with tab_binder:
@@ -3944,14 +4244,16 @@ elif view_mode == "🔦 Player Spotlight":
                                           REB=('REB', 'mean'), AST=('AST', 'mean'),
                                           PIE=('PIE_Raw', 'mean')).reset_index()
             spl['Win'] = spl['Win'].map({1: 'W', 0: 'L'})
-            st.dataframe(spl.round(1), use_container_width=True, hide_index=True)
+            render_modern_dataframe(spl.round(1), name_hint="Player/Team")
         with s2:
             st.markdown("**By Opponent**")
             if 'Opp_Name' in logs.columns and logs['Opp_Name'].notna().any():
                 opp = logs[logs['Opp_Name'].notna()].groupby('Opp_Name').agg(
                     GP=('GKey', 'nunique'), PTS=('PTS', 'mean'), PIE=('PIE_Raw', 'mean')).reset_index()
-                st.dataframe(opp.round(1).sort_values('PIE', ascending=False),
-                             use_container_width=True, hide_index=True)
+                render_modern_dataframe(
+                    opp.round(1).sort_values('PIE', ascending=False),
+                    name_hint="Opp_Name",
+                )
             else:
                 st.info("No opponent data yet.")
 
@@ -3961,7 +4263,7 @@ elif view_mode == "🔦 Player Spotlight":
                             'FGM', 'FGA', '3PM', '3PA', 'TO', 'PIE_Raw', 'Game_Score'] if c in logs.columns]
         show = logs[cols].copy()
         show['Win'] = show['Win'].map({1: 'W', 0: 'L'})
-        st.dataframe(show.round(1), use_container_width=True, hide_index=True)
+        render_modern_dataframe(show.round(1), name_hint="Player/Team")
         dl(show, "⬇️ Game log CSV", f"{sel}_gamelog.csv", "dl_log")
 
 
@@ -4002,7 +4304,7 @@ elif view_mode == "🗃️ Full Player Database":
         st.markdown(f"### 📊 Master Roster — {len(view)} players")
         cols = ['Player/Team', 'Team', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TO',
                 'FG%', '3P%', 'TS%', 'eFG%', 'USG', 'ORtg', 'DRtg', 'NetRtg', 'GmSc', 'PIE']
-        st.dataframe(view[cols], use_container_width=True, hide_index=True)
+        render_modern_dataframe(view[cols], name_hint="Player/Team")
         dl(view[cols], "⬇️ Roster CSV", "qcl_roster.csv", "dl_roster")
 
 
@@ -4238,7 +4540,7 @@ elif view_mode == "🏆 Playoffs":
                         'FG%', '3P%', 'TS%', 'eFG%', 'USG', 'ORtg', 'DRtg', 'NetRtg', 'GmSc', 'PIE']
                 cols = [c for c in cols if c in view.columns]
                 st.markdown(f"##### Playoff Player Stats — {len(view)} players")
-                st.dataframe(view[cols], use_container_width=True, hide_index=True)
+                render_modern_dataframe(view[cols], name_hint="Player/Team")
                 dl(view[cols], "⬇️ Playoff stats CSV", "qcl_playoff_players.csv", "dl_po_players")
 
 
@@ -4449,11 +4751,11 @@ elif view_mode == "🔮 Oracle Predictor":
                         pc1, pc2 = st.columns(2)
                         with pc1:
                             st.markdown(f"##### {t1_sel}")
-                            st.dataframe(bx1, use_container_width=True, hide_index=True)
+                            render_modern_dataframe(bx1, name_hint="Player")
                             dl(bx1, "⬇️ CSV", f"{t1_sel}_proj.csv", "dl_bx1")
                         with pc2:
                             st.markdown(f"##### {t2_sel}")
-                            st.dataframe(bx2, use_container_width=True, hide_index=True)
+                            render_modern_dataframe(bx2, name_hint="Player")
                             dl(bx2, "⬇️ CSV", f"{t2_sel}_proj.csv", "dl_bx2")
                         st.caption("PROJ PTS = median simulated points. Range = 20th–80th percentile outcomes.")
 
@@ -4996,9 +5298,13 @@ if view_mode == "🔬 Advanced Analytics Lab":
         st.markdown("### 🎖️ Player Ratings Engine")
         st.caption("USG% = share of team possessions used. ORtg = pts per 100 individual possessions. "
                    "DRtg = team defense adjusted for stocks. GmSc = Hollinger Game Score.")
-        st.dataframe(p_view[['Player/Team', 'Team', 'GP', 'USG', 'ORtg', 'DRtg', 'NetRtg', 'GmSc', 'PIE']]
-                     .sort_values('NetRtg', ascending=False),
-                     use_container_width=True, hide_index=True)
+        render_modern_dataframe(
+            p_view[
+                ['Player/Team', 'Team', 'GP', 'USG', 'ORtg',
+                 'DRtg', 'NetRtg', 'GmSc', 'PIE']
+            ].sort_values('NetRtg', ascending=False),
+            name_hint="Player/Team",
+        )
 
 
     with lab[4]:
@@ -5051,7 +5357,10 @@ elif view_mode == "🏦 The Vault":
     ledger = p_tot[cols]
     if q:
         ledger = ledger[ledger['Player/Team'].str.contains(q, case=False, na=False)]
-    st.dataframe(ledger.sort_values('PTS', ascending=False), use_container_width=True, hide_index=True)
+    render_modern_dataframe(
+        ledger.sort_values('PTS', ascending=False),
+        name_hint="Player/Team",
+    )
     dl(ledger, "⬇️ Master ledger CSV", "qcl_master_ledger.csv", "dl_vault")
 
 
