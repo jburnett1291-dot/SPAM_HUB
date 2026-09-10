@@ -2139,6 +2139,7 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 VIEWS = [
     "🏠 League Home & Awards",
+    "🌌 Player Galaxy",
     "🏅 Awards & Rewards",
     "🏆 Power Rankings & SOS",
     "🏢 Franchise Hub",
@@ -2162,6 +2163,9 @@ VIEWS = [
 ]
 st.sidebar.caption("EXPLORE")
 view_mode = st.sidebar.radio("Navigation", VIEWS, label_visibility="collapsed")
+if st.sidebar.button("↩ Replay Intro", use_container_width=True):
+    st.session_state.entered_hub = False
+    _rerun()
 try:
     restore_session()
     login_widget(key="sidebar")
@@ -3467,7 +3471,7 @@ if view_mode == "🔬 Advanced Analytics Lab":
 
 
 # -------------------------------------------------------- PLAYER GALAXY -------
-if view_mode == "🔬 Advanced Analytics Lab":
+if view_mode in ("🔬 Advanced Analytics Lab", "🌌 Player Galaxy"):
     galaxy_board = build_advanced_player_board(p_df)
     st.markdown(
         "<section class='qcl-tools-hero'>"
