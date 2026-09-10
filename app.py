@@ -3527,18 +3527,134 @@ if view_mode in ("🔬 Advanced Analytics Lab", "🌌 Player Galaxy"):
         if galaxy_view.empty:
             st.info("No players match those filters.")
         else:
-            chart = px.scatter(
-                galaxy_view, x="PTS", y="PIE", size="Disruption", color="Type",
+            st.markdown(
+                """
+                <style>
+                    .nebula-container {
+                        position: relative;
+                        overflow: hidden;
+                        padding: 0.55rem;
+                        border: 1px solid rgba(138, 43, 226, 0.34);
+                        border-radius: 0.9rem;
+                        background:
+                            radial-gradient(circle at 28% 35%, rgba(0, 191, 255, 0.13), transparent 18rem),
+                            radial-gradient(circle at 72% 62%, rgba(138, 43, 226, 0.20), transparent 22rem),
+                            radial-gradient(circle at 50% 50%, #16082b 0%, #05010a 72%, #000 100%);
+                        box-shadow: inset 0 0 50px rgba(138, 43, 226, 0.18),
+                                    0 0 28px rgba(0, 191, 255, 0.10);
+                        animation: nebulaPulse 8s infinite alternate ease-in-out;
+                    }
+                    .nebula-container::before,
+                    .nebula-container::after {
+                        content: "";
+                        position: absolute;
+                        pointer-events: none;
+                        border-radius: 50%;
+                        filter: blur(1px);
+                    }
+                    .nebula-container::before {
+                        top: 12%;
+                        left: 10%;
+                        width: 3px;
+                        height: 3px;
+                        background: #e6bf55;
+                        box-shadow:
+                            60px 38px #00bfff, 140px 80px #fff, 230px 24px #a855f7,
+                            340px 120px #e6bf55, 470px 42px #00bfff, 610px 95px #fff,
+                            760px 28px #a855f7, 880px 140px #e6bf55;
+                        opacity: 0.75;
+                    }
+                    .nebula-container::after {
+                        right: 8%;
+                        bottom: 12%;
+                        width: 2px;
+                        height: 2px;
+                        background: #fff;
+                        box-shadow:
+                            -90px -44px #00bfff, -210px -12px #e6bf55,
+                            -330px -80px #a855f7, -510px -20px #fff,
+                            -680px -100px #00bfff;
+                        opacity: 0.6;
+                    }
+                    @keyframes nebulaPulse {
+                        0% {
+                            box-shadow: inset 0 0 34px rgba(138, 43, 226, 0.12),
+                                        0 0 16px rgba(0, 191, 255, 0.06);
+                        }
+                        100% {
+                            box-shadow: inset 0 0 70px rgba(138, 43, 226, 0.30),
+                                        0 0 34px rgba(0, 191, 255, 0.18);
+                        }
+                    }
+                    @media (prefers-reduced-motion: reduce) {
+                        .nebula-container { animation: none; }
+                    }
+                </style>
+                <div class="nebula-container">
+                """,
+                unsafe_allow_html=True,
+            )
+
+            neon_types = [
+                "#e6bf55", "#00bfff", "#a855f7", "#58d39a",
+                "#ff6b9d", "#f97316", "#7dd3fc", "#c084fc",
+            ]
+            chart = px.scatter_3d(
+                galaxy_view,
+                x="PTS",
+                y="PIE",
+                z="TS%",
+                size="Disruption",
+                color="Type",
+                color_discrete_sequence=neon_types,
                 hover_name="Player/Team",
-                hover_data=["Team", "GP", "Shots Affected", "Tipped Passes", "Hustle"],
-                template="plotly_dark", size_max=30,
+                hover_data=[
+                    "Team", "GP", "Shots Affected",
+                    "Tipped Passes", "Hustle",
+                ],
+                template="plotly_dark",
+                size_max=40,
                 title=f"Player Galaxy · sorted by {galaxy_sort_label}",
             )
-            chart.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                height=500, legend_title_text="Type",
+            chart.update_traces(
+                marker=dict(
+                    opacity=0.90,
+                    line=dict(width=0.8, color="rgba(255,255,255,0.65)"),
+                ),
+                selector=dict(mode="markers"),
             )
-            st.plotly_chart(chart, use_container_width=True)
+            chart.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                height=620,
+                legend_title_text="Archetype",
+                margin=dict(l=0, r=0, b=0, t=42),
+                scene=dict(
+                    bgcolor="rgba(0,0,0,0)",
+                    xaxis=dict(
+                        showbackground=False, showgrid=False, zeroline=False,
+                        showticklabels=False, title="Scoring",
+                    ),
+                    yaxis=dict(
+                        showbackground=False, showgrid=False, zeroline=False,
+                        showticklabels=False, title="Impact",
+                    ),
+                    zaxis=dict(
+                        showbackground=False, showgrid=False, zeroline=False,
+                        showticklabels=False, title="Efficiency",
+                    ),
+                ),
+            )
+            st.plotly_chart(
+                chart,
+                use_container_width=True,
+                config={"displaylogo": False, "responsive": True},
+            )
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.caption(
+                "Drag to rotate the constellation · scroll to zoom · hover a star "
+                "for the player profile."
+            )
 
             galaxy_cols = [
                 "Player/Team", "Team", "Type", "Rarity", "GP", "PTS", "REB", "AST",
