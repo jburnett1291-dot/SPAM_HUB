@@ -5767,9 +5767,9 @@ if view_mode == "🎁 Open Packs":
 # 10. FILM TERMINAL — VOD UPLOAD + DUAL-STATE OCR
 # =============================================================================
 # EasyOCR handles the moving gameplay HUD. When a post-game/box-score screen is
-# detected, PaddleOCR is used for the larger table region. Both packages are
-# imported lazily so the rest of the dashboard can still start without OCR
-# dependencies installed.
+# detected, the optional PaddleOCR reader can be used for the larger table
+# region. EasyOCR remains the required reader so the GitHub/Streamlit runtime
+# works on Python versions where PaddlePaddle wheels are unavailable.
 FILM_HUD_PRESETS = {
     "Bottom-center broadcast scoreboard": (.22, .76, .78, .99),
     "Bottom-right HUD": (.58, .76, .99, .99),
@@ -5924,7 +5924,9 @@ def _film_analyze_vod(uploaded_file, hud_roi, table_roi, sample_seconds,
                         _film_table_reader(), _film_crop(frame, table_roi)
                     )
                 except Exception:
-                    table_reads = []
+                    table_reads = _film_easy_reads(
+                        hud_reader, _film_crop(frame, table_roi)
+                    )
                 rows.extend({
                     "timestamp": round(timestamp, 2),
                     "frame": frame_id,
@@ -5944,7 +5946,9 @@ def _film_analyze_vod(uploaded_file, hud_roi, table_roi, sample_seconds,
                     _film_table_reader(), _film_crop(last_frame, table_roi)
                 )
             except Exception:
-                table_reads = []
+                table_reads = _film_easy_reads(
+                    hud_reader, _film_crop(last_frame, table_roi)
+                )
             rows.extend({
                 "timestamp": round(max(0, frame_count / fps - 1), 2),
                 "frame": max(0, frame_count - 1),
