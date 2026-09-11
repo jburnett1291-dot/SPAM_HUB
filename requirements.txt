@@ -1,6 +1,10 @@
-pandas
-numpy
-plotly
-requests
-Pillow
-streamlit
+pandas>=2.0
+numpy>=1.24,<2.0
+plotly>=5.18
+requests>=2.31
+Pillow>=10.0
+streamlit>=1.32
+opencv-python-headless>=4.8
+easyocr>=1.7
+paddleocr>=2.7
+paddlepaddle>=2.6
