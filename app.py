@@ -2398,6 +2398,7 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 VIEWS = [
     "🏠 League Home & Awards",
+    "Film Terminal",
     "🌌 Player Galaxy",
     "🏅 Awards & Rewards",
     "🏆 Power Rankings & SOS",
@@ -5760,3 +5761,322 @@ if view_mode == "👤 My Profile":
 
 if view_mode == "🎁 Open Packs":
     render_open_pack(current_user())
+
+
+# =============================================================================
+# 10. FILM TERMINAL — VOD UPLOAD + DUAL-STATE OCR
+# =============================================================================
+# EasyOCR handles the moving gameplay HUD. When a post-game/box-score screen is
+# detected, PaddleOCR is used for the larger table region. Both packages are
+# imported lazily so the rest of the dashboard can still start without OCR
+# dependencies installed.
+FILM_HUD_PRESETS = {
+    "Bottom-center broadcast scoreboard": (.22, .76, .78, .99),
+    "Bottom-right HUD": (.58, .76, .99, .99),
+    "Top-right scoreboard": (.55, .01, .99, .25),
+    "Top-left scoreboard": (.01, .01, .45, .25),
+}
+
+FILM_POSTGAME_WORDS = (
+    "box score", "game stats", "team comparison", "post game",
+    "postgame", "game over", "quarter recap",
+)
+
+
+@st.cache_resource
+def _film_hud_reader():
+    import easyocr
+    return easyocr.Reader(["en"], gpu=False)
+
+
+@st.cache_resource
+def _film_table_reader():
+    from paddleocr import PaddleOCR
+    try:
+        return PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
+    except TypeError:
+        return PaddleOCR(use_angle_cls=True, lang="en")
+
+
+def _film_crop(frame, roi):
+    height, width = frame.shape[:2]
+    x1, y1, x2, y2 = roi
+    left, top = int(width * x1), int(height * y1)
+    right, bottom = int(width * x2), int(height * y2)
+    return frame[max(0, top):min(height, bottom), max(0, left):min(width, right)]
+
+
+def _film_easy_reads(reader, image):
+    import cv2
+    if image is None or image.size == 0:
+        return []
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = cv2.resize(gray, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+    thresholded = cv2.threshold(
+        gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+    )[1]
+    output = reader.readtext(thresholded, detail=1, paragraph=False)
+    return [
+        (str(item[1]).strip(), float(item[2]))
+        for item in output
+        if len(item) >= 3 and str(item[1]).strip() and float(item[2]) >= .45
+    ]
+
+
+def _film_table_reads(reader, image):
+    raw = reader.predict(image) if hasattr(reader, "predict") else reader.ocr(image, cls=True)
+    output = []
+    for page in raw or []:
+        if isinstance(page, dict):
+            texts, scores = page.get("rec_texts", []), page.get("rec_scores", [])
+            for index, text in enumerate(texts):
+                if str(text).strip():
+                    score = float(scores[index]) if index < len(scores) else 0.0
+                    output.append((str(text).strip(), score))
+        else:
+            for line in page or []:
+                if len(line) >= 2 and isinstance(line[1], (list, tuple)):
+                    text, score = line[1][0], line[1][1]
+                    if str(text).strip() and float(score) >= .45:
+                        output.append((str(text).strip(), float(score)))
+    return [(text, score) for text, score in output if score >= .45]
+
+
+def _film_signal_fields(text):
+    clock = re.search(r"\b\d{1,2}:[0-5]\d\b", text)
+    quarter = re.search(r"\bQ[1-4]\b", text, re.IGNORECASE)
+    score = re.search(r"\b\d{1,3}\s*[-–]\s*\d{1,3}\b", text)
+    return {
+        "clock": clock.group(0) if clock else "",
+        "quarter": quarter.group(0).upper() if quarter else "",
+        "score_hint": score.group(0) if score else "",
+    }
+
+
+def _film_analyze_vod(uploaded_file, hud_roi, table_roi, sample_seconds,
+                      max_samples, scan_table):
+    import cv2
+    import tempfile
+
+    try:
+        hud_reader = _film_hud_reader()
+    except Exception as exc:
+        return {
+            "error": (
+                "EasyOCR could not initialize. Install the packages from "
+                "requirements.txt. "
+                f"{type(exc).__name__}: {exc}"
+            )
+        }
+
+    temp_path = None
+    capture = None
+    rows = []
+    last_frame = None
+    postgame_detected = False
+    try:
+        suffix = os.path.splitext(uploaded_file.name)[1] or ".mp4"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp:
+            temp.write(uploaded_file.getvalue())
+            temp_path = temp.name
+
+        capture = cv2.VideoCapture(temp_path)
+        if not capture.isOpened():
+            return {"error": "OpenCV could not open this VOD. Try an H.264 MP4."}
+
+        fps = float(capture.get(cv2.CAP_PROP_FPS) or 30.0)
+        frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+        height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+        sample_interval = max(1, int(fps * sample_seconds))
+        frame_id, samples, state = 0, 0, "GAMEPLAY"
+
+        while capture.isOpened() and samples < max_samples:
+            ok, frame = capture.read()
+            if not ok:
+                break
+            last_frame = frame
+            if frame_id % sample_interval != 0:
+                frame_id += 1
+                continue
+
+            timestamp = frame_id / fps
+            reads = _film_easy_reads(hud_reader, _film_crop(frame, hud_roi))
+            joined = " ".join(text for text, _ in reads).lower()
+            if any(word in joined for word in FILM_POSTGAME_WORDS):
+                state = "POST_GAME"
+                postgame_detected = True
+
+            for text, confidence in reads:
+                rows.append({
+                    "timestamp": round(timestamp, 2),
+                    "frame": frame_id,
+                    "state": state,
+                    "text": text,
+                    "confidence": round(confidence, 3),
+                    **_film_signal_fields(text),
+                })
+            samples += 1
+
+            if postgame_detected and scan_table:
+                try:
+                    table_reads = _film_table_reads(
+                        _film_table_reader(), _film_crop(frame, table_roi)
+                    )
+                except Exception:
+                    table_reads = []
+                rows.extend({
+                    "timestamp": round(timestamp, 2),
+                    "frame": frame_id,
+                    "state": "POST_GAME_TABLE",
+                    "text": text,
+                    "confidence": round(confidence, 3),
+                    "clock": "",
+                    "quarter": "",
+                    "score_hint": "",
+                } for text, confidence in table_reads)
+                break
+            frame_id += 1
+
+        if scan_table and not postgame_detected and last_frame is not None:
+            try:
+                table_reads = _film_table_reads(
+                    _film_table_reader(), _film_crop(last_frame, table_roi)
+                )
+            except Exception:
+                table_reads = []
+            rows.extend({
+                "timestamp": round(max(0, frame_count / fps - 1), 2),
+                "frame": max(0, frame_count - 1),
+                "state": "POST_GAME_TABLE",
+                "text": text,
+                "confidence": round(confidence, 3),
+                "clock": "",
+                "quarter": "",
+                "score_hint": "",
+            } for text, confidence in table_reads)
+
+        return {
+            "error": None,
+            "rows": rows,
+            "fps": round(fps, 2),
+            "width": width,
+            "height": height,
+            "duration": round(frame_count / fps, 1) if fps else 0,
+            "samples": samples,
+            "state": state,
+        }
+    finally:
+        if capture is not None:
+            capture.release()
+        if temp_path:
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+
+
+def _film_terminal_time(seconds):
+    seconds = int(seconds)
+    return f"{seconds // 60:02d}:{seconds % 60:02d}"
+
+
+def render_film_terminal_page():
+    st.markdown(
+        "<div class='header-banner'>QCL FILM TERMINAL — VOD OCR</div>",
+        unsafe_allow_html=True,
+    )
+    st.title("Film terminal")
+    st.caption(
+        "Upload an NBA 2K Pro-Am VOD, read the fixed gameplay scoreboard, "
+        "and switch to a table pass for post-game recap screens."
+    )
+    uploaded_file = st.file_uploader(
+        "Upload VOD",
+        type=["mp4", "mov", "webm", "m4v"],
+        help="H.264 MP4 is the most reliable format for OpenCV and browser playback.",
+        key="qcl_film_upload",
+    )
+    if uploaded_file is None:
+        st.info("Upload a VOD to begin.")
+        return
+
+    video_bytes = uploaded_file.getvalue()
+    st.video(video_bytes)
+    st.caption(
+        f"{uploaded_file.name} · {len(video_bytes) / (1024 * 1024):.1f} MB"
+    )
+
+    with st.expander("OCR capture settings", expanded=True):
+        hud_name = st.selectbox(
+            "Gameplay HUD region",
+            list(FILM_HUD_PRESETS),
+            key="qcl_film_hud",
+        )
+        controls = st.columns(3)
+        sample_seconds = controls[0].slider(
+            "Sample every (seconds)", .5, 5.0, 1.0, .5, key="qcl_film_sample"
+        )
+        max_samples = controls[1].slider(
+            "Maximum samples", 10, 600, 120, 10, key="qcl_film_max_samples"
+        )
+        scan_table = controls[2].checkbox(
+            "Scan post-game table", True, key="qcl_film_scan_table"
+        )
+        st.caption(
+            "Target the fixed broadcast scoreboard, not the moving player indicator. "
+            "The table pass covers the full recap region."
+        )
+
+    if st.button(
+        "Run dual-state OCR",
+        type="primary",
+        use_container_width=True,
+        key="qcl_film_run_ocr",
+    ):
+        with st.spinner("Sampling VOD frames and running OCR..."):
+            st.session_state["qcl_film_result"] = _film_analyze_vod(
+                uploaded_file,
+                FILM_HUD_PRESETS[hud_name],
+                (.03, .08, .97, .96),
+                sample_seconds,
+                max_samples,
+                scan_table,
+            )
+
+    result = st.session_state.get("qcl_film_result")
+    if not result:
+        return
+    st.divider()
+    st.subheader("OCR results")
+    if result.get("error"):
+        st.error(result["error"])
+        st.code("pip install -r requirements.txt", language="bash")
+        return
+
+    metrics = st.columns(5)
+    metrics[0].metric("Resolution", f"{result['width']}×{result['height']}")
+    metrics[1].metric("FPS", result["fps"])
+    metrics[2].metric("Duration", _film_terminal_time(result["duration"]))
+    metrics[3].metric("Frames sampled", result["samples"])
+    metrics[4].metric("Detected state", result["state"])
+    result_df = pd.DataFrame(result.get("rows", []))
+    if result_df.empty:
+        st.warning(
+            "No confident text was found. Try another HUD region or a wider "
+            "capture region."
+        )
+        return
+    st.dataframe(result_df, use_container_width=True, hide_index=True)
+    st.download_button(
+        "Download OCR CSV",
+        result_df.to_csv(index=False).encode("utf-8"),
+        "qcl-vod-ocr-results.csv",
+        "text/csv",
+        use_container_width=True,
+        key="qcl_film_download_ocr",
+    )
+
+
+if view_mode == "Film Terminal":
+    render_film_terminal_page()
